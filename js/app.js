@@ -263,6 +263,22 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  /* Aviso do Instagram: aparece ao entrar e minimiza para uma bolha */
+  const CHAVE_INSTA = "insta-minimizado";
+  const insta = $("#insta");
+  const bolha = $("#insta-bolha");
+  function mostrarInsta(aberto) {
+    insta.hidden = !aberto;
+    bolha.hidden = aberto;
+    try { sessionStorage.setItem(CHAVE_INSTA, aberto ? "0" : "1"); } catch {}
+  }
+  $("#insta-fechar").addEventListener("click", () => mostrarInsta(false));
+  bolha.addEventListener("click", () => mostrarInsta(true));
+  let minimizado = false;
+  try { minimizado = sessionStorage.getItem(CHAVE_INSTA) === "1"; } catch {}
+  if (minimizado) bolha.hidden = false;
+  else setTimeout(() => mostrarInsta(true), 1200);
+
   renderGrade();
   renderCarrinho();
 })();

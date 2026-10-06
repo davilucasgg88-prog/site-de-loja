@@ -183,6 +183,26 @@
     </form>
   </dialog>
 
+  <!-- Aviso do Instagram -->
+  <aside class="insta" id="insta" role="dialog" aria-labelledby="insta-titulo" hidden>
+    <button class="insta__fechar" id="insta-fechar" aria-label="Minimizar aviso">✕</button>
+    <div class="insta__topo">
+      <span class="insta__logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>
+      </span>
+      <div>
+        <p class="insta__perfil">@tmz_storee</p>
+        <img src="img/logo-tmz.png" alt="TMZ" class="insta__marca" width="70" height="20">
+      </div>
+    </div>
+    <h2 id="insta-titulo">Siga a TMZ no Instagram</h2>
+    <p class="insta__texto">Quem segue a gente concorre a <strong>sorteios</strong>, ganha <strong>cupons de desconto</strong> e fica sabendo primeiro do <strong>frete grátis</strong>.</p>
+    <a class="btn btn--bloco insta__btn" href="https://www.instagram.com/tmz_storee/" target="_blank" rel="noopener">Acesse</a>
+  </aside>
+  <button class="insta-bolha" id="insta-bolha" aria-label="Abrir aviso do Instagram" hidden>
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>
+  </button>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/produtos.js"></script>
