@@ -263,13 +263,16 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  /* Aviso do Instagram: aparece ao entrar e minimiza para uma bolha */
+  /* Aviso do Instagram: abre centralizado ao entrar; o X fecha e deixa uma bolha para reabrir */
   const CHAVE_INSTA = "insta-minimizado";
   const insta = $("#insta");
   const bolha = $("#insta-bolha");
   function mostrarInsta(aberto) {
     insta.hidden = !aberto;
+    $("#insta-fundo").hidden = !aberto;
     bolha.hidden = aberto;
+    document.body.style.overflow = aberto ? "hidden" : "";
+    if (aberto) $("#insta-fechar").focus();
     try { sessionStorage.setItem(CHAVE_INSTA, aberto ? "0" : "1"); } catch {}
   }
   $("#insta-fechar").addEventListener("click", () => mostrarInsta(false));
@@ -277,7 +280,7 @@
   let minimizado = false;
   try { minimizado = sessionStorage.getItem(CHAVE_INSTA) === "1"; } catch {}
   if (minimizado) bolha.hidden = false;
-  else setTimeout(() => mostrarInsta(true), 1200);
+  else setTimeout(() => mostrarInsta(true), 600);
 
   renderGrade();
   renderCarrinho();

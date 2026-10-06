@@ -235,8 +235,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 /* Aviso do Instagram */
 .insta {
   --ig: linear-gradient(45deg, #feda75 0%, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5 100%);
-  position: fixed; left: 24px; bottom: 24px; z-index: 25; width: min(340px, calc(100% - 32px));
-  background: #0e0e0e; border: 1px solid var(--borda); border-radius: 18px; padding: 22px;
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 41; width: min(380px, calc(100% - 32px));
+  background: #0e0e0e; border: 1px solid var(--borda); border-radius: 20px; padding: 28px 26px 26px; text-align: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .6); animation: insta-entra .45s cubic-bezier(.2, .9, .3, 1.2);
 }
 .insta::before {
@@ -244,29 +244,35 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); pointer-events: none; opacity: .7;
 }
-@keyframes insta-entra { from { opacity: 0; transform: translateY(24px) scale(.96); } }
+@keyframes insta-entra { from { opacity: 0; transform: translate(-50%, -46%) scale(.94); } }
+@keyframes bolha-entra { from { opacity: 0; transform: scale(.6); } }
+@keyframes fundo-entra { from { opacity: 0; } }
+.insta-fundo {
+  position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .55);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fundo-entra .3s ease;
+}
 .insta__fechar { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: #1c1c1c; cursor: pointer; font-size: 12px; }
 .insta__fechar:hover { background: #2a2a2a; }
-.insta__topo { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.insta__topo { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 16px; }
 .insta__logo, .insta-bolha {
   display: grid; place-items: center; border-radius: 14px; color: #fff;
   background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
 }
-.insta__logo { width: 48px; height: 48px; box-shadow: 0 6px 20px rgba(214, 36, 159, .35); }
-.insta__logo svg { width: 28px; height: 28px; stroke-width: 2; }
+.insta__logo { width: 64px; height: 64px; border-radius: 18px; box-shadow: 0 6px 20px rgba(214, 36, 159, .35); }
+.insta__logo svg { width: 36px; height: 36px; stroke-width: 2; }
 .insta__perfil { font-weight: 600; font-size: 14px; }
-.insta__marca { height: 14px; width: auto; opacity: .8; margin-top: 4px; }
-.insta h2 { font-family: var(--fonte-titulo); font-weight: 700; font-size: 21px; text-transform: uppercase; line-height: 1.15; }
+.insta__marca { height: 14px; width: auto; opacity: .8; margin: 4px auto 0; }
+.insta h2 { font-family: var(--fonte-titulo); font-weight: 700; font-size: 24px; text-transform: uppercase; line-height: 1.15; }
 .insta__texto { font-size: 13.5px; color: #cfcfcf; margin: 8px 0 18px; }
 .insta__texto strong { color: #fff; font-weight: 600; }
 .insta__btn { height: 44px; font-size: 14px; letter-spacing: .08em; }
 .insta-bolha {
   position: fixed; left: 24px; bottom: 24px; z-index: 25; width: 54px; height: 54px; border: 0; border-radius: 50%; cursor: pointer;
-  box-shadow: 0 8px 26px rgba(214, 36, 159, .45); animation: insta-entra .3s ease; transition: transform .2s;
+  box-shadow: 0 8px 26px rgba(214, 36, 159, .45); animation: bolha-entra .3s ease; transition: transform .2s;
 }
 .insta-bolha:hover { transform: scale(1.08); }
 .insta-bolha svg { width: 28px; height: 28px; stroke-width: 2; }
-@media (prefers-reduced-motion: reduce) { .insta, .insta-bolha { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .insta, .insta-bolha, .insta-fundo { animation: none; } }
 
 /* Responsivo */
 @media (max-width: 1000px) {
@@ -299,7 +305,6 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .detalhe { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
-  .insta { left: 16px; bottom: 16px; }
   .insta-bolha { left: 16px; bottom: 16px; }
   .container { width: calc(100% - 32px); }
   .logo__marca { height: 24px; }
