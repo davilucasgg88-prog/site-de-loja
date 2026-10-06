@@ -1,23 +1,31 @@
 // Catálogo da loja. Edite esta lista para cadastrar seus produtos.
-// "imagem" pode ser uma URL (ex.: "img/camiseta.jpg"); se vazio, usa o emoji.
+// "oferta: true" coloca o produto em "Deals of the Day".
 const LOJA = {
-  nome: "Minha Loja",
+  nome: "NEXORA",
   whatsapp: "5500000000000", // DDI + DDD + número, só dígitos
+  moeda: "USD",
+  idioma: "en-US",
   freteGratisAcima: 199,
-  frete: 19.9,
+  frete: 9.99,
 };
 
+const CATEGORIAS = [
+  { id: "smartphones", nome: "Smartphones", imagem: "img/cat-smartphones.jpg" },
+  { id: "laptops", nome: "Laptops", imagem: "img/cat-laptops.jpg" },
+  { id: "wearables", nome: "Wearables", imagem: "img/cat-wearables.jpg" },
+  { id: "audio", nome: "Audio", imagem: "img/cat-audio.jpg" },
+  { id: "accessories", nome: "Accessories" },
+  { id: "gaming", nome: "Gaming", imagem: "img/cat-gaming.jpg" },
+  { id: "cameras", nome: "Cameras", imagem: "img/cat-cameras.jpg" },
+];
+
 const PRODUTOS = [
-  { id: 1, nome: "Camiseta Básica Algodão", categoria: "Roupas", preco: 59.9, precoAntigo: 79.9, emoji: "👕", imagem: "", descricao: "Camiseta 100% algodão, confortável e durável. Disponível do P ao GG.", destaque: true },
-  { id: 2, nome: "Calça Jeans Slim", categoria: "Roupas", preco: 149.9, emoji: "👖", imagem: "", descricao: "Jeans com elastano, modelagem slim e lavagem média." },
-  { id: 3, nome: "Moletom com Capuz", categoria: "Roupas", preco: 129.9, precoAntigo: 169.9, emoji: "🧥", imagem: "", descricao: "Moletom flanelado por dentro, ideal para dias frios." },
-  { id: 4, nome: "Tênis Casual", categoria: "Calçados", preco: 219.9, emoji: "👟", imagem: "", descricao: "Tênis leve com solado de borracha e palmilha macia.", destaque: true },
-  { id: 5, nome: "Sandália Conforto", categoria: "Calçados", preco: 89.9, emoji: "🩴", imagem: "", descricao: "Sandália anatômica para o dia a dia." },
-  { id: 6, nome: "Bota Couro", categoria: "Calçados", preco: 299.9, precoAntigo: 349.9, emoji: "🥾", imagem: "", descricao: "Bota de couro legítimo com costura reforçada." },
-  { id: 7, nome: "Relógio Minimalista", categoria: "Acessórios", preco: 179.9, emoji: "⌚", imagem: "", descricao: "Pulseira de aço inox, resistente à água.", destaque: true },
-  { id: 8, nome: "Óculos de Sol", categoria: "Acessórios", preco: 99.9, emoji: "🕶️", imagem: "", descricao: "Lentes com proteção UV400." },
-  { id: 9, nome: "Mochila Urbana", categoria: "Acessórios", preco: 159.9, precoAntigo: 199.9, emoji: "🎒", imagem: "", descricao: "Compartimento para notebook de até 15,6\" e tecido impermeável." },
-  { id: 10, nome: "Boné Aba Curva", categoria: "Acessórios", preco: 49.9, emoji: "🧢", imagem: "", descricao: "Ajuste traseiro com fivela metálica." },
-  { id: 11, nome: "Fone Bluetooth", categoria: "Eletrônicos", preco: 199.9, precoAntigo: 249.9, emoji: "🎧", imagem: "", descricao: "Até 30 horas de bateria e cancelamento de ruído.", destaque: true },
-  { id: 12, nome: "Caixa de Som Portátil", categoria: "Eletrônicos", preco: 249.9, emoji: "🔊", imagem: "", descricao: "Som potente, à prova d'água (IPX7)." },
+  { id: 1, nome: "Nexora Buds Pro", categoria: "audio", preco: 49.99, precoAntigo: 69.99, imagem: "img/deal-buds.jpg", oferta: true, descricao: "True wireless earbuds with active noise cancelling and 24h battery with the charging case." },
+  { id: 2, nome: "Nexora Watch X", categoria: "wearables", preco: 129.99, precoAntigo: 199.99, imagem: "img/deal-watch.jpg", oferta: true, descricao: "Always-on display, heart-rate and sleep tracking, water resistant up to 50m." },
+  { id: 3, nome: "Nexora Laptop Air", categoria: "laptops", preco: 799.99, precoAntigo: 999.99, imagem: "img/deal-laptop.jpg", oferta: true, descricao: "Ultra-thin aluminium body, 14\" display, 16GB RAM and 512GB SSD." },
+  { id: 4, nome: "Nexora Phone 15", categoria: "smartphones", preco: 699.99, precoAntigo: 899.99, imagem: "img/deal-phone.jpg", oferta: true, descricao: "Triple camera system, 6.1\" OLED display and all-day battery." },
+  { id: 5, nome: "Nexora Phone 15 Pro", categoria: "smartphones", preco: 999.99, imagem: "img/cat-smartphones.jpg", descricao: "Titanium design, pro camera system and 120Hz display." },
+  { id: 6, nome: "Nexora Headphones Max", categoria: "audio", preco: 249.99, precoAntigo: 329.99, imagem: "img/cat-audio.jpg", descricao: "Over-ear headphones with immersive sound and 40h battery." },
+  { id: 7, nome: "Nexora Controller", categoria: "gaming", preco: 59.99, imagem: "img/cat-gaming.jpg", descricao: "Wireless controller with low latency and haptic feedback." },
+  { id: 8, nome: "Nexora Cam Z", categoria: "cameras", preco: 1199.99, imagem: "img/cat-cameras.jpg", descricao: "Mirrorless camera with 24MP sensor and 4K video." },
 ];

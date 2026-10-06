@@ -1,15 +1,13 @@
 (() => {
   const $ = (s) => document.querySelector(s);
-  const moeda = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const $$ = (s) => document.querySelectorAll(s);
+  const fmt = new Intl.NumberFormat(LOJA.idioma, { style: "currency", currency: LOJA.moeda });
+  const moeda = (v) => fmt.format(v);
   const escapar = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const CHAVE = "carrinho-loja";
 
-  const estado = {
-    categoria: "Todos",
-    busca: "",
-    ordem: "relevancia",
-    carrinho: carregar(),
-  };
+  // filtro: "ofertas" (padrão), "todos" ou o id de uma categoria
+  const estado = { filtro: "ofertas", busca: "", carrinho: carregar() };
 
   function carregar() {
     try { return JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch { return {}; }
@@ -19,69 +17,73 @@
   }
 
   const porId = (id) => PRODUTOS.find((p) => p.id === Number(id));
-  const visual = (p) => p.imagem
-    ? `<img src="${escapar(p.imagem)}" alt="${escapar(p.nome)}" loading="lazy">`
-    : `<span aria-hidden="true">${p.emoji || "📦"}</span>`;
-  const desconto = (p) => p.precoAntigo ? Math.round((1 - p.preco / p.precoAntigo) * 100) : 0;
+  const categoria = (id) => CATEGORIAS.find((c) => c.id === id);
+  const desconto = (p) => (p.precoAntigo ? Math.round((1 - p.preco / p.precoAntigo) * 100) : 0);
+  const img = (p) => `<img src="${escapar(p.imagem)}" alt="${escapar(p.nome)}" loading="lazy">`;
 
   /* Informações da loja */
   document.title = LOJA.nome;
-  ["#nome-loja", "#nome-rodape", "#nome-copy"].forEach((s) => ($(s).textContent = LOJA.nome));
+  $("#nome-loja").textContent = LOJA.nome;
+  $("#nome-copy").textContent = LOJA.nome;
   $("#ano").textContent = new Date().getFullYear();
-  $("#frete-gratis").textContent = moeda(LOJA.freteGratisAcima);
   $("#link-whats").href = `https://wa.me/${LOJA.whatsapp}`;
 
-  /* Categorias */
-  const categorias = ["Todos", ...new Set(PRODUTOS.map((p) => p.categoria))];
-  function renderCategorias() {
-    $("#categorias").innerHTML = categorias
-      .map((c) => `<button role="tab" aria-selected="${c === estado.categoria}" data-cat="${escapar(c)}">${escapar(c)}</button>`)
-      .join("");
-  }
-  $("#categorias").addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    estado.categoria = b.dataset.cat;
-    renderCategorias();
-    renderGrade();
+  /* Categorias: menu lateral e círculos */
+  $("#lateral-cats").innerHTML = CATEGORIAS.map((c) =>
+    `<a href="#ofertas" data-cat="${c.id}"><svg><use href="#i-${c.id}"/></svg>${escapar(c.nome)}</a>`).join("");
+  $("#circulos").innerHTML = CATEGORIAS.filter((c) => c.imagem).map((c) => `
+    <button class="circulo" data-cat="${c.id}">
+      <span class="circulo__img"><img src="${escapar(c.imagem)}" alt=""></span>${escapar(c.nome)}
+    </button>`).join("");
+
+  document.addEventListener("click", (e) => {
+    const cat = e.target.closest("[data-cat]");
+    const todos = e.target.closest("[data-todos], #ver-todos");
+    if (cat) {
+      if (!cat.dataset.cat) { e.preventDefault(); filtrar("ofertas"); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      filtrar(cat.dataset.cat);
+      if (cat.tagName === "BUTTON") $("#ofertas").scrollIntoView({ behavior: "smooth" });
+    } else if (todos) {
+      filtrar("todos");
+    }
   });
 
-  /* Grade de produtos */
-  function filtrados() {
-    const termo = estado.busca.trim().toLowerCase();
-    let lista = PRODUTOS.filter((p) =>
-      (estado.categoria === "Todos" || p.categoria === estado.categoria) &&
-      (!termo || `${p.nome} ${p.categoria} ${p.descricao}`.toLowerCase().includes(termo))
-    );
-    const ordens = {
-      menor: (a, b) => a.preco - b.preco,
-      maior: (a, b) => b.preco - a.preco,
-      nome: (a, b) => a.nome.localeCompare(b.nome, "pt-BR"),
-      relevancia: (a, b) => (b.destaque ? 1 : 0) - (a.destaque ? 1 : 0),
-    };
-    return [...lista].sort(ordens[estado.ordem]);
+  function filtrar(f) {
+    estado.filtro = f;
+    $$(".lateral a").forEach((a) => a.classList.toggle("ativo", (a.dataset.cat || "ofertas") === f));
+    $$(".circulo").forEach((b) => b.classList.toggle("ativo", b.dataset.cat === f));
+    $("#titulo-ofertas").textContent =
+      f === "ofertas" ? "Deals of the day" : f === "todos" ? "All products" : categoria(f).nome;
+    $("#ver-todos").hidden = f === "todos";
+    renderGrade();
   }
 
-  function precoHTML(p) {
-    return `<div class="preco"><strong>${moeda(p.preco)}</strong>${p.precoAntigo ? `<s>${moeda(p.precoAntigo)}</s>` : ""}</div>
-      <span class="parcela">ou 6x de ${moeda(p.preco / 6)} sem juros</span>`;
+  /* Grade de produtos */
+  function lista() {
+    const termo = estado.busca.trim().toLowerCase();
+    if (termo) {
+      return PRODUTOS.filter((p) => `${p.nome} ${categoria(p.categoria).nome} ${p.descricao}`.toLowerCase().includes(termo));
+    }
+    if (estado.filtro === "ofertas") return PRODUTOS.filter((p) => p.oferta);
+    if (estado.filtro === "todos") return PRODUTOS;
+    return PRODUTOS.filter((p) => p.categoria === estado.filtro);
+  }
+
+  function precos(p) {
+    return `<div class="card__precos"><strong>${moeda(p.preco)}</strong>${p.precoAntigo ? `<s>${moeda(p.precoAntigo)}</s>` : ""}${desconto(p) ? `<span class="selo">-${desconto(p)}%</span>` : ""}</div>`;
   }
 
   function renderGrade() {
-    const lista = filtrados();
-    $("#vazio").hidden = lista.length > 0;
-    $("#grade").innerHTML = lista.map((p) => `
+    const itens = lista();
+    $("#vazio").hidden = itens.length > 0;
+    $("#grade").innerHTML = itens.map((p) => `
       <article class="card">
-        <button class="card__img" data-ver="${p.id}" aria-label="Ver ${escapar(p.nome)}">
-          ${visual(p)}
-          ${desconto(p) ? `<span class="selo">-${desconto(p)}%</span>` : ""}
-        </button>
-        <div class="card__info">
-          <span class="card__cat">${escapar(p.categoria)}</span>
+        <button class="card__img" data-ver="${p.id}" aria-label="View ${escapar(p.nome)}">${img(p)}</button>
+        <div class="card__linha">
           <h3 class="card__nome">${escapar(p.nome)}</h3>
-          ${precoHTML(p)}
-          <button class="btn btn--primario" data-add="${p.id}">Adicionar</button>
+          <button class="add" data-add="${p.id}" aria-label="Add ${escapar(p.nome)} to cart"><svg><use href="#i-cart"/></svg></button>
         </div>
+        ${precos(p)}
       </article>`).join("");
   }
 
@@ -92,18 +94,24 @@
     else if (ver) abrirProduto(ver.dataset.ver);
   });
 
+  /* Busca e menu mobile */
+  $("#abrir-busca").addEventListener("click", () => {
+    const barra = $("#busca-barra");
+    barra.hidden = !barra.hidden;
+    if (!barra.hidden) $("#busca").focus();
+  });
   let atraso;
   $("#busca").addEventListener("input", (e) => {
     clearTimeout(atraso);
     atraso = setTimeout(() => {
       estado.busca = e.target.value;
+      $("#titulo-ofertas").textContent = estado.busca.trim() ? `Results for "${estado.busca.trim()}"` : "Deals of the day";
       renderGrade();
-    }, 150);
+      if (estado.busca.trim()) $("#ofertas").scrollIntoView({ behavior: "smooth" });
+    }, 250);
   });
-  $("#ordenar").addEventListener("change", (e) => {
-    estado.ordem = e.target.value;
-    renderGrade();
-  });
+  $("#abrir-menu").addEventListener("click", () => $("#menu").classList.toggle("aberto"));
+  $("#menu").addEventListener("click", () => $("#menu").classList.remove("aberto"));
 
   /* Detalhe do produto */
   const modalProduto = $("#modal-produto");
@@ -111,13 +119,13 @@
     const p = porId(id);
     $("#detalhe").innerHTML = `
       <div class="detalhe">
-        <div class="card__img">${visual(p)}${desconto(p) ? `<span class="selo">-${desconto(p)}%</span>` : ""}</div>
+        <div class="detalhe__img">${img(p)}</div>
         <div>
-          <span class="card__cat">${escapar(p.categoria)}</span>
-          <h2>${escapar(p.nome)}</h2>
-          ${precoHTML(p)}
+          <span class="detalhe__cat">${escapar(categoria(p.categoria).nome)}</span>
+          <h3>${escapar(p.nome)}</h3>
+          ${precos(p)}
           <p>${escapar(p.descricao)}</p>
-          <button class="btn btn--primario btn--bloco" data-add-modal="${p.id}">Adicionar ao carrinho</button>
+          <button class="btn btn--bloco" data-add-modal="${p.id}">Add to cart</button>
         </div>
       </div>`;
     modalProduto.showModal();
@@ -129,12 +137,9 @@
       modalProduto.close();
     }
   });
-
-  document.querySelectorAll("dialog").forEach((d) => {
-    d.addEventListener("click", (e) => {
-      if (e.target === d || e.target.closest("[data-fechar]")) d.close();
-    });
-  });
+  $$("dialog").forEach((d) => d.addEventListener("click", (e) => {
+    if (e.target === d || e.target.closest("[data-fechar]")) d.close();
+  }));
 
   /* Carrinho */
   function adicionar(id) {
@@ -145,7 +150,7 @@
     c.classList.remove("pulse");
     void c.offsetWidth;
     c.classList.add("pulse");
-    toast(`${porId(id).nome} adicionado ao carrinho`);
+    toast(`${porId(id).nome} added to cart`);
   }
 
   function alterar(id, delta) {
@@ -157,9 +162,7 @@
   }
 
   function totais() {
-    const itens = Object.entries(estado.carrinho)
-      .map(([id, qtd]) => ({ p: porId(id), qtd }))
-      .filter((i) => i.p);
+    const itens = Object.entries(estado.carrinho).map(([id, qtd]) => ({ p: porId(id), qtd })).filter((i) => i.p);
     const subtotal = itens.reduce((s, i) => s + i.p.preco * i.qtd, 0);
     const frete = subtotal === 0 || subtotal >= LOJA.freteGratisAcima ? 0 : LOJA.frete;
     const quantidade = itens.reduce((s, i) => s + i.qtd, 0);
@@ -173,20 +176,20 @@
     $("#resumo").hidden = t.itens.length === 0;
     $("#itens").innerHTML = t.itens.map(({ p, qtd }) => `
       <li class="item">
-        <div class="item__img">${visual(p)}</div>
+        <div class="item__img">${img(p)}</div>
         <div>
           <div class="item__nome">${escapar(p.nome)}</div>
           <div class="item__preco">${moeda(p.preco)}</div>
-          <button class="remover" data-remover="${p.id}">Remover</button>
+          <button class="remover" data-remover="${p.id}">Remove</button>
         </div>
         <div class="qtd">
-          <button data-menos="${p.id}" aria-label="Diminuir">−</button>
+          <button data-menos="${p.id}" aria-label="Decrease">−</button>
           <span>${qtd}</span>
-          <button data-mais="${p.id}" aria-label="Aumentar">+</button>
+          <button data-mais="${p.id}" aria-label="Increase">+</button>
         </div>
       </li>`).join("");
     $("#subtotal").textContent = moeda(t.subtotal);
-    $("#frete").textContent = t.frete ? moeda(t.frete) : "Grátis";
+    $("#frete").textContent = t.frete ? moeda(t.frete) : "Free";
     $("#total").textContent = moeda(t.total);
   }
 
@@ -210,7 +213,7 @@
   $("#fundo").addEventListener("click", () => abrirCarrinho(false));
   document.addEventListener("keydown", (e) => e.key === "Escape" && abrirCarrinho(false));
 
-  /* Checkout */
+  /* Checkout via WhatsApp */
   const modalCheckout = $("#modal-checkout");
   $("#finalizar").addEventListener("click", () => {
     $("#checkout-total").textContent = moeda(totais().total);
@@ -218,28 +221,23 @@
     modalCheckout.showModal();
   });
 
-  $("#form-checkout").cep.addEventListener("input", (e) => {
-    const d = e.target.value.replace(/\D/g, "").slice(0, 8);
-    e.target.value = d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
-  });
-
   $("#form-checkout").addEventListener("submit", (e) => {
     e.preventDefault();
     const dados = Object.fromEntries(new FormData(e.target));
     const t = totais();
     const linhas = [
-      `*Novo pedido — ${LOJA.nome}*`,
+      `*New order — ${LOJA.nome}*`,
       "",
       ...t.itens.map(({ p, qtd }) => `• ${qtd}x ${p.nome} — ${moeda(p.preco * qtd)}`),
       "",
       `Subtotal: ${moeda(t.subtotal)}`,
-      `Frete: ${t.frete ? moeda(t.frete) : "Grátis"}`,
+      `Shipping: ${t.frete ? moeda(t.frete) : "Free"}`,
       `*Total: ${moeda(t.total)}*`,
       "",
-      `Nome: ${dados.nome}`,
-      `Telefone: ${dados.telefone}`,
-      `Endereço: ${dados.endereco} — CEP ${dados.cep}`,
-      `Pagamento: ${dados.pagamento}`,
+      `Name: ${dados.nome}`,
+      `Phone: ${dados.telefone}`,
+      `Address: ${dados.endereco} — ZIP ${dados.cep}`,
+      `Payment: ${dados.pagamento}`,
     ];
     window.open(`https://wa.me/${LOJA.whatsapp}?text=${encodeURIComponent(linhas.join("\n"))}`, "_blank");
     estado.carrinho = {};
@@ -247,14 +245,7 @@
     renderCarrinho();
     e.target.reset();
     modalCheckout.close();
-    toast("Pedido enviado! Obrigado pela compra 💜");
-  });
-
-  /* Newsletter */
-  $("#form-news").addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.target.reset();
-    toast("Cadastro feito! Fique de olho no seu e-mail.");
+    toast("Order sent! Thank you for shopping with us.");
   });
 
   /* Toast */
@@ -269,10 +260,10 @@
 
   $("#logo").addEventListener("click", (e) => {
     e.preventDefault();
-    window.scrollTo({ top: 0 });
+    filtrar("ofertas");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  renderCategorias();
   renderGrade();
   renderCarrinho();
 })();

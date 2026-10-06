@@ -1,135 +1,167 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Minha Loja</title>
-  <meta name="description" content="Loja online com roupas, calçados, acessórios e eletrônicos.">
+  <title>NEXORA</title>
+  <meta name="description" content="Premium Tech. Smarter Life.">
+  <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="aviso">Frete grátis em compras acima de <span id="frete-gratis"></span> 🚚</div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-smartphones" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+      <symbol id="i-laptops" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></symbol>
+      <symbol id="i-wearables" viewBox="0 0 24 24"><rect x="6" y="7" width="12" height="10" rx="3"/><path d="M9 7V3h6v4M9 17v4h6v-4"/></symbol>
+      <symbol id="i-audio" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></symbol>
+      <symbol id="i-accessories" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+      <symbol id="i-gaming" viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 4.6 6.9l-1.1 2.8a2.3 2.3 0 0 1-3.9.6L15 15H9l-1.6 2.3a2.3 2.3 0 0 1-3.9-.6l-1.1-2.8A5 5 0 0 1 7 7z"/><path d="M8 10v3M6.5 11.5h3"/><circle cx="16" cy="11" r=".6" fill="currentColor"/><circle cx="17.5" cy="12.5" r=".6" fill="currentColor"/></symbol>
+      <symbol id="i-cameras" viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v12H3z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+      <symbol id="i-cart" viewBox="0 0 24 24"><path d="M2 3h3l2.4 12.2a1.5 1.5 0 0 0 1.5 1.3h9.3a1.5 1.5 0 0 0 1.5-1.2L21 7H6"/><circle cx="9" cy="20.5" r="1.3"/><circle cx="18" cy="20.5" r="1.3"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+      <symbol id="i-truck" viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 9h4l4 4v3h-8"/><circle cx="6" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/><path d="M5 10h5M5 13h3"/></symbol>
+      <symbol id="i-support" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.5" y="12" width="4" height="6" rx="1.5"/><rect x="17.5" y="12" width="4" height="6" rx="1.5"/><path d="M19.5 18c0 2-2 3-5 3"/><path d="M9 13.5c.8 1 1.8 1.5 3 1.5s2.2-.5 3-1.5"/></symbol>
+      <symbol id="i-returns" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+    </defs>
+  </svg>
 
   <header class="topo">
     <div class="container topo__linha">
-      <a href="#" class="logo" id="logo">🛍️ <span id="nome-loja">Minha Loja</span></a>
-      <label class="busca">
-        <span class="sr">Buscar produtos</span>
-        <input type="search" id="busca" placeholder="Buscar produtos…" autocomplete="off">
-      </label>
-      <button class="btn-carrinho" id="abrir-carrinho" aria-label="Abrir carrinho">
-        🛒 <span class="contador" id="contador">0</span>
-      </button>
+      <a href="#" class="logo" id="logo" aria-label="NEXORA home">
+        <svg class="logo__marca" viewBox="0 0 36 36" aria-hidden="true"><path d="M4 32V4h7l13 16V4h3l5-3v31h-7L12 16v16z" fill="currentColor"/></svg>
+        <span id="nome-loja">NEXORA</span>
+      </a>
+      <nav class="menu" id="menu">
+        <a href="#" class="ativo">Home</a>
+        <a href="#ofertas" data-todos>Shop</a>
+        <a href="#categorias">Categories</a>
+        <a href="#ofertas">Deals</a>
+        <a href="#sobre">About Us</a>
+        <a href="#contato">Contact</a>
+      </nav>
+      <div class="topo__acoes">
+        <button class="icone" id="abrir-busca" aria-label="Search"><svg><use href="#i-search"/></svg></button>
+        <button class="icone carrinho-btn" id="abrir-carrinho" aria-label="Cart">
+          <svg><use href="#i-cart"/></svg><span class="contador" id="contador">0</span>
+        </button>
+        <button class="icone menu-btn" id="abrir-menu" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+      </div>
+    </div>
+    <div class="busca" id="busca-barra" hidden>
+      <div class="container">
+        <input type="search" id="busca" placeholder="Search products…" autocomplete="off" aria-label="Search products">
+      </div>
     </div>
   </header>
 
   <main>
     <section class="hero">
-      <div class="container hero__conteudo">
-        <div>
-          <p class="hero__tag">Coleção nova</p>
-          <h1>Estilo e qualidade<br>com preço justo</h1>
-          <p>Peças selecionadas, entrega para todo o Brasil e pagamento facilitado.</p>
-          <a href="#catalogo" class="btn btn--primario">Ver produtos</a>
+      <img class="hero__img" src="img/hero.jpg" alt="Laptop, smartphone, smartwatch, earbuds and headphones">
+      <div class="container hero__grade">
+        <aside class="lateral" aria-label="Categories">
+          <a href="#" class="ativo" data-cat=""><svg><use href="#i-home"/></svg>Home</a>
+          <div id="lateral-cats"></div>
+        </aside>
+        <div class="hero__texto">
+          <h1>Upgrade<br>your <span>world</span></h1>
+          <p class="hero__sub">Premium Tech. Smarter Life.</p>
+          <p class="hero__desc">Discover the latest gadgets<br>crafted for performance,<br>designed for you.</p>
+          <a href="#ofertas" class="btn" data-todos>Shop now <svg><use href="#i-arrow"/></svg></a>
         </div>
-        <div class="hero__arte" aria-hidden="true">👟👕⌚</div>
       </div>
     </section>
 
-    <section class="vantagens container">
-      <div>🚚<strong>Entrega rápida</strong><span>Para todo o Brasil</span></div>
-      <div>💳<strong>Até 6x sem juros</strong><span>No cartão de crédito</span></div>
-      <div>🔄<strong>Troca grátis</strong><span>Em até 30 dias</span></div>
-      <div>🔒<strong>Compra segura</strong><span>Seus dados protegidos</span></div>
+    <section class="container">
+      <div class="vantagens">
+        <div><svg><use href="#i-shield"/></svg><p><strong>Premium quality</strong>Carefully selected<br>top-tier products</p></div>
+        <div><svg><use href="#i-truck"/></svg><p><strong>Fast delivery</strong>Quick &amp; reliable<br>shipping</p></div>
+        <div><svg><use href="#i-support"/></svg><p><strong>24/7 support</strong>We're here to help<br>anytime</p></div>
+        <div><svg><use href="#i-returns"/></svg><p><strong>Easy returns</strong>Hassle-free returns<br>within 7 days</p></div>
+      </div>
     </section>
 
-    <section id="catalogo" class="container catalogo">
-      <div class="catalogo__barra">
-        <div class="categorias" id="categorias" role="tablist"></div>
-        <label class="ordenar">
-          Ordenar:
-          <select id="ordenar">
-            <option value="relevancia">Relevância</option>
-            <option value="menor">Menor preço</option>
-            <option value="maior">Maior preço</option>
-            <option value="nome">Nome (A–Z)</option>
-          </select>
-        </label>
+    <section class="container secao" id="categorias">
+      <h2 class="titulo">Shop by category</h2>
+      <div class="circulos" id="circulos"></div>
+    </section>
+
+    <section class="container secao" id="ofertas">
+      <div class="secao__topo">
+        <h2 class="titulo" id="titulo-ofertas">Deals of the day</h2>
+        <a href="#ofertas" class="ver-todos" id="ver-todos">View All Deals <svg><use href="#i-arrow"/></svg></a>
       </div>
       <div class="grade" id="grade"></div>
-      <p class="vazio" id="vazio" hidden>Nenhum produto encontrado.</p>
+      <p class="vazio" id="vazio" hidden>No products found.</p>
     </section>
 
-    <section class="newsletter">
-      <div class="container">
-        <h2>Receba ofertas exclusivas</h2>
-        <form id="form-news" class="newsletter__form">
-          <input type="email" required placeholder="Seu e-mail" aria-label="Seu e-mail">
-          <button class="btn btn--primario">Quero receber</button>
-        </form>
+    <section class="container">
+      <div class="banner">
+        <img class="banner__img" src="img/banner.jpg" alt="">
+        <div class="banner__texto">
+          <p class="banner__tag">Exclusive offer</p>
+          <h2>Up to 40% off</h2>
+          <p class="banner__sub">On selected items</p>
+          <p class="banner__desc">Limited time only. Don't miss out!</p>
+          <a href="#ofertas" class="btn" data-todos>Grab the deal <svg><use href="#i-arrow"/></svg></a>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="rodape">
-    <div class="container rodape__grade">
-      <div>
-        <strong id="nome-rodape">Minha Loja</strong>
-        <p>Feito com carinho para você.</p>
-      </div>
-      <div>
-        <strong>Atendimento</strong>
-        <p>Seg. a sex., 9h às 18h<br><a id="link-whats" href="#" target="_blank" rel="noopener">WhatsApp</a></p>
-      </div>
-      <div>
-        <strong>Pagamento</strong>
-        <p>Pix · Cartão · Boleto</p>
-      </div>
+  <footer class="rodape" id="contato">
+    <div class="container rodape__linha" id="sobre">
+      <span>© <span id="ano"></span> <span id="nome-copy">NEXORA</span>. All rights reserved.</span>
+      <a id="link-whats" href="#" target="_blank" rel="noopener">Contact us on WhatsApp</a>
     </div>
-    <p class="container rodape__copy">© <span id="ano"></span> <span id="nome-copy">Minha Loja</span>. Todos os direitos reservados.</p>
   </footer>
 
   <!-- Carrinho -->
   <div class="fundo" id="fundo" hidden></div>
-  <aside class="carrinho" id="carrinho" aria-label="Carrinho" aria-hidden="true">
+  <aside class="carrinho" id="carrinho" aria-label="Cart" aria-hidden="true">
     <div class="carrinho__topo">
-      <h2>Seu carrinho</h2>
-      <button class="fechar" id="fechar-carrinho" aria-label="Fechar">✕</button>
+      <h2>Your cart</h2>
+      <button class="fechar" id="fechar-carrinho" aria-label="Close">✕</button>
     </div>
     <ul class="carrinho__itens" id="itens"></ul>
-    <p class="vazio" id="carrinho-vazio">Seu carrinho está vazio.</p>
+    <p class="vazio" id="carrinho-vazio">Your cart is empty.</p>
     <div class="carrinho__resumo" id="resumo">
       <div><span>Subtotal</span><span id="subtotal"></span></div>
-      <div><span>Frete</span><span id="frete"></span></div>
+      <div><span>Shipping</span><span id="frete"></span></div>
       <div class="total"><span>Total</span><span id="total"></span></div>
-      <button class="btn btn--primario btn--bloco" id="finalizar">Finalizar pedido</button>
+      <button class="btn btn--bloco" id="finalizar">Checkout</button>
     </div>
   </aside>
 
   <!-- Detalhe do produto -->
   <dialog class="modal" id="modal-produto">
-    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <button class="fechar" data-fechar aria-label="Close">✕</button>
     <div id="detalhe"></div>
   </dialog>
 
   <!-- Checkout -->
   <dialog class="modal" id="modal-checkout">
-    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
-    <h2>Finalizar pedido</h2>
+    <button class="fechar" data-fechar aria-label="Close">✕</button>
+    <h2>Checkout</h2>
     <form id="form-checkout" class="form">
-      <label>Nome completo<input name="nome" required></label>
-      <label>Telefone<input name="telefone" type="tel" required></label>
-      <label>CEP<input name="cep" inputmode="numeric" maxlength="9" required></label>
-      <label>Endereço<input name="endereco" required></label>
-      <label>Pagamento
+      <label>Full name<input name="nome" required></label>
+      <label>Phone<input name="telefone" type="tel" required></label>
+      <label>ZIP code<input name="cep" required></label>
+      <label>Address<input name="endereco" required></label>
+      <label>Payment
         <select name="pagamento">
+          <option>Credit card</option>
           <option>Pix</option>
-          <option>Cartão de crédito</option>
-          <option>Boleto</option>
+          <option>Bank slip</option>
         </select>
       </label>
       <p class="form__total">Total: <strong id="checkout-total"></strong></p>
-      <button class="btn btn--primario btn--bloco">Enviar pedido pelo WhatsApp</button>
+      <button class="btn btn--bloco">Send order via WhatsApp</button>
     </form>
   </dialog>
 
