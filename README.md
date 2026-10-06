@@ -1,7 +1,7 @@
 # TMZ STORE
 
 Loja online estática (HTML, CSS e JavaScript puro), sem dependências e sem build.
-Página inicial em preto e branco: menu lateral de categorias, hero, faixa de vantagens,
+TMZ, a loja que veste o povo. Página inicial em preto e branco: menu lateral de categorias, hero, faixa de vantagens,
 categorias em círculo, "Deals of the Day" e banner de oferta.
 
 ## Recursos

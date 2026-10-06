@@ -88,7 +88,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .hero__texto { padding-top: 34px; }
 .hero h1 {
   font-family: var(--fonte-display); font-weight: 700; text-transform: uppercase;
-  font-size: 80px; line-height: .92; letter-spacing: -.015em; white-space: nowrap;
+  font-size: 74px; line-height: .92; letter-spacing: -.015em; white-space: nowrap;
 }
 .hero h1 span, .hero__sub {
   background: linear-gradient(180deg, #ffffff 15%, #9c9c9c 100%);
