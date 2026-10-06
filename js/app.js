@@ -30,10 +30,19 @@
   /* Categorias: menu lateral e círculos */
   $("#lateral-cats").innerHTML = CATEGORIAS.map((c) =>
     `<a href="#ofertas" data-cat="${c.id}"><svg><use href="#i-${c.id}"/></svg>${escapar(c.nome)}</a>`).join("");
-  $("#circulos").innerHTML = CATEGORIAS.filter((c) => c.imagem).map((c) => `
+  const qtdPorCategoria = (id) => PRODUTOS.filter((p) => p.categoria === id).length;
+  $("#circulos").innerHTML = CATEGORIAS.filter((c) => c.imagem).map((c) => {
+    const qtd = qtdPorCategoria(c.id);
+    return `
     <button class="circulo" data-cat="${c.id}">
-      <span class="circulo__img"><img src="${escapar(c.imagem)}" alt=""></span>${escapar(c.nome)}
-    </button>`).join("");
+      <span class="circulo__anel">
+        <span class="circulo__img"><img src="${escapar(c.imagem)}" alt=""></span>
+        <span class="circulo__ir" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+      </span>
+      <span class="circulo__nome">${escapar(c.nome)}</span>
+      <span class="circulo__qtd">${qtd} ${qtd === 1 ? "produto" : "produtos"}</span>
+    </button>`;
+  }).join("");
 
   document.addEventListener("click", (e) => {
     const cat = e.target.closest("[data-cat]");

@@ -120,14 +120,47 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 /* Categorias */
 .circulos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px; }
-.circulo { display: flex; flex-direction: column; align-items: center; gap: 14px; background: none; border: 0; cursor: pointer; font-size: 14px; }
-.circulo__img {
-  width: 135px; aspect-ratio: 1; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
-  border: 1px solid #4a4a4a; background: radial-gradient(circle, #1a1a1a 0%, #050505 70%);
-  transition: border-color .2s, box-shadow .2s, transform .2s;
+.circulo { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; cursor: pointer; padding: 6px 0; }
+@property --giro { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.circulo__anel {
+  position: relative; width: 140px; max-width: 100%; aspect-ratio: 1; border-radius: 50%; padding: 2px; margin-bottom: 12px;
+  background: conic-gradient(from var(--giro), #ffffff 0deg, #4d4d4d 70deg, #161616 150deg, #4d4d4d 230deg, #ffffff 360deg);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .55);
+  transition: transform .35s cubic-bezier(.2, .8, .3, 1), box-shadow .35s;
 }
-.circulo__img img { width: 92%; height: 92%; object-fit: cover; border-radius: 50%; }
-.circulo:hover .circulo__img, .circulo.ativo .circulo__img { border-color: var(--acento); box-shadow: 0 0 18px rgba(255, 255, 255, .18); transform: translateY(-3px); }
+.circulo__img {
+  position: relative; display: block; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #232323 0%, #060606 72%);
+}
+.circulo__img img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2, .8, .3, 1); }
+.circulo__img::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: linear-gradient(155deg, rgba(255, 255, 255, .16) 0%, transparent 40%);
+  box-shadow: inset 0 0 0 4px #050505, inset 0 -22px 34px rgba(0, 0, 0, .55);
+}
+.circulo__ir {
+  position: absolute; right: 4px; bottom: 6px; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--acento); color: var(--acento-texto);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .5); opacity: 0; transform: scale(.6) rotate(-45deg);
+  transition: opacity .3s, transform .35s cubic-bezier(.2, .8, .3, 1.4);
+}
+.circulo__ir svg { width: 16px; height: 16px; stroke-width: 2.2; }
+.circulo__nome { font-size: 14.5px; font-weight: 500; position: relative; }
+.circulo__nome::after {
+  content: ""; position: absolute; left: 50%; bottom: -3px; width: 0; height: 2px; background: var(--acento);
+  border-radius: 2px; transform: translateX(-50%); transition: width .3s;
+}
+.circulo__qtd { font-size: 11px; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }
+.circulo:hover .circulo__anel, .circulo:focus-visible .circulo__anel, .circulo.ativo .circulo__anel {
+  transform: translateY(-6px); animation: giro 2.6s linear infinite;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .7), 0 0 30px rgba(255, 255, 255, .16);
+}
+.circulo:hover .circulo__img img, .circulo:focus-visible .circulo__img img { transform: scale(1.1); }
+.circulo:hover .circulo__ir, .circulo:focus-visible .circulo__ir, .circulo.ativo .circulo__ir { opacity: 1; transform: none; }
+.circulo:hover .circulo__nome::after, .circulo.ativo .circulo__nome::after { width: 70%; }
+.circulo:focus-visible { outline: none; }
+@keyframes giro { to { --giro: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .circulo__anel { animation: none !important; } }
 
 /* Ofertas */
 .grade { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -280,7 +313,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .lateral { display: none; }
   .vantagens > div { padding: 0 14px; gap: 12px; }
   .vantagens strong { white-space: normal; }
-  .circulo__img { width: 110px; }
+  .circulo__anel { width: 112px; }
 }
 @media (max-width: 860px) {
   .menu-btn { display: grid; }
@@ -298,7 +331,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .vantagens { grid-template-columns: repeat(2, 1fr); row-gap: 22px; margin-top: 0; }
   .vantagens > div:nth-child(3) { border-left: 0; }
   .circulos { display: flex; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
-  .circulo__img { width: 96px; }
+  .circulo__anel { width: 100px; }
+  .circulo { flex: 0 0 auto; }
   .grade { grid-template-columns: repeat(2, 1fr); }
   .banner__img { right: -10%; opacity: .55; }
   .banner__texto { padding: 32px 28px; }
