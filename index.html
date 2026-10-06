@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minha Loja</title>
+  <meta name="description" content="Loja online com roupas, calçados, acessórios e eletrônicos.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="aviso">Frete grátis em compras acima de <span id="frete-gratis"></span> 🚚</div>
+
+  <header class="topo">
+    <div class="container topo__linha">
+      <a href="#" class="logo" id="logo">🛍️ <span id="nome-loja">Minha Loja</span></a>
+      <label class="busca">
+        <span class="sr">Buscar produtos</span>
+        <input type="search" id="busca" placeholder="Buscar produtos…" autocomplete="off">
+      </label>
+      <button class="btn-carrinho" id="abrir-carrinho" aria-label="Abrir carrinho">
+        🛒 <span class="contador" id="contador">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero__conteudo">
+        <div>
+          <p class="hero__tag">Coleção nova</p>
+          <h1>Estilo e qualidade<br>com preço justo</h1>
+          <p>Peças selecionadas, entrega para todo o Brasil e pagamento facilitado.</p>
+          <a href="#catalogo" class="btn btn--primario">Ver produtos</a>
+        </div>
+        <div class="hero__arte" aria-hidden="true">👟👕⌚</div>
+      </div>
+    </section>
+
+    <section class="vantagens container">
+      <div>🚚<strong>Entrega rápida</strong><span>Para todo o Brasil</span></div>
+      <div>💳<strong>Até 6x sem juros</strong><span>No cartão de crédito</span></div>
+      <div>🔄<strong>Troca grátis</strong><span>Em até 30 dias</span></div>
+      <div>🔒<strong>Compra segura</strong><span>Seus dados protegidos</span></div>
+    </section>
+
+    <section id="catalogo" class="container catalogo">
+      <div class="catalogo__barra">
+        <div class="categorias" id="categorias" role="tablist"></div>
+        <label class="ordenar">
+          Ordenar:
+          <select id="ordenar">
+            <option value="relevancia">Relevância</option>
+            <option value="menor">Menor preço</option>
+            <option value="maior">Maior preço</option>
+            <option value="nome">Nome (A–Z)</option>
+          </select>
+        </label>
+      </div>
+      <div class="grade" id="grade"></div>
+      <p class="vazio" id="vazio" hidden>Nenhum produto encontrado.</p>
+    </section>
+
+    <section class="newsletter">
+      <div class="container">
+        <h2>Receba ofertas exclusivas</h2>
+        <form id="form-news" class="newsletter__form">
+          <input type="email" required placeholder="Seu e-mail" aria-label="Seu e-mail">
+          <button class="btn btn--primario">Quero receber</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <div class="container rodape__grade">
+      <div>
+        <strong id="nome-rodape">Minha Loja</strong>
+        <p>Feito com carinho para você.</p>
+      </div>
+      <div>
+        <strong>Atendimento</strong>
+        <p>Seg. a sex., 9h às 18h<br><a id="link-whats" href="#" target="_blank" rel="noopener">WhatsApp</a></p>
+      </div>
+      <div>
+        <strong>Pagamento</strong>
+        <p>Pix · Cartão · Boleto</p>
+      </div>
+    </div>
+    <p class="container rodape__copy">© <span id="ano"></span> <span id="nome-copy">Minha Loja</span>. Todos os direitos reservados.</p>
+  </footer>
+
+  <!-- Carrinho -->
+  <div class="fundo" id="fundo" hidden></div>
+  <aside class="carrinho" id="carrinho" aria-label="Carrinho" aria-hidden="true">
+    <div class="carrinho__topo">
+      <h2>Seu carrinho</h2>
+      <button class="fechar" id="fechar-carrinho" aria-label="Fechar">✕</button>
+    </div>
+    <ul class="carrinho__itens" id="itens"></ul>
+    <p class="vazio" id="carrinho-vazio">Seu carrinho está vazio.</p>
+    <div class="carrinho__resumo" id="resumo">
+      <div><span>Subtotal</span><span id="subtotal"></span></div>
+      <div><span>Frete</span><span id="frete"></span></div>
+      <div class="total"><span>Total</span><span id="total"></span></div>
+      <button class="btn btn--primario btn--bloco" id="finalizar">Finalizar pedido</button>
+    </div>
+  </aside>
+
+  <!-- Detalhe do produto -->
+  <dialog class="modal" id="modal-produto">
+    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <div id="detalhe"></div>
+  </dialog>
+
+  <!-- Checkout -->
+  <dialog class="modal" id="modal-checkout">
+    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <h2>Finalizar pedido</h2>
+    <form id="form-checkout" class="form">
+      <label>Nome completo<input name="nome" required></label>
+      <label>Telefone<input name="telefone" type="tel" required></label>
+      <label>CEP<input name="cep" inputmode="numeric" maxlength="9" required></label>
+      <label>Endereço<input name="endereco" required></label>
+      <label>Pagamento
+        <select name="pagamento">
+          <option>Pix</option>
+          <option>Cartão de crédito</option>
+          <option>Boleto</option>
+        </select>
+      </label>
+      <p class="form__total">Total: <strong id="checkout-total"></strong></p>
+      <button class="btn btn--primario btn--bloco">Enviar pedido pelo WhatsApp</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/produtos.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
