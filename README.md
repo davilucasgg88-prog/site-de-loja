@@ -1,4 +1,4 @@
-# Site de Loja — NEXORA
+# TMZ STORE
 
 Loja online estática (HTML, CSS e JavaScript puro), sem dependências e sem build.
 Página inicial em preto e branco: menu lateral de categorias, hero, faixa de vantagens,

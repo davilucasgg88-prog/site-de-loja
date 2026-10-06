@@ -23,7 +23,6 @@
 
   /* Informações da loja */
   document.title = LOJA.nome;
-  $("#nome-loja").textContent = LOJA.nome;
   $("#nome-copy").textContent = LOJA.nome;
   $("#ano").textContent = new Date().getFullYear();
   $("#link-whats").href = `https://wa.me/${LOJA.whatsapp}`;

@@ -46,7 +46,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .topo { position: sticky; top: 0; z-index: 10; background: rgba(5, 5, 5, .92); backdrop-filter: blur(10px); }
 .topo__linha { height: 90px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .logo { display: flex; align-items: center; gap: 9px; font-family: var(--fonte-titulo); font-weight: 600; font-size: 23px; letter-spacing: .08em; }
-.logo__marca { width: 34px; height: 34px; stroke: none; }
+.logo { gap: 10px; }
+.logo__marca { height: 30px; width: auto; }
+.logo__store { font-size: 17px; letter-spacing: .32em; font-weight: 600; padding-top: 2px; }
 .menu { display: flex; gap: 34px; font-size: 13px; font-weight: 500; }
 .menu a { position: relative; padding: 6px 0; opacity: .92; }
 .menu a:hover { opacity: 1; }
@@ -67,8 +69,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 /* Hero */
 .hero { position: relative; min-height: 525px; overflow: hidden; }
-.hero__img {
-  position: absolute; right: 0; top: -5px; height: calc(100% + 5px); width: auto; max-width: none;
+.hero__arte {
+  stroke: none; stroke-width: 1;
+  position: absolute; right: 0; top: -5px; height: calc(100% + 5px); width: auto; aspect-ratio: 640 / 530; max-width: none;
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22%), linear-gradient(to top, transparent 0, #000 12%);
   -webkit-mask-composite: source-in; mask-composite: intersect;
   mask-image: linear-gradient(to right, transparent 0, #000 22%), linear-gradient(to top, transparent 0, #000 12%);
@@ -247,7 +250,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .menu a { padding: 12px 0; font-size: 15px; }
   .topo__linha { height: 76px; }
   .hero { min-height: 0; display: flex; flex-direction: column-reverse; }
-  .hero__img { position: static; width: 100%; height: auto; margin-top: -40px; -webkit-mask-image: linear-gradient(to top, transparent 0, #000 15%); mask-image: linear-gradient(to top, transparent 0, #000 15%); }
+  .hero__arte { position: static; width: 100%; height: auto; margin-top: -20px; -webkit-mask-image: linear-gradient(to top, transparent 0, #000 15%); mask-image: linear-gradient(to top, transparent 0, #000 15%); }
   .hero h1 { font-size: 64px; }
   .hero__texto { padding-top: 16px; position: relative; z-index: 1; }
   .vantagens { grid-template-columns: repeat(2, 1fr); row-gap: 22px; margin-top: 0; }
@@ -261,7 +264,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 }
 @media (max-width: 480px) {
   .container { width: calc(100% - 32px); }
-  .logo { font-size: 20px; }
+  .logo__marca { height: 24px; }
+  .logo__store { font-size: 14px; }
   .topo__acoes { gap: 4px; }
   .vantagens { grid-template-columns: 1fr; }
   .vantagens > div + div { border-left: 0; }

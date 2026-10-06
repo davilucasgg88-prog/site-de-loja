@@ -1,7 +1,7 @@
 // Catálogo da loja. Edite esta lista para cadastrar seus produtos.
 // "oferta: true" coloca o produto em "Deals of the Day".
 const LOJA = {
-  nome: "NEXORA",
+  nome: "TMZ STORE",
   whatsapp: "5500000000000", // DDI + DDD + número, só dígitos
   moeda: "USD",
   idioma: "en-US",
