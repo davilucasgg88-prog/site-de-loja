@@ -41,8 +41,17 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .icone { background: none; border: 0; cursor: pointer; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; }
 .icone svg { width: 22px; height: 22px; }
 .icone:hover { background: var(--superficie-2); }
-.fechar { background: var(--superficie-2); border: 0; font-size: 1rem; cursor: pointer; width: 42px; height: 42px; border-radius: 50%; }
-.fechar:hover { background: var(--superficie-2); }
+.fechar {
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; cursor: pointer;
+  background: #ffffff0a; border: 1px solid #ffffff1f; color: var(--texto);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: background .25s, border-color .25s, color .25s, transform .35s cubic-bezier(.16, 1, .3, 1);
+}
+.fechar svg { width: 17px; height: 17px; stroke-width: 1.8; }
+.insta:focus { outline: none; }
+.fechar:hover { background: var(--acento); border-color: var(--acento); color: var(--acento-texto); transform: rotate(90deg); }
+.fechar:active { transform: rotate(90deg) scale(.92); }
+@media (prefers-reduced-motion: reduce) { .fechar:hover, .fechar:active { transform: none; } }
 
 /* Topo */
 .topo { position: sticky; top: 0; z-index: 10; background: rgba(11, 11, 12, .9); border-bottom: 1px solid #ffffff0d; backdrop-filter: blur(10px); }
@@ -242,7 +251,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain;
 }
 .modal::backdrop { background: rgba(0, 0, 0, .7); }
-.modal .fechar { position: absolute; top: 12px; right: 12px; }
+.modal .fechar { position: absolute; top: 16px; right: 16px; z-index: 2; }
 #modal-checkout { width: min(440px, 100% - 32px); }
 .detalhe { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
 .detalhe__img { background: radial-gradient(circle, #1f1f1f, #0e0e0e 70%); border-radius: 12px; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; }
@@ -284,8 +293,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .55);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fundo-entra .3s ease;
 }
-.insta__fechar { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: #1c1c1c; cursor: pointer; font-size: 12px; }
-.insta__fechar:hover { background: #2a2a2a; }
+.insta__fechar { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; }
 .insta__topo { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 16px; }
 .insta__logo, .insta-bolha {
   display: grid; place-items: center; border-radius: 14px; color: #fff;

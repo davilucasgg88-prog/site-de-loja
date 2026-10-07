@@ -29,6 +29,7 @@
       <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
       <symbol id="i-estrela" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor" stroke="none"/></symbol>
       <symbol id="i-aspas" viewBox="0 0 24 24"><path d="M4 18v-5c0-4 2-7 6-8l1 2c-2 .8-3 2.3-3 4h3v7zm9 0v-5c0-4 2-7 6-8l1 2c-2 .8-3 2.3-3 4h3v7z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
     </defs>
   </svg>
@@ -176,7 +177,7 @@
   <aside class="carrinho" id="carrinho" aria-label="Carrinho" aria-hidden="true">
     <div class="carrinho__topo">
       <h2>Seu carrinho</h2>
-      <button class="fechar" id="fechar-carrinho" aria-label="Fechar">✕</button>
+      <button class="fechar" id="fechar-carrinho" aria-label="Fechar"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
     </div>
     <ul class="carrinho__itens" id="itens"></ul>
     <p class="vazio" id="carrinho-vazio">Seu carrinho está vazio.</p>
@@ -190,13 +191,13 @@
 
   <!-- Detalhe do produto -->
   <dialog class="modal" id="modal-produto">
-    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <button class="fechar" data-fechar aria-label="Fechar"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
     <div id="detalhe"></div>
   </dialog>
 
   <!-- O que você procura? -->
   <dialog class="modal procura" id="modal-procura" aria-labelledby="procura-titulo">
-    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <button class="fechar" data-fechar aria-label="Fechar"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
     <h2 id="procura-titulo">O que você procura?</h2>
     <p class="procura__sub">Escolha a categoria. O número mostra quantas peças temos agora.</p>
     <div class="procura__grade" id="procura-grade"></div>
@@ -205,7 +206,7 @@
 
   <!-- Checkout -->
   <dialog class="modal" id="modal-checkout">
-    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <button class="fechar" data-fechar aria-label="Fechar"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
     <h2>Finalizar pedido</h2>
     <form id="form-checkout" class="form">
       <label>Nome completo<input name="nome" required></label>
@@ -226,8 +227,8 @@
 
   <!-- Aviso do Instagram -->
   <div class="insta-fundo" id="insta-fundo" hidden></div>
-  <aside class="insta" id="insta" role="dialog" aria-modal="true" aria-labelledby="insta-titulo" hidden>
-    <button class="insta__fechar" id="insta-fechar" aria-label="Fechar aviso">✕</button>
+  <aside class="insta" id="insta" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="insta-titulo" hidden>
+    <button class="fechar insta__fechar" id="insta-fechar" aria-label="Fechar aviso"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
     <div class="insta__topo">
       <span class="insta__logo" aria-hidden="true">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>

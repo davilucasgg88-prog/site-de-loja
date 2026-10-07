@@ -391,7 +391,7 @@
     $("#insta-fundo").hidden = !aberto;
     bolha.hidden = aberto;
     document.body.style.overflow = aberto ? "hidden" : "";
-    if (aberto) $("#insta-fechar").focus();
+    if (aberto) insta.focus({ preventScroll: true });
     try { sessionStorage.setItem(CHAVE_INSTA, aberto ? "0" : "1"); } catch {}
   }
   $("#insta-fechar").addEventListener("click", () => mostrarInsta(false));
