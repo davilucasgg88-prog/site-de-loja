@@ -272,6 +272,37 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  /* Compre agora: "O que você procura?" com estoque por categoria */
+  const modalProcura = $("#modal-procura");
+  function estoqueCategoria(id) {
+    const itens = PRODUTOS.filter((p) => p.categoria === id);
+    return { itens: itens.length, estoque: itens.reduce((s, p) => s + (p.estoque || 0), 0) };
+  }
+  function abrirProcura() {
+    $("#procura-grade").innerHTML = CATEGORIAS.map((c) => {
+      const { itens, estoque } = estoqueCategoria(c.id);
+      const vazio = estoque === 0;
+      const rotulo = itens === 0 ? "Em breve" : vazio ? "Esgotado" : `${estoque} em estoque`;
+      const classe = vazio ? "opcao--vazio" : estoque <= 5 ? "opcao--baixo" : "";
+      const visual = c.imagem ? `<img src="${escapar(c.imagem)}" alt="">` : `<svg><use href="#i-${c.id}"/></svg>`;
+      return `
+        <button type="button" class="opcao ${classe}" data-procura="${c.id}" ${vazio ? "disabled" : ""}>
+          <span class="opcao__img">${visual}</span>
+          <span><span class="opcao__nome">${escapar(c.nome)}</span><span class="opcao__estoque">${rotulo}</span></span>
+          <span class="opcao__seta" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+        </button>`;
+    }).join("");
+    modalProcura.showModal();
+  }
+  $("#compre-agora").addEventListener("click", abrirProcura);
+  modalProcura.addEventListener("click", (e) => {
+    const opcao = e.target.closest("[data-procura]");
+    if (!opcao || opcao.disabled) return;
+    modalProcura.close();
+    filtrar(opcao.dataset.procura);
+    $("#ofertas").scrollIntoView({ behavior: "smooth" });
+  });
+
   /* Avaliações */
   function estrelas(n) {
     return Array.from({ length: 5 }, (_, i) =>

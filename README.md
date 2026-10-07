@@ -22,6 +22,7 @@ python3 -m http.server 8000
 Edite `js/produtos.js`:
 - `LOJA.nome`, `LOJA.whatsapp` (DDI+DDD+número), `LOJA.moeda`/`LOJA.idioma`, `LOJA.frete` e `LOJA.freteGratisAcima`
 - `CATEGORIAS` (menu lateral e círculos) e `PRODUTOS` — `oferta: true` coloca o produto em "Ofertas do dia"
+- `estoque` em cada produto — a tela "O que você procura?" (botão "Compre agora") mostra a soma por categoria
 - `COMENTARIOS` — os atuais são exemplos (`exemplo: true`); troque pelos comentários reais dos clientes para sumir o aviso "Comentários de exemplo"
 - As imagens ficam em `img/`; troque pelos seus arquivos mantendo o nome ou altere o caminho
 

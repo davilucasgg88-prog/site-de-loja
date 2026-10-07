@@ -92,7 +92,7 @@
           <h1>TMZ, a loja<br>que veste<br>o <span>povo</span></h1>
           <p class="hero__sub">Peças peruanas de primeira linha.</p>
           <p class="hero__desc">Lacoste, Nike, Tommy Hilfiger e muito mais,<br>com acabamento de qualidade e entrega<br>para todo o Brasil.</p>
-          <a href="#ofertas" class="btn" data-todos>Compre agora <svg><use href="#i-arrow"/></svg></a>
+          <button type="button" class="btn" id="compre-agora">Compre agora <svg><use href="#i-arrow"/></svg></button>
         </div>
       </div>
     </section>
@@ -188,6 +188,16 @@
   <dialog class="modal" id="modal-produto">
     <button class="fechar" data-fechar aria-label="Fechar">✕</button>
     <div id="detalhe"></div>
+  </dialog>
+
+  <!-- O que você procura? -->
+  <dialog class="modal procura" id="modal-procura" aria-labelledby="procura-titulo">
+    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <p class="procura__tag">Compre agora</p>
+    <h2 id="procura-titulo">O que você procura?</h2>
+    <p class="procura__sub">Escolha uma categoria e veja o que temos em estoque.</p>
+    <div class="procura__grade" id="procura-grade"></div>
+    <button type="button" class="procura__todos" data-procura="todos">Ver todos os produtos <svg><use href="#i-arrow"/></svg></button>
   </dialog>
 
   <!-- Checkout -->
