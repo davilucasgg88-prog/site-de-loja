@@ -33,6 +33,10 @@
     </defs>
   </svg>
 
+  <div class="faixa" aria-label="Avisos da loja">
+    <div class="faixa__trilho" id="faixa"></div>
+  </div>
+
   <header class="topo">
     <div class="container topo__linha">
       <a href="#" class="logo" id="logo" aria-label="TMZ STORE, início">
@@ -136,7 +140,7 @@
       <div class="avaliacoes__grade-fundo" aria-hidden="true"></div>
       <div class="container avaliacoes__topo">
         <div>
-          <p class="avaliacoes__tag"><span class="pulso" aria-hidden="true"></span>Avaliações</p>
+          <p class="rotulo">Avaliações</p>
           <h2 class="avaliacoes__titulo">O povo <span>aprovou</span></h2>
           <p class="avaliacoes__sub">O que dizem os clientes que já vestem TMZ.</p>
           <p class="avaliacoes__exemplo" id="aviso-exemplo" hidden>Comentários de exemplo</p>
@@ -193,9 +197,8 @@
   <!-- O que você procura? -->
   <dialog class="modal procura" id="modal-procura" aria-labelledby="procura-titulo">
     <button class="fechar" data-fechar aria-label="Fechar">✕</button>
-    <p class="procura__tag">Compre agora</p>
     <h2 id="procura-titulo">O que você procura?</h2>
-    <p class="procura__sub">Escolha uma categoria e veja o que temos em estoque.</p>
+    <p class="procura__sub">Escolha a categoria. O número mostra quantas peças temos agora.</p>
     <div class="procura__grade" id="procura-grade"></div>
     <button type="button" class="procura__todos" data-procura="todos">Ver todos os produtos <svg><use href="#i-arrow"/></svg></button>
   </dialog>

@@ -92,6 +92,7 @@
           <button class="add" data-add="${p.id}" aria-label="Adicionar ${escapar(p.nome)} ao carrinho"><svg><use href="#i-cart"/></svg></button>
         </div>
         ${precos(p)}
+        ${p.estoque > 0 && p.estoque <= 5 ? `<span class="card__estoque">Últimas ${p.estoque} peças</span>` : ""}
       </article>`).join("");
   }
 
@@ -272,6 +273,16 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  /* Faixa de avisos no topo */
+  const avisos = [
+    `Frete grátis acima de ${moeda(LOJA.freteGratisAcima)}`,
+    "Peças peruanas de primeira linha",
+    "Enviamos para todo o Brasil",
+    "Siga @tmz_storee",
+  ];
+  const linhaAvisos = avisos.map((a) => `<span>${escapar(a)}</span>`).join("");
+  $("#faixa").innerHTML = `<div>${linhaAvisos}</div><div aria-hidden="true">${linhaAvisos}</div>`;
+
   /* Compre agora: "O que você procura?" com estoque por categoria */
   const modalProcura = $("#modal-procura");
   function estoqueCategoria(id) {
@@ -279,17 +290,24 @@
     return { itens: itens.length, estoque: itens.reduce((s, p) => s + (p.estoque || 0), 0) };
   }
   function abrirProcura() {
-    $("#procura-grade").innerHTML = CATEGORIAS.map((c) => {
-      const { itens, estoque } = estoqueCategoria(c.id);
+    const dados = CATEGORIAS.map((c) => ({ c, ...estoqueCategoria(c.id) }));
+    const maior = Math.max(1, ...dados.map((d) => d.estoque));
+    $("#procura-grade").innerHTML = dados.map(({ c, itens, estoque }) => {
       const vazio = estoque === 0;
-      const rotulo = itens === 0 ? "Em breve" : vazio ? "Esgotado" : `${estoque} em estoque`;
-      const classe = vazio ? "opcao--vazio" : estoque <= 5 ? "opcao--baixo" : "";
-      const visual = c.imagem ? `<img src="${escapar(c.imagem)}" alt="">` : `<svg><use href="#i-${c.id}"/></svg>`;
+      const visual = c.imagem ? `<img src="${escapar(c.imagem)}" alt="" loading="lazy">` : `<svg class="opcao__icone"><use href="#i-${c.id}"/></svg>`;
+      const info = vazio
+        ? `<span class="opcao__status">${itens === 0 ? "Em breve" : "Esgotado"}</span>`
+        : `<span class="opcao__qtd"><strong>${estoque}</strong> ${estoque === 1 ? "peça" : "peças"}</span>
+           <span class="opcao__nivel" style="--n:${Math.max(6, (estoque / maior) * 100)}%"></span>`;
       return `
-        <button type="button" class="opcao ${classe}" data-procura="${c.id}" ${vazio ? "disabled" : ""}>
-          <span class="opcao__img">${visual}</span>
-          <span><span class="opcao__nome">${escapar(c.nome)}</span><span class="opcao__estoque">${rotulo}</span></span>
+        <button type="button" class="opcao${vazio ? " opcao--vazio" : ""}${!vazio && estoque <= 5 ? " opcao--baixo" : ""}" data-procura="${c.id}" ${vazio ? "disabled" : ""}
+          aria-label="${escapar(c.nome)}: ${vazio ? (itens === 0 ? "em breve" : "esgotado") : `${estoque} em estoque`}">
+          ${visual}
           <span class="opcao__seta" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+          <span class="opcao__corpo">
+            <span class="opcao__nome">${escapar(c.nome)}</span>
+            ${info}
+          </span>
         </button>`;
     }).join("");
     modalProcura.showModal();
