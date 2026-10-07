@@ -362,7 +362,7 @@
         const cartoes = itens.map(cartaoComentario).join("");
         const el = $(alvo);
         el.innerHTML = `<div class="esteira__trilho">${cartoes}</div><div class="esteira__trilho" aria-hidden="true">${cartoes}</div>`;
-        el.style.setProperty("--duracao", `${Math.max(itens.length, 3) * 10}s`);
+        el.style.setProperty("--duracao", `${Math.max(itens.length, 3) * 15}s`);
       });
   }
   // Brilho que acompanha o mouse nos cartões
@@ -399,7 +399,7 @@
   let minimizado = false;
   try { minimizado = sessionStorage.getItem(CHAVE_INSTA) === "1"; } catch {}
   if (minimizado) bolha.hidden = false;
-  else setTimeout(() => mostrarInsta(true), 600);
+  else setTimeout(() => mostrarInsta(true), 2500);
 
   renderGrade();
   renderCarrinho();
