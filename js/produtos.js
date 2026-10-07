@@ -1,30 +1,45 @@
 // Catálogo da loja. Edite esta lista para cadastrar seus produtos.
-// "oferta: true" coloca o produto em "Deals of the Day".
+// "oferta: true" coloca o produto em "Ofertas do dia".
 const LOJA = {
   nome: "TMZ STORE",
   whatsapp: "5500000000000", // DDI + DDD + número, só dígitos
-  moeda: "USD",
-  idioma: "en-US",
-  freteGratisAcima: 199,
-  frete: 9.99,
+  instagram: "https://www.instagram.com/tmz_storee/",
+  moeda: "BRL",
+  idioma: "pt-BR",
+  freteGratisAcima: 299,
+  frete: 19.9,
 };
 
 const CATEGORIAS = [
   { id: "camisetas", nome: "Camisetas", imagem: "img/cat-camisetas.jpg" },
   { id: "oculos", nome: "Óculos", imagem: "img/cat-oculos.jpg" },
-  { id: "wearables", nome: "Wearables", imagem: "img/cat-wearables.jpg" },
-  { id: "audio", nome: "Audio", imagem: "img/cat-audio.jpg" },
-  { id: "accessories", nome: "Accessories" },
-  { id: "gaming", nome: "Gaming", imagem: "img/cat-gaming.jpg" },
-  { id: "cameras", nome: "Cameras", imagem: "img/cat-cameras.jpg" },
+  { id: "wearables", nome: "Relógios", imagem: "img/cat-wearables.jpg" },
+  { id: "audio", nome: "Fones", imagem: "img/cat-audio.jpg" },
+  { id: "accessories", nome: "Acessórios" },
+  { id: "gaming", nome: "Games", imagem: "img/cat-gaming.jpg" },
+  { id: "cameras", nome: "Câmeras", imagem: "img/cat-cameras.jpg" },
 ];
 
 const PRODUTOS = [
-  { id: 1, nome: "Nexora Buds Pro", categoria: "audio", preco: 49.99, precoAntigo: 69.99, imagem: "img/deal-buds.jpg", oferta: true, descricao: "True wireless earbuds with active noise cancelling and 24h battery with the charging case." },
-  { id: 2, nome: "Nexora Watch X", categoria: "wearables", preco: 129.99, precoAntigo: 199.99, imagem: "img/deal-watch.jpg", oferta: true, descricao: "Always-on display, heart-rate and sleep tracking, water resistant up to 50m." },
-  { id: 3, nome: "Óculos Juliet", categoria: "oculos", preco: 79.99, precoAntigo: 99.99, imagem: "img/oculos-juliet.jpg", oferta: true, descricao: "Óculos peruano de primeira linha, armação metálica cromada e lentes escuras espelhadas." },
-  { id: 4, nome: "Camiseta Lacoste Faixa", categoria: "camisetas", preco: 39.99, precoAntigo: 59.99, imagem: "img/camiseta-lacoste.jpg", oferta: true, descricao: "Camiseta peruana de primeira linha, malha de algodão com faixa preta e estampa Lacoste." },
-  { id: 6, nome: "Nexora Headphones Max", categoria: "audio", preco: 249.99, precoAntigo: 329.99, imagem: "img/cat-audio.jpg", descricao: "Over-ear headphones with immersive sound and 40h battery." },
-  { id: 7, nome: "Nexora Controller", categoria: "gaming", preco: 59.99, imagem: "img/cat-gaming.jpg", descricao: "Wireless controller with low latency and haptic feedback." },
-  { id: 8, nome: "Nexora Cam Z", categoria: "cameras", preco: 1199.99, imagem: "img/cat-cameras.jpg", descricao: "Mirrorless camera with 24MP sensor and 4K video." },
+  { id: 1, nome: "Fone Bluetooth Pro", categoria: "audio", preco: 149.9, precoAntigo: 199.9, imagem: "img/deal-buds.jpg", oferta: true, descricao: "Fone sem fio com cancelamento de ruído e até 24 horas de bateria com o estojo." },
+  { id: 2, nome: "Relógio Smart X", categoria: "wearables", preco: 249.9, precoAntigo: 349.9, imagem: "img/deal-watch.jpg", oferta: true, descricao: "Tela sempre ligada, monitor de batimentos e sono, resistente à água." },
+  { id: 3, nome: "Óculos Juliet", categoria: "oculos", preco: 189.9, precoAntigo: 249.9, imagem: "img/oculos-juliet.jpg", oferta: true, descricao: "Óculos peruano de primeira linha, armação metálica cromada e lentes escuras espelhadas." },
+  { id: 4, nome: "Camiseta Lacoste Faixa", categoria: "camisetas", preco: 119.9, precoAntigo: 159.9, imagem: "img/camiseta-lacoste.jpg", oferta: true, descricao: "Camiseta peruana de primeira linha, malha de algodão com faixa preta e estampa Lacoste." },
+  { id: 6, nome: "Headphone Max", categoria: "audio", preco: 299.9, precoAntigo: 399.9, imagem: "img/cat-audio.jpg", descricao: "Headphone com som imersivo e até 40 horas de bateria." },
+  { id: 7, nome: "Controle sem fio", categoria: "gaming", preco: 179.9, imagem: "img/cat-gaming.jpg", descricao: "Controle sem fio com baixa latência e vibração." },
+  { id: 8, nome: "Câmera Z", categoria: "cameras", preco: 2999.9, imagem: "img/cat-cameras.jpg", descricao: "Câmera com sensor de 24 MP e vídeo em 4K." },
+];
+
+// Comentários da seção "Avaliações". Os abaixo são EXEMPLOS para mostrar o visual:
+// troque pelos comentários reais dos seus clientes e apague "exemplo: true".
+// Enquanto houver algum exemplo, o site mostra o aviso "Comentários de exemplo".
+const COMENTARIOS = [
+  { nome: "Rafael S.", cidade: "São Paulo, SP", nota: 5, produto: "Camiseta Lacoste Faixa", texto: "Malha grossa, costura caprichada e o caimento ficou perfeito. Já vou pegar mais duas cores.", exemplo: true },
+  { nome: "Juliana M.", cidade: "Belo Horizonte, MG", nota: 5, produto: "Óculos Juliet", texto: "O óculos é pesado, bem acabado e a lente é escura de verdade. Chegou em 4 dias.", exemplo: true },
+  { nome: "Lucas P.", cidade: "Recife, PE", nota: 5, produto: "Camiseta Lacoste Faixa", texto: "Atendimento rápido no WhatsApp, tiraram todas as minhas dúvidas de tamanho antes de fechar.", exemplo: true },
+  { nome: "Bruna A.", cidade: "Curitiba, PR", nota: 4, produto: "Relógio Smart X", texto: "Gostei muito do relógio. Só demorou um pouco mais para chegar por causa da transportadora.", exemplo: true },
+  { nome: "Diego R.", cidade: "Salvador, BA", nota: 5, produto: "Óculos Juliet", texto: "Comprei pro meu irmão e ele não tira do rosto. Embalagem bem protegida.", exemplo: true },
+  { nome: "Camila T.", cidade: "Goiânia, GO", nota: 5, produto: "Fone Bluetooth Pro", texto: "Bateria dura o dia inteiro e o som é muito limpo. Preço justo demais.", exemplo: true },
+  { nome: "Matheus L.", cidade: "Rio de Janeiro, RJ", nota: 5, produto: "Camiseta Lacoste Faixa", texto: "Terceira compra na TMZ. Sempre o mesmo padrão de qualidade, recomendo de olho fechado.", exemplo: true },
+  { nome: "Ana C.", cidade: "Fortaleza, CE", nota: 5, produto: "Headphone Max", texto: "Chegou certinho, bem embalado e igual às fotos. Já indiquei para as amigas.", exemplo: true },
 ];

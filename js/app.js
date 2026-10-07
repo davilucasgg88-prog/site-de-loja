@@ -61,7 +61,7 @@
     $$(".lateral a").forEach((a) => a.classList.toggle("ativo", (a.dataset.cat || "ofertas") === f));
     $$(".circulo").forEach((b) => b.classList.toggle("ativo", b.dataset.cat === f));
     $("#titulo-ofertas").textContent =
-      f === "ofertas" ? "Deals of the day" : f === "todos" ? "All products" : categoria(f).nome;
+      f === "ofertas" ? "Ofertas do dia" : f === "todos" ? "Todos os produtos" : categoria(f).nome;
     $("#ver-todos").hidden = f === "todos";
     renderGrade();
   }
@@ -86,10 +86,10 @@
     $("#vazio").hidden = itens.length > 0;
     $("#grade").innerHTML = itens.map((p) => `
       <article class="card">
-        <button class="card__img" data-ver="${p.id}" aria-label="View ${escapar(p.nome)}">${img(p)}</button>
+        <button class="card__img" data-ver="${p.id}" aria-label="Ver ${escapar(p.nome)}">${img(p)}</button>
         <div class="card__linha">
           <h3 class="card__nome">${escapar(p.nome)}</h3>
-          <button class="add" data-add="${p.id}" aria-label="Add ${escapar(p.nome)} to cart"><svg><use href="#i-cart"/></svg></button>
+          <button class="add" data-add="${p.id}" aria-label="Adicionar ${escapar(p.nome)} ao carrinho"><svg><use href="#i-cart"/></svg></button>
         </div>
         ${precos(p)}
       </article>`).join("");
@@ -113,7 +113,7 @@
     clearTimeout(atraso);
     atraso = setTimeout(() => {
       estado.busca = e.target.value;
-      $("#titulo-ofertas").textContent = estado.busca.trim() ? `Results for "${estado.busca.trim()}"` : "Deals of the day";
+      $("#titulo-ofertas").textContent = estado.busca.trim() ? `Resultados para "${estado.busca.trim()}"` : "Ofertas do dia";
       renderGrade();
       if (estado.busca.trim()) $("#ofertas").scrollIntoView({ behavior: "smooth" });
     }, 250);
@@ -133,7 +133,7 @@
           <h3>${escapar(p.nome)}</h3>
           ${precos(p)}
           <p>${escapar(p.descricao)}</p>
-          <button class="btn btn--bloco" data-add-modal="${p.id}">Add to cart</button>
+          <button class="btn btn--bloco" data-add-modal="${p.id}">Adicionar ao carrinho</button>
         </div>
       </div>`;
     modalProduto.showModal();
@@ -158,7 +158,7 @@
     c.classList.remove("pulse");
     void c.offsetWidth;
     c.classList.add("pulse");
-    toast(`${porId(id).nome} added to cart`);
+    toast(`${porId(id).nome} adicionado ao carrinho`);
   }
 
   function alterar(id, delta) {
@@ -188,16 +188,16 @@
         <div>
           <div class="item__nome">${escapar(p.nome)}</div>
           <div class="item__preco">${moeda(p.preco)}</div>
-          <button class="remover" data-remover="${p.id}">Remove</button>
+          <button class="remover" data-remover="${p.id}">Remover</button>
         </div>
         <div class="qtd">
-          <button data-menos="${p.id}" aria-label="Decrease">−</button>
+          <button data-menos="${p.id}" aria-label="Diminuir">−</button>
           <span>${qtd}</span>
-          <button data-mais="${p.id}" aria-label="Increase">+</button>
+          <button data-mais="${p.id}" aria-label="Aumentar">+</button>
         </div>
       </li>`).join("");
     $("#subtotal").textContent = moeda(t.subtotal);
-    $("#frete").textContent = t.frete ? moeda(t.frete) : "Free";
+    $("#frete").textContent = t.frete ? moeda(t.frete) : "Grátis";
     $("#total").textContent = moeda(t.total);
   }
 
@@ -234,18 +234,18 @@
     const dados = Object.fromEntries(new FormData(e.target));
     const t = totais();
     const linhas = [
-      `*New order — ${LOJA.nome}*`,
+      `*Novo pedido — ${LOJA.nome}*`,
       "",
       ...t.itens.map(({ p, qtd }) => `• ${qtd}x ${p.nome} — ${moeda(p.preco * qtd)}`),
       "",
       `Subtotal: ${moeda(t.subtotal)}`,
-      `Shipping: ${t.frete ? moeda(t.frete) : "Free"}`,
+      `Frete: ${t.frete ? moeda(t.frete) : "Grátis"}`,
       `*Total: ${moeda(t.total)}*`,
       "",
-      `Name: ${dados.nome}`,
-      `Phone: ${dados.telefone}`,
-      `Address: ${dados.endereco} — ZIP ${dados.cep}`,
-      `Payment: ${dados.pagamento}`,
+      `Nome: ${dados.nome}`,
+      `Telefone: ${dados.telefone}`,
+      `Endereço: ${dados.endereco} — CEP ${dados.cep}`,
+      `Pagamento: ${dados.pagamento}`,
     ];
     window.open(`https://wa.me/${LOJA.whatsapp}?text=${encodeURIComponent(linhas.join("\n"))}`, "_blank");
     estado.carrinho = {};
@@ -253,7 +253,7 @@
     renderCarrinho();
     e.target.reset();
     modalCheckout.close();
-    toast("Order sent! Thank you for shopping with us.");
+    toast("Pedido enviado! Obrigado por comprar na TMZ.");
   });
 
   /* Toast */
@@ -270,6 +270,67 @@
     e.preventDefault();
     filtrar("ofertas");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  /* Avaliações */
+  function estrelas(n) {
+    return Array.from({ length: 5 }, (_, i) =>
+      `<svg class="${i < Math.round(n) ? "" : "apagada"}"><use href="#i-estrela"/></svg>`).join("");
+  }
+  function iniciais(nome) {
+    return nome.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  }
+  function cartaoComentario(c) {
+    return `
+      <article class="depo">
+        <svg class="depo__aspas" aria-hidden="true"><use href="#i-aspas"/></svg>
+        <span class="estrelas" role="img" aria-label="Nota ${c.nota} de 5">${estrelas(c.nota)}</span>
+        <p class="depo__texto">${escapar(c.texto)}</p>
+        ${c.produto ? `<span class="depo__produto">${escapar(c.produto)}</span>` : ""}
+        <div class="depo__autor">
+          <span class="depo__avatar" aria-hidden="true">${escapar(iniciais(c.nome))}</span>
+          <div><div class="depo__nome">${escapar(c.nome)}</div><div class="depo__cidade">${escapar(c.cidade || "")}</div></div>
+        </div>
+      </article>`;
+  }
+  function renderComentarios() {
+    const lista = typeof COMENTARIOS === "undefined" ? [] : COMENTARIOS;
+    if (!lista.length) { $("#comentarios").hidden = true; return; }
+    const media = lista.reduce((s, c) => s + c.nota, 0) / lista.length;
+    $("#placar-media").textContent = media.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    $("#placar-estrelas").innerHTML = estrelas(media);
+    $("#placar-total").textContent = `${lista.length} ${lista.length === 1 ? "avaliação" : "avaliações"}`;
+    $("#placar-barras").innerHTML = [5, 4, 3, 2, 1].map((n) => {
+      const qtd = lista.filter((c) => c.nota === n).length;
+      return `<li><span>${n}</span><i style="--p:${(qtd / lista.length) * 100}%"></i><span>${qtd}</span></li>`;
+    }).join("");
+    $("#aviso-exemplo").hidden = !lista.some((c) => c.exemplo);
+
+    // Duas esteiras em sentidos opostos; cada trilho é duplicado para o loop não ter emenda
+    const metade = Math.ceil(lista.length / 2);
+    [[lista.slice(0, metade), "#esteira-1"], [lista.slice(metade).length ? lista.slice(metade) : lista, "#esteira-2"]]
+      .forEach(([itens, alvo]) => {
+        const cartoes = itens.map(cartaoComentario).join("");
+        const el = $(alvo);
+        el.innerHTML = `<div class="esteira__trilho">${cartoes}</div><div class="esteira__trilho" aria-hidden="true">${cartoes}</div>`;
+        el.style.setProperty("--duracao", `${Math.max(itens.length, 3) * 10}s`);
+      });
+  }
+  // Brilho que acompanha o mouse nos cartões
+  $("#comentarios").addEventListener("pointermove", (e) => {
+    const card = e.target.closest(".depo");
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty("--x", `${e.clientX - r.left}px`);
+    card.style.setProperty("--y", `${e.clientY - r.top}px`);
+  });
+  $("#link-avaliar").href = LOJA.instagram;
+  renderComentarios();
+
+  /* CEP com máscara */
+  $("#form-checkout").cep.addEventListener("input", (e) => {
+    const d = e.target.value.replace(/\D/g, "").slice(0, 8);
+    e.target.value = d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
   });
 
   /* Aviso do Instagram: abre centralizado ao entrar; o X fecha e deixa uma bolha para reabrir */

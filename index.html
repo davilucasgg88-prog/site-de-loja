@@ -27,6 +27,8 @@
       <symbol id="i-support" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.5" y="12" width="4" height="6" rx="1.5"/><rect x="17.5" y="12" width="4" height="6" rx="1.5"/><path d="M19.5 18c0 2-2 3-5 3"/><path d="M9 13.5c.8 1 1.8 1.5 3 1.5s2.2-.5 3-1.5"/></symbol>
       <symbol id="i-returns" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
       <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+      <symbol id="i-estrela" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-aspas" viewBox="0 0 24 24"><path d="M4 18v-5c0-4 2-7 6-8l1 2c-2 .8-3 2.3-3 4h3v7zm9 0v-5c0-4 2-7 6-8l1 2c-2 .8-3 2.3-3 4h3v7z" fill="currentColor" stroke="none"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
     </defs>
   </svg>
@@ -38,16 +40,16 @@
         <span class="logo__store">STORE</span>
       </a>
       <nav class="menu" id="menu">
-        <a href="#" class="ativo">Home</a>
-        <a href="#ofertas" data-todos>Shop</a>
-        <a href="#categorias">Categories</a>
-        <a href="#ofertas">Deals</a>
-        <a href="#sobre">About Us</a>
-        <a href="#contato">Contact</a>
+        <a href="#" class="ativo">Início</a>
+        <a href="#ofertas" data-todos>Loja</a>
+        <a href="#categorias">Categorias</a>
+        <a href="#ofertas">Ofertas</a>
+        <a href="#comentarios">Avaliações</a>
+        <a href="#contato">Contato</a>
       </nav>
       <div class="topo__acoes">
-        <button class="icone" id="abrir-busca" aria-label="Search"><svg><use href="#i-search"/></svg></button>
-        <button class="icone carrinho-btn" id="abrir-carrinho" aria-label="Cart">
+        <button class="icone" id="abrir-busca" aria-label="Buscar"><svg><use href="#i-search"/></svg></button>
+        <button class="icone carrinho-btn" id="abrir-carrinho" aria-label="Carrinho">
           <svg><use href="#i-cart"/></svg><span class="contador" id="contador">0</span>
         </button>
         <button class="icone menu-btn" id="abrir-menu" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
@@ -55,7 +57,7 @@
     </div>
     <div class="busca" id="busca-barra" hidden>
       <div class="container">
-        <input type="search" id="busca" placeholder="Search products…" autocomplete="off" aria-label="Search products">
+        <input type="search" id="busca" placeholder="Buscar produtos…" autocomplete="off" aria-label="Buscar produtos">
       </div>
     </div>
   </header>
@@ -82,8 +84,8 @@
   <image href="img/marcas.png" x="190" y="78" width="420" height="317"/>
 </svg>
       <div class="container hero__grade">
-        <aside class="lateral" aria-label="Categories">
-          <a href="#" class="ativo" data-cat=""><svg><use href="#i-home"/></svg>Home</a>
+        <aside class="lateral" aria-label="Categorias">
+          <a href="#" class="ativo" data-cat=""><svg><use href="#i-home"/></svg>Início</a>
           <div id="lateral-cats"></div>
         </aside>
         <div class="hero__texto">
@@ -97,10 +99,10 @@
 
     <section class="container">
       <div class="vantagens">
-        <div><svg><use href="#i-shield"/></svg><p><strong>Premium quality</strong>Carefully selected<br>top-tier products</p></div>
-        <div><svg><use href="#i-truck"/></svg><p><strong>Fast delivery</strong>Quick &amp; reliable<br>shipping</p></div>
-        <div><svg><use href="#i-support"/></svg><p><strong>24/7 support</strong>We're here to help<br>anytime</p></div>
-        <div><svg><use href="#i-returns"/></svg><p><strong>Easy returns</strong>Hassle-free returns<br>within 7 days</p></div>
+        <div><svg><use href="#i-shield"/></svg><p><strong>Primeira linha</strong>Peças selecionadas<br>a dedo</p></div>
+        <div><svg><use href="#i-truck"/></svg><p><strong>Entrega rápida</strong>Enviamos para<br>todo o Brasil</p></div>
+        <div><svg><use href="#i-support"/></svg><p><strong>Atendimento</strong>Tire suas dúvidas<br>pelo WhatsApp</p></div>
+        <div><svg><use href="#i-returns"/></svg><p><strong>Troca fácil</strong>Troca sem complicação<br>em até 7 dias</p></div>
       </div>
     </section>
 
@@ -111,75 +113,101 @@
 
     <section class="container secao" id="ofertas">
       <div class="secao__topo">
-        <h2 class="titulo" id="titulo-ofertas">Deals of the day</h2>
-        <a href="#ofertas" class="ver-todos" id="ver-todos">View All Deals <svg><use href="#i-arrow"/></svg></a>
+        <h2 class="titulo" id="titulo-ofertas">Ofertas do dia</h2>
+        <a href="#ofertas" class="ver-todos" id="ver-todos">Ver todas as ofertas <svg><use href="#i-arrow"/></svg></a>
       </div>
       <div class="grade" id="grade"></div>
-      <p class="vazio" id="vazio" hidden>No products found.</p>
+      <p class="vazio" id="vazio" hidden>Nenhum produto encontrado.</p>
     </section>
 
     <section class="container">
       <div class="banner">
         <img class="banner__img" src="img/banner.jpg" alt="">
         <div class="banner__texto">
-          <p class="banner__tag">Exclusive offer</p>
-          <h2>Up to 40% off</h2>
-          <p class="banner__sub">On selected items</p>
-          <p class="banner__desc">Limited time only. Don't miss out!</p>
-          <a href="#ofertas" class="btn" data-todos>Grab the deal <svg><use href="#i-arrow"/></svg></a>
+          <p class="banner__tag">Oferta exclusiva</p>
+          <h2>Até 40% off</h2>
+          <p class="banner__sub">Em peças selecionadas</p>
+          <p class="banner__desc">Só por tempo limitado. Não fique de fora!</p>
+          <a href="#ofertas" class="btn" data-todos>Aproveitar oferta <svg><use href="#i-arrow"/></svg></a>
         </div>
       </div>
     </section>
+    <section class="avaliacoes" id="comentarios">
+      <div class="avaliacoes__grade-fundo" aria-hidden="true"></div>
+      <div class="container avaliacoes__topo">
+        <div>
+          <p class="avaliacoes__tag"><span class="pulso" aria-hidden="true"></span>Avaliações</p>
+          <h2 class="avaliacoes__titulo">O povo <span>aprovou</span></h2>
+          <p class="avaliacoes__sub">O que dizem os clientes que já vestem TMZ.</p>
+          <p class="avaliacoes__exemplo" id="aviso-exemplo" hidden>Comentários de exemplo</p>
+        </div>
+        <div class="placar" aria-label="Resumo das avaliações">
+          <div class="placar__nota">
+            <strong id="placar-media">0,0</strong>
+            <span class="estrelas" id="placar-estrelas" aria-hidden="true"></span>
+            <small id="placar-total"></small>
+          </div>
+          <ul class="placar__barras" id="placar-barras"></ul>
+        </div>
+      </div>
+      <div class="esteira" id="esteira-1"></div>
+      <div class="esteira esteira--reversa" id="esteira-2"></div>
+      <div class="container avaliacoes__cta">
+        <p>Comprou na TMZ? Conta pra gente como foi.</p>
+        <a class="btn btn--contorno" id="link-avaliar" href="#" target="_blank" rel="noopener">Avaliar no Instagram <svg><use href="#i-arrow"/></svg></a>
+      </div>
+    </section>
+
   </main>
 
   <footer class="rodape" id="contato">
     <div class="container rodape__linha" id="sobre">
-      <span>© <span id="ano"></span> <span id="nome-copy">TMZ STORE</span>. All rights reserved.</span>
-      <a id="link-whats" href="#" target="_blank" rel="noopener">Contact us on WhatsApp</a>
+      <span>© <span id="ano"></span> <span id="nome-copy">TMZ STORE</span>. Todos os direitos reservados.</span>
+      <a id="link-whats" href="#" target="_blank" rel="noopener">Fale com a gente no WhatsApp</a>
     </div>
   </footer>
 
   <!-- Carrinho -->
   <div class="fundo" id="fundo" hidden></div>
-  <aside class="carrinho" id="carrinho" aria-label="Cart" aria-hidden="true">
+  <aside class="carrinho" id="carrinho" aria-label="Carrinho" aria-hidden="true">
     <div class="carrinho__topo">
-      <h2>Your cart</h2>
-      <button class="fechar" id="fechar-carrinho" aria-label="Close">✕</button>
+      <h2>Seu carrinho</h2>
+      <button class="fechar" id="fechar-carrinho" aria-label="Fechar">✕</button>
     </div>
     <ul class="carrinho__itens" id="itens"></ul>
-    <p class="vazio" id="carrinho-vazio">Your cart is empty.</p>
+    <p class="vazio" id="carrinho-vazio">Seu carrinho está vazio.</p>
     <div class="carrinho__resumo" id="resumo">
       <div><span>Subtotal</span><span id="subtotal"></span></div>
-      <div><span>Shipping</span><span id="frete"></span></div>
+      <div><span>Frete</span><span id="frete"></span></div>
       <div class="total"><span>Total</span><span id="total"></span></div>
-      <button class="btn btn--bloco" id="finalizar">Checkout</button>
+      <button class="btn btn--bloco" id="finalizar">Finalizar pedido</button>
     </div>
   </aside>
 
   <!-- Detalhe do produto -->
   <dialog class="modal" id="modal-produto">
-    <button class="fechar" data-fechar aria-label="Close">✕</button>
+    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
     <div id="detalhe"></div>
   </dialog>
 
   <!-- Checkout -->
   <dialog class="modal" id="modal-checkout">
-    <button class="fechar" data-fechar aria-label="Close">✕</button>
-    <h2>Checkout</h2>
+    <button class="fechar" data-fechar aria-label="Fechar">✕</button>
+    <h2>Finalizar pedido</h2>
     <form id="form-checkout" class="form">
-      <label>Full name<input name="nome" required></label>
-      <label>Phone<input name="telefone" type="tel" required></label>
-      <label>ZIP code<input name="cep" required></label>
-      <label>Address<input name="endereco" required></label>
-      <label>Payment
+      <label>Nome completo<input name="nome" required></label>
+      <label>Telefone<input name="telefone" type="tel" required></label>
+      <label>CEP<input name="cep" inputmode="numeric" maxlength="9" required></label>
+      <label>Endereço<input name="endereco" required></label>
+      <label>Pagamento
         <select name="pagamento">
-          <option>Credit card</option>
           <option>Pix</option>
-          <option>Bank slip</option>
+          <option>Cartão de crédito</option>
+          <option>Boleto</option>
         </select>
       </label>
       <p class="form__total">Total: <strong id="checkout-total"></strong></p>
-      <button class="btn btn--bloco">Send order via WhatsApp</button>
+      <button class="btn btn--bloco">Enviar pedido pelo WhatsApp</button>
     </form>
   </dialog>
 
