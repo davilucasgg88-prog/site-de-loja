@@ -66,7 +66,8 @@
     $(".faixa").hidden = !avisos.length;
     const linha = avisos.map((a) => `<span>${escapar(a)}</span>`).join("");
     $("#faixa").innerHTML = `<div>${linha}</div><div aria-hidden="true">${linha}</div>`;
-    $("#botao-painel").hidden = !(S.admin || S.modo === "nuvem" && S.admin);
+    $("#botao-painel").hidden = !S.admin;
+    $("#botao-entrar").hidden = S.admin;
   }
 
   /* ---------- categorias ---------- */
