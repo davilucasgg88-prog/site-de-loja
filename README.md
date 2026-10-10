@@ -8,6 +8,10 @@ TMZ, a loja que veste o povo. Loja online em HTML, CSS e JavaScript puro, sem de
 - Destaque, faixa de avisos, categorias em círculo, "Ofertas do dia", banner e avaliações
 - "Compre agora" abre a tela "O que você procura?" com o estoque de cada categoria
 - Produto esgotado não pode ir para o carrinho; o carrinho respeita o estoque
+- Tela do produto com "Comprar agora", "Adicionar ao carrinho" e "Reservar e retirar na loja"
+- "Combina com" na tela do produto e "Complete o look" no carrinho: sugere peças de categorias
+  que combinam (bermuda → camiseta, chinelo, boné…). O dono escolhe as combinações em
+  Painel → Categorias
 
 **Carrinho** (`#carrinho`): tela cheia com quantidades, barra de frete grátis e resumo.
 

@@ -40,15 +40,28 @@ const DESTAQUE = {
   avisos: ["Frete grátis acima de R$ 299", "Peças peruanas de primeira linha", "Enviamos para todo o Brasil", "Siga @tmz_storee"],
 };
 
+// "combina": categorias sugeridas em "Combina com" quando o cliente olha um produto desta.
+// Ids que ainda não existem (bermudas, calcados, bones, celulares) passam a valer
+// assim que o dono criar a categoria com esse nome no painel.
 const CATEGORIAS = [
-  { id: "camisetas", nome: "Camisetas", imagem: "img/cat-camisetas.jpg" },
-  { id: "oculos", nome: "Óculos", imagem: "img/cat-oculos.jpg" },
-  { id: "wearables", nome: "Relógios", imagem: "img/cat-wearables.jpg" },
-  { id: "audio", nome: "Fones", imagem: "img/cat-audio.jpg" },
-  { id: "accessories", nome: "Acessórios" },
-  { id: "gaming", nome: "Games", imagem: "img/cat-gaming.jpg" },
-  { id: "cameras", nome: "Câmeras", imagem: "img/cat-cameras.jpg" },
+  { id: "camisetas", nome: "Camisetas", imagem: "img/cat-camisetas.jpg", combina: ["bermudas", "calcados", "oculos", "bones", "wearables"] },
+  { id: "oculos", nome: "Óculos", imagem: "img/cat-oculos.jpg", combina: ["camisetas", "bones", "wearables", "bermudas"] },
+  { id: "wearables", nome: "Relógios", imagem: "img/cat-wearables.jpg", combina: ["camisetas", "oculos", "audio"] },
+  { id: "audio", nome: "Fones", imagem: "img/cat-audio.jpg", combina: ["celulares", "wearables", "gaming", "camisetas"] },
+  { id: "accessories", nome: "Acessórios", combina: ["camisetas", "bermudas", "oculos"] },
+  { id: "gaming", nome: "Games", imagem: "img/cat-gaming.jpg", combina: ["audio", "camisetas"] },
+  { id: "cameras", nome: "Câmeras", imagem: "img/cat-cameras.jpg", combina: ["accessories", "celulares", "audio"] },
 ];
+
+// Combinações para categorias que o dono ainda pode criar no painel
+const COMBINA_PADRAO = {
+  bermudas: ["camisetas", "calcados", "bones", "oculos"],
+  shorts: ["camisetas", "calcados", "bones", "oculos"],
+  calcados: ["bermudas", "camisetas", "meias", "bones"],
+  bones: ["camisetas", "oculos", "bermudas"],
+  calcas: ["camisetas", "calcados", "bones"],
+  celulares: ["audio", "wearables", "accessories"],
+};
 
 const PRODUTOS = [
   { id: 1, nome: "Fone Bluetooth Pro", categoria: "audio", estoque: 15, preco: 149.9, precoAntigo: 199.9, imagem: "img/deal-buds.jpg", oferta: true, descricao: "Fone sem fio com cancelamento de ruído e até 24 horas de bateria com o estojo." },

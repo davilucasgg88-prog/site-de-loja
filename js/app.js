@@ -165,36 +165,115 @@
   $("#abrir-menu").addEventListener("click", () => $("#menu").classList.toggle("aberto"));
   $("#menu").addEventListener("click", () => $("#menu").classList.remove("aberto"));
 
+  /* ---------- sugestões "Combina com" ---------- */
+  function combinaDe(catId) {
+    const c = categoria(catId);
+    if (Array.isArray(c.combina)) return c.combina;
+    return CATEGORIAS.find((x) => x.id === catId)?.combina || (typeof COMBINA_PADRAO !== "undefined" && COMBINA_PADRAO[catId]) || [];
+  }
+
+  // Produtos de categorias que combinam com as dos produtos-base, com estoque e fora do carrinho
+  function sugestoes(base, limite = 4) {
+    const idsBase = new Set(base.map((p) => p.id));
+    const catsBase = new Set(base.map((p) => p.categoria));
+    const prioridade = [];
+    base.forEach((p) => combinaDe(p.categoria).forEach((c) => { if (!catsBase.has(c) && !prioridade.includes(c)) prioridade.push(c); }));
+    const livre = (p) => !idsBase.has(p.id) && !estado.carrinho[p.id] && estoque(p) > 0;
+    const escolhidos = [];
+    // um de cada categoria combinada primeiro, para variar o look
+    for (const c of prioridade) {
+      const opcoes = S.produtos.filter((p) => p.categoria === c && livre(p)).sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0));
+      if (opcoes[0]) escolhidos.push(opcoes[0]);
+      if (escolhidos.length >= limite) return escolhidos;
+    }
+    for (const c of prioridade) {
+      S.produtos.filter((p) => p.categoria === c && livre(p) && !escolhidos.includes(p)).forEach((p) => escolhidos.length < limite && escolhidos.push(p));
+    }
+    // completa com ofertas de outras categorias
+    S.produtos.filter((p) => livre(p) && !escolhidos.includes(p) && !catsBase.has(p.categoria))
+      .sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0))
+      .forEach((p) => escolhidos.length < limite && escolhidos.push(p));
+    return escolhidos;
+  }
+
+  function cartaoSugestao(p) {
+    return `
+      <article class="sugestao">
+        <button type="button" class="sugestao__foto" data-ver-sugestao="${escapar(p.id)}" aria-label="Ver ${escapar(p.nome)}">${img(p)}</button>
+        <div class="sugestao__info">
+          <span class="sugestao__cat">${escapar(categoria(p.categoria).nome)}</span>
+          <button type="button" class="sugestao__nome" data-ver-sugestao="${escapar(p.id)}">${escapar(p.nome)}</button>
+          <strong>${moeda(p.preco)}</strong>
+        </div>
+        <button type="button" class="sugestao__add" data-add-sugestao="${escapar(p.id)}" aria-label="Adicionar ${escapar(p.nome)} ao carrinho"><svg><use href="#i-mais"/></svg></button>
+      </article>`;
+  }
+
   /* Detalhe do produto */
   const modalProduto = $("#modal-produto");
   function abrirProduto(id) {
     const p = porId(id);
     if (!p) return;
     const q = estoque(p);
+    const sug = sugestoes([p], 3);
+    const c = S.config;
     $("#detalhe").innerHTML = `
       <div class="detalhe">
         <div class="detalhe__img">${img(p)}</div>
-        <div>
+        <div class="detalhe__info">
           <span class="detalhe__cat">${escapar(categoria(p.categoria).nome)}</span>
           <h3>${escapar(p.nome)}</h3>
           ${precos(p)}
           <p>${escapar(p.descricao)}</p>
-          <p class="detalhe__estoque">${q === 0 ? "Esgotado no momento" : `${q} ${q === 1 ? "peça" : "peças"} em estoque`}</p>
-          <button class="btn btn--bloco" data-add-modal="${escapar(p.id)}" ${q === 0 ? "disabled" : ""}>${q === 0 ? "Esgotado" : "Adicionar ao carrinho"}</button>
+          <p class="detalhe__estoque">${q === 0 ? "Esgotado no momento" : q <= 5 ? `Últimas ${q} ${q === 1 ? "peça" : "peças"}` : `${q} peças em estoque`}</p>
+          ${q === 0 ? `<button class="btn btn--bloco" disabled>Esgotado</button>` : `
+          <div class="detalhe__acoes">
+            <button type="button" class="btn btn--bloco btn--grande" data-comprar="${escapar(p.id)}">Comprar agora <svg><use href="#i-arrow"/></svg></button>
+            <button type="button" class="btn btn--bloco btn--contorno" data-add-modal="${escapar(p.id)}"><svg><use href="#i-cart"/></svg>Adicionar ao carrinho</button>
+            <button type="button" class="detalhe__reservar" data-reservar="${escapar(p.id)}">
+              <svg><use href="#i-relogio"/></svg>
+              <span><strong>Reservar e retirar na loja</strong>Pague ${c.reservaPercentual}% agora (${moeda(p.preco * c.reservaPercentual / 100)}) e o resto na retirada</span>
+            </button>
+          </div>`}
         </div>
-      </div>`;
-    modalProduto.showModal();
+      </div>
+      ${sug.length ? `
+      <section class="combina">
+        <h4 class="combina__titulo">Combina com</h4>
+        <div class="combina__lista">${sug.map(cartaoSugestao).join("")}</div>
+      </section>` : ""}`;
+    if (!modalProduto.open) modalProduto.showModal();
+    $("#detalhe").scrollIntoView?.({ block: "start" });
+    modalProduto.scrollTop = 0;
   }
+
+  function irParaCompra(id, modo) {
+    const p = porId(id);
+    if (!p) return;
+    if (!estado.carrinho[p.id]) adicionar(p.id, true);
+    estado.modo = modo;
+    modalProduto.close();
+    location.hash = "compra";
+  }
+
   modalProduto.addEventListener("click", (e) => {
     const add = e.target.closest("[data-add-modal]");
+    const comprar = e.target.closest("[data-comprar]");
+    const reservar = e.target.closest("[data-reservar]");
+    const ver = e.target.closest("[data-ver-sugestao]");
+    const addSug = e.target.closest("[data-add-sugestao]");
     if (add) { adicionar(add.dataset.addModal); modalProduto.close(); }
+    else if (comprar) irParaCompra(comprar.dataset.comprar, "compra");
+    else if (reservar) irParaCompra(reservar.dataset.reservar, "reserva30");
+    else if (ver) abrirProduto(ver.dataset.verSugestao);
+    else if (addSug) { adicionar(addSug.dataset.addSugestao); addSug.classList.add("feito"); addSug.innerHTML = '<svg><use href="#i-check"/></svg>'; addSug.disabled = true; }
   });
   $$("dialog").forEach((d) => d.addEventListener("click", (e) => {
     if (e.target === d || e.target.closest("[data-fechar]")) d.close();
   }));
 
   /* ---------- carrinho ---------- */
-  function adicionar(id) {
+  function adicionar(id, silencioso) {
     const p = porId(id);
     if (!p) return;
     const atual = estado.carrinho[p.id] || 0;
@@ -206,7 +285,7 @@
     c.classList.remove("pulse");
     void c.offsetWidth;
     c.classList.add("pulse");
-    toast(`${p.nome} adicionado ao carrinho`);
+    if (!silencioso) toast(`${p.nome} adicionado ao carrinho`);
   }
 
   function alterar(id, delta) {
@@ -252,6 +331,9 @@
         <strong class="linha__total">${moeda(p.preco * qtd)}</strong>
         <button type="button" class="linha__remover" data-remover="${escapar(p.id)}" aria-label="Remover ${escapar(p.nome)}"><svg><use href="#i-lixo"/></svg></button>
       </li>`).join("");
+    const sug = t.itens.length ? sugestoes(t.itens.map((i) => i.p), 3) : [];
+    $("#carrinho-sugestoes").hidden = !sug.length;
+    $("#carrinho-sugestoes-lista").innerHTML = sug.map(cartaoSugestao).join("");
     $("#subtotal").textContent = moeda(t.subtotal);
     $("#frete").textContent = t.frete ? moeda(t.frete) : "Grátis";
     $("#total").textContent = moeda(t.total);
@@ -269,6 +351,12 @@
     if (b.dataset.remover) alterar(b.dataset.remover, -Infinity);
   });
   $("#abrir-carrinho").addEventListener("click", () => { location.hash = "carrinho"; });
+  $("#carrinho-sugestoes").addEventListener("click", (e) => {
+    const ver = e.target.closest("[data-ver-sugestao]");
+    const add = e.target.closest("[data-add-sugestao]");
+    if (add) adicionar(add.dataset.addSugestao);
+    else if (ver) abrirProduto(ver.dataset.verSugestao);
+  });
   document.addEventListener("click", (e) => {
     const modo = e.target.closest("[data-modo]");
     if (modo) estado.modo = modo.dataset.modo;
@@ -609,7 +697,7 @@
     if (nova === "carrinho") renderCarrinho();
     if (nova === "compra") prepararCompra();
     if (nova === "reservas") { cancelando = null; renderReservas(); }
-    if (nova) {
+    if (nova && nova !== telaAtual) {
       $(TELAS[nova]).scrollTop = 0;
       $$("dialog[open]").forEach((d) => d.close());
     } else if (telaAtual) {
@@ -770,5 +858,5 @@
   rota();
 
   // utilidades para o painel
-  window.TMZ = { moeda, escapar, dataHora, hora, toast, iconeCat, imagemCat, categoria, nomeTipo, NOMES_STATUS, duracao, centavos, digitos, linkWhats };
+  window.TMZ = { combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, imagemCat, categoria, nomeTipo, NOMES_STATUS, duracao, centavos, digitos, linkWhats };
 })();

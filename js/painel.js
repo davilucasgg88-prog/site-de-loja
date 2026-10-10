@@ -2,7 +2,7 @@
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const S = Dados.estado;
-  const { moeda, escapar, dataHora, hora, toast, iconeCat, categoria, nomeTipo, NOMES_STATUS, centavos, digitos } = window.TMZ;
+  const { combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, categoria, nomeTipo, NOMES_STATUS, centavos, digitos } = window.TMZ;
   const raiz = $("#painel");
 
   const ui = { aba: "resumo", filtro: "aguardando", busca: "", catFiltro: "", editando: null, cancelando: null, excluindo: null, aberto: false };
@@ -400,7 +400,7 @@
   function categorias() {
     return `
       <header class="painel__cabeca">
-        <div><p class="rotulo">Organização</p><h1>Categorias</h1><p class="painel__sub">Aparecem no menu lateral, nos círculos e na tela "O que você procura?".</p></div>
+        <div><p class="rotulo">Organização</p><h1>Categorias</h1><p class="painel__sub">Aparecem no menu lateral, nos círculos e na tela "O que você procura?". Em "Combina com", marque o que sugerir junto (ex.: bermuda sugere camiseta e chinelo).</p></div>
       </header>
       <form id="form-categorias" class="bloco">
         <ul class="lista-categorias" id="lista-categorias">
@@ -414,6 +414,11 @@
               <span class="lista-categorias__qtd">${qtd} ${qtd === 1 ? "produto" : "produtos"}</span>
               <label class="icone-acao" title="Trocar foto"><svg><use href="#i-upload"/></svg><input type="file" accept="image/*" data-foto-cat hidden></label>
               <button type="button" class="icone-acao" data-remover-cat ${qtd ? `disabled title="Mova ou exclua os produtos antes"` : `aria-label="Remover categoria"`}><svg><use href="#i-lixo"/></svg></button>
+              <div class="combina-chips">
+                <span>Combina com</span>
+                ${S.categorias.filter((o) => o.id !== c.id).map((o) => `
+                  <label class="chip-mini"><input type="checkbox" value="${escapar(o.id)}" data-combina ${combinaDe(c.id).includes(o.id) ? "checked" : ""}><span>${escapar(o.nome)}</span></label>`).join("")}
+              </div>
             </li>`;
           }).join("")}
         </ul>
@@ -429,7 +434,11 @@
     return [...raiz.querySelectorAll("#lista-categorias li")].map((li) => {
       const atual = S.categorias.find((c) => c.id === li.dataset.catId) || {};
       const imagem = li.querySelector("[data-img-cat]").value;
-      return { ...atual, id: li.dataset.catId, nome: li.querySelector("[data-nome-cat]").value.trim() || li.dataset.catId, imagem: imagem || undefined };
+      const combina = [...li.querySelectorAll("[data-combina]:checked")].map((i) => i.value);
+      // mantém ids de categorias que ainda não existem (ex.: bermudas) que já estavam na lista
+      const existentes = new Set(S.categorias.map((c) => c.id));
+      combinaDe(li.dataset.catId).filter((id) => !existentes.has(id)).forEach((id) => combina.push(id));
+      return { ...atual, id: li.dataset.catId, nome: li.querySelector("[data-nome-cat]").value.trim() || li.dataset.catId, imagem: imagem || undefined, combina };
     });
   }
 
@@ -549,7 +558,7 @@
       let id = slug(nome);
       const ids = new Set(lerCategoriasDoForm().map((c) => c.id));
       while (ids.has(id)) id += "-2";
-      await Dados.salvarCategorias([...lerCategoriasDoForm(), { id, nome }]);
+      await Dados.salvarCategorias([...lerCategoriasDoForm(), { id, nome, combina: (typeof COMBINA_PADRAO !== "undefined" && COMBINA_PADRAO[id]) || [] }]);
       toast(`Categoria ${nome} criada`);
       return renderAba();
     }
