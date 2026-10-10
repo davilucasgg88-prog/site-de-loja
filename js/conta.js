@@ -17,6 +17,59 @@ const Conta = (() => {
     ].filter(([url]) => url);
   }
 
+
+  // Mascote da TMZ: panda de boné, óculos redondos e moletom com a logo
+  const mascote = `
+    <svg class="login__mascote" viewBox="0 0 400 400" role="img" aria-label="Panda da TMZ de boné, óculos e moletom">
+      <defs>
+        <clipPath id="mascote-recorte"><circle cx="200" cy="200" r="200"/></clipPath>
+        <radialGradient id="mascote-lente" cx="35%" cy="30%" r="80%">
+          <stop offset="0" stop-color="#5a5a5e"/><stop offset=".55" stop-color="#1c1c1f"/><stop offset="1" stop-color="#0b0b0c"/>
+        </radialGradient>
+        <linearGradient id="mascote-pelo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e4e4e0"/>
+        </linearGradient>
+      </defs>
+      <g clip-path="url(#mascote-recorte)">
+        <!-- moletom -->
+        <path d="M38 410 C46 318 112 286 200 286 C288 286 354 318 362 410 Z" fill="#111113"/>
+        <path d="M120 300 C150 340 250 340 280 300 C262 292 236 288 200 288 C164 288 138 292 120 300 Z" fill="#1d1d20"/>
+        <path d="M148 300 C162 330 238 330 252 300" fill="none" stroke="#2c2c30" stroke-width="5"/>
+        <path d="M176 322 L170 372 M224 322 L230 372" stroke="#e9e9e5" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="170" cy="375" r="4" fill="#e9e9e5"/><circle cx="230" cy="375" r="4" fill="#e9e9e5"/>
+        <image href="img/logo-tmz.png" x="236" y="344" width="74" height="21"/>
+        <!-- corrente -->
+        <path d="M150 296 C168 336 232 336 250 296" fill="none" stroke="#bdbdb8" stroke-width="4" stroke-dasharray="7 4"/>
+        <!-- orelhas -->
+        <circle cx="112" cy="112" r="38" fill="#111113"/><circle cx="112" cy="112" r="17" fill="#2e2e33"/>
+        <circle cx="288" cy="112" r="38" fill="#111113"/><circle cx="288" cy="112" r="17" fill="#2e2e33"/>
+        <!-- cabeça -->
+        <path d="M200 92 C276 92 318 140 318 196 C318 256 266 296 200 296 C134 296 82 256 82 196 C82 140 124 92 200 92 Z" fill="url(#mascote-pelo)" stroke="#111113" stroke-width="5"/>
+        <!-- manchas dos olhos -->
+        <ellipse cx="156" cy="190" rx="42" ry="31" transform="rotate(-22 156 190)" fill="#111113"/>
+        <ellipse cx="244" cy="190" rx="42" ry="31" transform="rotate(22 244 190)" fill="#111113"/>
+        <!-- óculos redondos -->
+        <path d="M184 186 Q200 176 216 186" fill="none" stroke="#111113" stroke-width="6"/>
+        <path d="M122 182 L92 172 M278 182 L308 172" stroke="#111113" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="154" cy="188" r="31" fill="url(#mascote-lente)" stroke="#111113" stroke-width="6"/>
+        <circle cx="246" cy="188" r="31" fill="url(#mascote-lente)" stroke="#111113" stroke-width="6"/>
+        <path d="M136 176 Q144 164 158 163" fill="none" stroke="#ffffff" stroke-opacity=".75" stroke-width="5" stroke-linecap="round"/>
+        <path d="M228 176 Q236 164 250 163" fill="none" stroke="#ffffff" stroke-opacity=".75" stroke-width="5" stroke-linecap="round"/>
+        <!-- sobrancelhas -->
+        <path d="M128 146 L176 156 M272 146 L224 156" stroke="#111113" stroke-width="7" stroke-linecap="round"/>
+        <!-- focinho -->
+        <ellipse cx="200" cy="244" rx="40" ry="30" fill="#ffffff" stroke="#111113" stroke-width="4"/>
+        <path d="M186 232 Q200 224 214 232 Q214 242 200 248 Q186 242 186 232 Z" fill="#111113"/>
+        <path d="M200 248 L200 256 M182 258 Q196 268 216 256" fill="none" stroke="#111113" stroke-width="4" stroke-linecap="round"/>
+        <!-- boné -->
+        <path d="M108 132 C112 66 288 66 292 132 C250 118 150 118 108 132 Z" fill="#111113"/>
+        <path d="M200 74 L200 124" stroke="#2c2c30" stroke-width="3"/>
+        <circle cx="200" cy="74" r="5" fill="#2c2c30"/>
+        <path d="M104 130 C150 112 250 112 296 130 C312 136 320 146 318 152 C268 134 132 134 82 152 C80 146 88 136 104 130 Z" fill="#000000"/>
+        <image href="img/logo-tmz.png" x="167" y="92" width="66" height="19"/>
+      </g>
+    </svg>`;
+
   const olho = `<button type="button" data-ver-senha aria-label="Mostrar senha" aria-pressed="false"><svg><use href="#i-olho-off"/></svg></button>`;
 
   function formEntrar(painel) {
@@ -105,8 +158,8 @@ const Conta = (() => {
           <div class="login__lado">
             ${S.conta ? logado(painel) : aba === "cadastrar" && !painel ? formCadastrar() : formEntrar(painel)}
           </div>
-          <div class="login__arte" aria-hidden="true">
-            <div class="login__circulo"><img src="img/logo-tmz.png" alt="" width="220" height="62"></div>
+          <div class="login__arte">
+            <div class="login__circulo">${mascote}</div>
             <p>A loja que veste o povo</p>
           </div>
         </div>
