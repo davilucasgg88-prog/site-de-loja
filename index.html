@@ -7,6 +7,7 @@
   <meta name="description" content="TMZ, a loja que veste o povo. Peças peruanas de primeira linha: Lacoste, Nike, Tommy Hilfiger e mais.">
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/telas.css">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -30,6 +31,20 @@
       <symbol id="i-estrela" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor" stroke="none"/></symbol>
       <symbol id="i-aspas" viewBox="0 0 24 24"><path d="M4 18v-5c0-4 2-7 6-8l1 2c-2 .8-3 2.3-3 4h3v7zm9 0v-5c0-4 2-7 6-8l1 2c-2 .8-3 2.3-3 4h3v7z" fill="currentColor" stroke="none"/></symbol>
       <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M20 12H5M11 6l-6 6 6 6"/></symbol>
+      <symbol id="i-lixo" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+      <symbol id="i-mais" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-menos" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-copiar" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+      <symbol id="i-loja" viewBox="0 0 24 24"><path d="M4 9.5 5.5 4h13L20 9.5M4 9.5h16M4 9.5c0 1.7 1.3 3 3 3s2.5-1.3 2.5-3c0 1.7 1.1 3 2.5 3s2.5-1.3 2.5-3c0 1.7 1 3 2.5 3s3-1.3 3-3M5.5 12.3V20h13v-7.7M10 20v-4.5h4V20"/></symbol>
+      <symbol id="i-editar" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></symbol>
+      <symbol id="i-painel" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="8" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.5"/></symbol>
+      <symbol id="i-sacola" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 12.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8z"/><path d="M9 10V6.5a3 3 0 0 1 6 0V10"/></symbol>
+      <symbol id="i-celulares" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1 1 0 0 1 0 1.4l-7.6 7.6a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.4"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
     </defs>
   </svg>
@@ -50,9 +65,11 @@
         <a href="#categorias">Categorias</a>
         <a href="#ofertas">Ofertas</a>
         <a href="#comentarios">Avaliações</a>
+        <a href="#reservas">Minhas reservas</a>
         <a href="#contato">Contato</a>
       </nav>
       <div class="topo__acoes">
+        <a class="botao-painel" id="botao-painel" href="#painel" hidden><svg><use href="#i-painel"/></svg>Painel</a>
         <button class="icone" id="abrir-busca" aria-label="Buscar"><svg><use href="#i-search"/></svg></button>
         <button class="icone carrinho-btn" id="abrir-carrinho" aria-label="Carrinho">
           <svg><use href="#i-cart"/></svg><span class="contador" id="contador">0</span>
@@ -94,10 +111,10 @@
           <div id="lateral-cats"></div>
         </aside>
         <div class="hero__texto">
-          <h1>TMZ, a loja<br>que veste<br>o <span>povo</span></h1>
-          <p class="hero__sub">Peças peruanas de primeira linha.</p>
-          <p class="hero__desc">Lacoste, Nike, Tommy Hilfiger e muito mais,<br>com acabamento de qualidade e entrega<br>para todo o Brasil.</p>
-          <button type="button" class="btn" id="compre-agora">Compre agora <svg><use href="#i-arrow"/></svg></button>
+          <h1 id="hero-titulo">TMZ, a loja<br>que veste<br>o <span>povo</span></h1>
+          <p class="hero__sub" id="hero-sub">Peças peruanas de primeira linha.</p>
+          <p class="hero__desc" id="hero-texto">Lacoste, Nike, Tommy Hilfiger e muito mais, com acabamento de qualidade e entrega para todo o Brasil.</p>
+          <button type="button" class="btn" id="compre-agora"><span id="hero-botao">Compre agora</span> <svg><use href="#i-arrow"/></svg></button>
         </div>
       </div>
     </section>
@@ -129,11 +146,11 @@
       <div class="banner">
         <img class="banner__img" src="img/banner.jpg" alt="">
         <div class="banner__texto">
-          <p class="banner__tag">Oferta exclusiva</p>
-          <h2>Até 40% off</h2>
-          <p class="banner__sub">Em peças selecionadas</p>
-          <p class="banner__desc">Só por tempo limitado. Não fique de fora!</p>
-          <a href="#ofertas" class="btn" data-todos>Aproveitar oferta <svg><use href="#i-arrow"/></svg></a>
+          <p class="banner__tag" id="banner-tag">Oferta exclusiva</p>
+          <h2 id="banner-titulo">Até 40% off</h2>
+          <p class="banner__sub" id="banner-sub">Em peças selecionadas</p>
+          <p class="banner__desc" id="banner-texto">Só por tempo limitado. Não fique de fora!</p>
+          <a href="#ofertas" class="btn" data-todos><span id="banner-botao">Aproveitar oferta</span> <svg><use href="#i-arrow"/></svg></a>
         </div>
       </div>
     </section>
@@ -168,26 +185,142 @@
   <footer class="rodape" id="contato">
     <div class="container rodape__linha" id="sobre">
       <span>© <span id="ano"></span> <span id="nome-copy">TMZ STORE</span>. Todos os direitos reservados.</span>
-      <a id="link-whats" href="#" target="_blank" rel="noopener">Fale com a gente no WhatsApp</a>
+      <span class="rodape__links"><a id="link-whats" href="#" target="_blank" rel="noopener">Fale com a gente no WhatsApp</a><a href="#painel">Área do lojista</a></span>
     </div>
   </footer>
 
+  <!-- ============ TELAS CHEIAS ============ -->
+
   <!-- Carrinho -->
-  <div class="fundo" id="fundo" hidden></div>
-  <aside class="carrinho" id="carrinho" aria-label="Carrinho" aria-hidden="true">
-    <div class="carrinho__topo">
-      <h2>Seu carrinho</h2>
-      <button class="fechar" id="fechar-carrinho" aria-label="Fechar"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
+  <section class="tela" id="tela-carrinho" aria-labelledby="carrinho-titulo" hidden>
+    <header class="tela__barra">
+      <div class="container tela__barra-linha">
+        <a href="#" class="tela__voltar"><svg><use href="#i-voltar"/></svg><span>Continuar comprando</span></a>
+        <img src="img/logo-tmz.png" alt="TMZ" class="tela__logo" width="84" height="24">
+        <span class="tela__seguro"><svg><use href="#i-check"/></svg>Compra pelo WhatsApp</span>
+      </div>
+    </header>
+    <div class="container tela__corpo">
+      <div class="tela__cabeca">
+        <p class="rotulo">Sua sacola</p>
+        <h1 class="tela__titulo" id="carrinho-titulo">Carrinho <span id="carrinho-qtd"></span></h1>
+      </div>
+      <div class="sacola">
+        <div class="sacola__lista">
+          <ul class="linhas" id="itens"></ul>
+          <div class="sacola__vazia" id="carrinho-vazio" hidden>
+            <svg><use href="#i-sacola"/></svg>
+            <h2>Sua sacola está vazia</h2>
+            <p>Veja as ofertas do dia e escolha suas peças.</p>
+            <a href="#" class="btn" data-ir-ofertas>Ver ofertas <svg><use href="#i-arrow"/></svg></a>
+          </div>
+        </div>
+        <aside class="resumo" id="resumo">
+          <h2 class="resumo__titulo">Resumo</h2>
+          <div class="frete-barra" id="frete-barra"><p id="frete-msg"></p><i><b id="frete-progresso"></b></i></div>
+          <dl class="resumo__linhas">
+            <div><dt>Subtotal</dt><dd id="subtotal"></dd></div>
+            <div><dt>Frete</dt><dd id="frete"></dd></div>
+            <div class="resumo__total"><dt>Total</dt><dd id="total"></dd></div>
+          </dl>
+          <a class="btn btn--bloco" href="#compra" id="ir-compra">Finalizar compra <svg><use href="#i-arrow"/></svg></a>
+          <a class="btn btn--bloco btn--contorno" href="#compra" data-modo="reserva30">Reservar e retirar na loja</a>
+          <p class="resumo__nota">Reserve pagando só uma parte agora. As regras aparecem na próxima tela.</p>
+        </aside>
+      </div>
     </div>
-    <ul class="carrinho__itens" id="itens"></ul>
-    <p class="vazio" id="carrinho-vazio">Seu carrinho está vazio.</p>
-    <div class="carrinho__resumo" id="resumo">
-      <div><span>Subtotal</span><span id="subtotal"></span></div>
-      <div><span>Frete</span><span id="frete"></span></div>
-      <div class="total"><span>Total</span><span id="total"></span></div>
-      <button class="btn btn--bloco" id="finalizar">Finalizar pedido</button>
+  </section>
+
+  <!-- Compra / reserva -->
+  <section class="tela" id="tela-compra" aria-labelledby="compra-titulo" hidden>
+    <header class="tela__barra">
+      <div class="container tela__barra-linha">
+        <a href="#carrinho" class="tela__voltar"><svg><use href="#i-voltar"/></svg><span>Voltar ao carrinho</span></a>
+        <img src="img/logo-tmz.png" alt="TMZ" class="tela__logo" width="84" height="24">
+        <span class="tela__seguro"><svg><use href="#i-check"/></svg>Dados usados só no seu pedido</span>
+      </div>
+    </header>
+    <div class="container tela__corpo">
+      <div id="compra-formulario">
+        <div class="tela__cabeca">
+          <p class="rotulo">Finalizar</p>
+          <h1 class="tela__titulo" id="compra-titulo">Como você quer levar?</h1>
+        </div>
+        <div class="checkout">
+          <form class="checkout__form" id="form-compra" novalidate>
+            <fieldset class="etapa">
+              <legend><span class="etapa__n">1</span>Forma de compra</legend>
+              <div class="modos" id="modos"></div>
+            </fieldset>
+
+            <fieldset class="etapa">
+              <legend><span class="etapa__n">2</span>Seus dados</legend>
+              <div class="campos">
+                <label class="campo campo--largo"><span>Nome completo</span><input name="nome" id="c-nome" autocomplete="name" required></label>
+                <label class="campo"><span>WhatsApp</span><input name="telefone" id="c-telefone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" required></label>
+                <label class="campo"><span>E-mail <em>opcional</em></span><input name="email" id="c-email" type="email" autocomplete="email"></label>
+              </div>
+              <div class="receber" id="receber">
+                <label class="chip-opcao"><input type="radio" name="receber" value="entrega" checked><span>Receber em casa</span></label>
+                <label class="chip-opcao"><input type="radio" name="receber" value="retirada"><span>Retirar na loja</span></label>
+              </div>
+              <div class="campos" id="campos-endereco">
+                <label class="campo"><span>CEP</span><input name="cep" id="c-cep" inputmode="numeric" maxlength="9" autocomplete="postal-code" placeholder="00000-000"></label>
+                <label class="campo campo--largo"><span>Endereço completo</span><input name="endereco" id="c-endereco" autocomplete="street-address" placeholder="Rua, número, bairro, cidade"></label>
+              </div>
+            </fieldset>
+
+            <fieldset class="etapa">
+              <legend><span class="etapa__n">3</span>Pagamento</legend>
+              <div class="receber" id="formas-pagamento">
+                <label class="chip-opcao"><input type="radio" name="pagamento" value="Pix" checked><span>Pix</span></label>
+                <label class="chip-opcao"><input type="radio" name="pagamento" value="Cartão de crédito"><span>Cartão de crédito</span></label>
+                <label class="chip-opcao"><input type="radio" name="pagamento" value="Boleto"><span>Boleto</span></label>
+              </div>
+              <p class="etapa__nota" id="nota-pagamento"></p>
+              <div class="regras" id="regras-reserva" hidden>
+                <h3>Regras da reserva</h3>
+                <ul id="regras-lista"></ul>
+                <label class="aceite"><input type="checkbox" id="c-aceite" name="aceite"><span>Li e aceito as regras da reserva.</span></label>
+              </div>
+            </fieldset>
+
+            <p class="erro-form" id="erro-compra" role="alert" hidden></p>
+            <button class="btn btn--bloco btn--grande" id="confirmar-compra" type="submit">Confirmar</button>
+          </form>
+
+          <aside class="resumo resumo--compra">
+            <h2 class="resumo__titulo">Seu pedido</h2>
+            <ul class="mini" id="compra-itens"></ul>
+            <dl class="resumo__linhas" id="compra-totais"></dl>
+          </aside>
+        </div>
+      </div>
+
+      <div class="concluido" id="compra-ok" hidden></div>
     </div>
-  </aside>
+  </section>
+
+  <!-- Minhas reservas -->
+  <section class="tela" id="tela-reservas" aria-labelledby="reservas-titulo" hidden>
+    <header class="tela__barra">
+      <div class="container tela__barra-linha">
+        <a href="#" class="tela__voltar"><svg><use href="#i-voltar"/></svg><span>Voltar à loja</span></a>
+        <img src="img/logo-tmz.png" alt="TMZ" class="tela__logo" width="84" height="24">
+        <span></span>
+      </div>
+    </header>
+    <div class="container tela__corpo">
+      <div class="tela__cabeca">
+        <p class="rotulo">Acompanhe</p>
+        <h1 class="tela__titulo" id="reservas-titulo">Minhas reservas</h1>
+      </div>
+      <div class="pedidos" id="lista-reservas"></div>
+    </div>
+  </section>
+
+  <!-- Painel do lojista -->
+  <section class="tela tela--painel" id="painel" aria-label="Painel do lojista" hidden></section>
 
   <!-- Detalhe do produto -->
   <dialog class="modal" id="modal-produto">
@@ -202,27 +335,6 @@
     <p class="procura__sub">Escolha a categoria. O número mostra quantas peças temos agora.</p>
     <div class="procura__grade" id="procura-grade"></div>
     <button type="button" class="procura__todos" data-procura="todos">Ver todos os produtos <svg><use href="#i-arrow"/></svg></button>
-  </dialog>
-
-  <!-- Checkout -->
-  <dialog class="modal" id="modal-checkout">
-    <button class="fechar" data-fechar aria-label="Fechar"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
-    <h2>Finalizar pedido</h2>
-    <form id="form-checkout" class="form">
-      <label>Nome completo<input name="nome" required></label>
-      <label>Telefone<input name="telefone" type="tel" required></label>
-      <label>CEP<input name="cep" inputmode="numeric" maxlength="9" required></label>
-      <label>Endereço<input name="endereco" required></label>
-      <label>Pagamento
-        <select name="pagamento">
-          <option>Pix</option>
-          <option>Cartão de crédito</option>
-          <option>Boleto</option>
-        </select>
-      </label>
-      <p class="form__total">Total: <strong id="checkout-total"></strong></p>
-      <button class="btn btn--bloco">Enviar pedido pelo WhatsApp</button>
-    </form>
   </dialog>
 
   <!-- Aviso do Instagram -->
@@ -249,6 +361,8 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/produtos.js"></script>
+  <script src="js/dados.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/painel.js"></script>
 </body>
 </html>

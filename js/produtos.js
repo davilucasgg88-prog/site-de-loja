@@ -1,6 +1,8 @@
 // Catálogo da loja. Edite esta lista para cadastrar seus produtos.
 // "oferta: true" coloca o produto em "Ofertas do dia".
 // "estoque" é a quantidade disponível; a tela "O que você procura?" soma o estoque de cada categoria.
+// Valores iniciais. Depois que o site estiver no ar, o dono muda tudo isso pelo
+// Painel do lojista (botão "Painel" no topo ou link "Área do lojista" no rodapé).
 const LOJA = {
   nome: "TMZ STORE",
   whatsapp: "5500000000000", // DDI + DDD + número, só dígitos
@@ -9,6 +11,33 @@ const LOJA = {
   idioma: "pt-BR",
   freteGratisAcima: 299,
   frete: 19.9,
+  // Pagamento do sinal das reservas
+  pixChave: "",            // ex.: CNPJ, e-mail, telefone ou chave aleatória
+  pixNome: "TMZ STORE",
+  // Regras de reserva
+  reservaPercentual: 30,   // reserva pagando 30% e retirando na loja
+  reservaFixa: 50,         // reserva pagando R$ 50 e o resto depois
+  estornoJanelaMin: 60,    // cancelando dentro desse tempo, devolve 100% do sinal
+  estornoDepoisPerc: 50,   // depois disso, devolve essa % do sinal
+  // PIN do painel quando o site roda sem servidor (só para testes, não é segurança de verdade)
+  pinPainel: "1234",
+};
+
+// Textos do destaque, do banner e da faixa do topo
+const DESTAQUE = {
+  linha1: "TMZ, a loja",
+  linha2: "que veste",
+  linha3: "o povo",
+  vazada: "povo",
+  sub: "Peças peruanas de primeira linha.",
+  texto: "Lacoste, Nike, Tommy Hilfiger e muito mais, com acabamento de qualidade e entrega para todo o Brasil.",
+  botao: "Compre agora",
+  bannerTag: "Oferta exclusiva",
+  bannerTitulo: "Até 40% off",
+  bannerSub: "Em peças selecionadas",
+  bannerTexto: "Só por tempo limitado. Não fique de fora!",
+  bannerBotao: "Aproveitar oferta",
+  avisos: ["Frete grátis acima de R$ 299", "Peças peruanas de primeira linha", "Enviamos para todo o Brasil", "Siga @tmz_storee"],
 };
 
 const CATEGORIAS = [

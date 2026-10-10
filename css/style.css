@@ -219,31 +219,6 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .rodape__linha { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .rodape a:hover { color: var(--texto); }
 
-/* Carrinho */
-.fundo { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); z-index: 20; }
-.carrinho {
-  position: fixed; top: 0; right: 0; height: 100%; width: min(400px, 100%); z-index: 21;
-  background: #0e0e0e; border-left: 1px solid var(--borda); display: flex; flex-direction: column;
-  transform: translateX(100%); transition: transform .3s ease;
-}
-.carrinho.aberto { transform: none; }
-.carrinho__topo { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--borda); }
-.carrinho__topo h2, .modal h2 { font-family: var(--fonte-titulo); font-weight: 600; text-transform: uppercase; font-size: 18px; }
-.carrinho__itens { list-style: none; padding: 8px 20px; overflow-y: auto; flex: 1; }
-.carrinho__itens:empty { display: none; }
-.item { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--borda); }
-.item__img { width: 56px; height: 56px; border-radius: 10px; background: var(--superficie-2); overflow: hidden; }
-.item__img img { width: 100%; height: 100%; object-fit: cover; }
-.item__nome { font-size: 13.5px; font-weight: 500; }
-.item__preco { font-size: 12.5px; color: var(--texto-suave); }
-.qtd { display: flex; align-items: center; border: 1px solid var(--borda); border-radius: 999px; }
-.qtd button { background: none; border: 0; width: 28px; height: 28px; cursor: pointer; }
-.qtd span { min-width: 20px; text-align: center; font-size: 13px; }
-.remover { background: none; border: 0; color: var(--texto-suave); text-decoration: underline; font-size: 12px; cursor: pointer; }
-.carrinho__resumo { padding: 20px; border-top: 1px solid var(--borda); display: grid; gap: 8px; font-size: 14px; }
-.carrinho__resumo > div { display: flex; justify-content: space-between; }
-.carrinho__resumo .total { font-weight: 600; font-size: 16px; margin-bottom: 8px; }
-
 /* Modais */
 .modal {
   margin: auto; border: 1px solid var(--borda); border-radius: var(--raio); padding: 28px;
