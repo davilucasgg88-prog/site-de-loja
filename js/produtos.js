@@ -14,6 +14,11 @@ const LOJA = {
   // Pagamento do sinal das reservas
   pixChave: "",            // ex.: CNPJ, e-mail, telefone ou chave aleatória
   pixNome: "TMZ STORE",
+  // Loja física (aparece no rodapé quando preenchido)
+  endereco: "",
+  horario: "",
+  // Produto da seção "Produto em destaque" (id); vazio = primeira oferta com foto
+  produtoDestaque: "4",
   // Regras de reserva
   reservaPercentual: 30,   // reserva pagando 30% e retirando na loja
   reservaFixa: 50,         // reserva pagando R$ 50 e o resto depois
@@ -29,7 +34,7 @@ const DESTAQUE = {
   linha2: "que veste",
   linha3: "o povo",
   vazada: "povo",
-  sub: "Peças peruanas de primeira linha.",
+  sub: "Peças peruanas de primeira linha",
   texto: "Lacoste, Nike, Tommy Hilfiger e muito mais, com acabamento de qualidade e entrega para todo o Brasil.",
   botao: "Compre agora",
   bannerTag: "Oferta exclusiva",
@@ -66,8 +71,8 @@ const COMBINA_PADRAO = {
 const PRODUTOS = [
   { id: 1, nome: "Fone Bluetooth Pro", categoria: "audio", estoque: 15, preco: 149.9, precoAntigo: 199.9, imagem: "img/deal-buds.jpg", oferta: true, descricao: "Fone sem fio com cancelamento de ruído e até 24 horas de bateria com o estojo." },
   { id: 2, nome: "Relógio Smart X", categoria: "wearables", estoque: 8, preco: 249.9, precoAntigo: 349.9, imagem: "img/deal-watch.jpg", oferta: true, descricao: "Tela sempre ligada, monitor de batimentos e sono, resistente à água." },
-  { id: 3, nome: "Óculos Juliet", categoria: "oculos", estoque: 12, preco: 189.9, precoAntigo: 249.9, imagem: "img/oculos-juliet.jpg", oferta: true, descricao: "Óculos peruano de primeira linha, armação metálica cromada e lentes escuras espelhadas." },
-  { id: 4, nome: "Camiseta Lacoste Faixa", categoria: "camisetas", estoque: 24, preco: 119.9, precoAntigo: 159.9, imagem: "img/camiseta-lacoste.jpg", oferta: true, descricao: "Camiseta peruana de primeira linha, malha de algodão com faixa preta e estampa Lacoste." },
+  { id: 3, nome: "Óculos Juliet", categoria: "oculos", estoque: 12, preco: 189.9, precoAntigo: 249.9, imagem: "img/oculos-juliet.jpg", oferta: true, descricao: "Óculos peruano de primeira linha, armação metálica cromada e lentes escuras espelhadas.", detalhes: ["Armação metálica cromada", "Lentes escuras espelhadas", "Acompanha estojo"] },
+  { id: 4, nome: "Camiseta Lacoste Faixa", categoria: "camisetas", estoque: 24, preco: 119.9, precoAntigo: 159.9, imagem: "img/camiseta-lacoste.jpg", oferta: true, descricao: "Camiseta peruana de primeira linha, malha de algodão com faixa preta e estampa Lacoste.", detalhes: ["Malha de algodão encorpada", "Faixa preta com estampa frontal", "Etiqueta e acabamento de primeira linha", "Tamanhos do P ao GG"] },
   { id: 6, nome: "Headphone Max", categoria: "audio", estoque: 6, preco: 299.9, precoAntigo: 399.9, imagem: "img/cat-audio.jpg", descricao: "Headphone com som imersivo e até 40 horas de bateria." },
   { id: 7, nome: "Controle sem fio", categoria: "gaming", estoque: 10, preco: 179.9, imagem: "img/cat-gaming.jpg", descricao: "Controle sem fio com baixa latência e vibração." },
   { id: 8, nome: "Câmera Z", categoria: "cameras", estoque: 3, preco: 2999.9, imagem: "img/cat-cameras.jpg", descricao: "Câmera com sensor de 24 MP e vídeo em 4K." },

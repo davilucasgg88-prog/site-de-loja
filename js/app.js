@@ -11,7 +11,7 @@
   const digitos = (t) => String(t || "").replace(/\D/g, "");
   const CHAVE_CARRINHO = "carrinho-loja";
 
-  const estado = { filtro: "ofertas", busca: "", carrinho: lerCarrinho(), modo: "compra", ultimoPedido: null };
+  const estado = { filtro: "todos", busca: "", carrinho: lerCarrinho(), modo: "compra", ultimoPedido: null };
 
   function lerCarrinho() {
     try { return JSON.parse(localStorage.getItem(CHAVE_CARRINHO)) || {}; } catch { return {}; }
@@ -52,6 +52,11 @@
     $("#banner-botao").textContent = c.bannerBotao || "Ver ofertas";
     $("#link-whats").href = linkWhats();
     $("#link-avaliar").href = c.instagram || "#";
+    $("#rodape-insta").href = c.instagram || "#";
+    $("#rodape-endereco").hidden = !c.endereco;
+    $("#rodape-endereco").textContent = c.endereco || "";
+    $("#rodape-horario").hidden = !c.horario;
+    $("#rodape-horario").textContent = c.horario || "";
     const avisos = (c.avisos || []).filter(Boolean);
     $(".faixa").hidden = !avisos.length;
     const linha = avisos.map((a) => `<span>${escapar(a)}</span>`).join("");
@@ -61,8 +66,10 @@
 
   /* ---------- categorias ---------- */
   function renderCategorias() {
-    $("#lateral-cats").innerHTML = S.categorias.map((c) =>
-      `<a href="#ofertas" data-cat="${escapar(c.id)}"><svg><use href="#i-${iconeCat(c.id)}"/></svg>${escapar(c.nome)}</a>`).join("");
+    const comProdutos = S.categorias.filter((c) => S.produtos.some((p) => p.categoria === c.id));
+    const temOferta = S.produtos.some((p) => p.oferta);
+    $("#filtros-catalogo").innerHTML = [["todos", "Todos"], ...(temOferta ? [["ofertas", "Ofertas"]] : []), ...comProdutos.map((c) => [c.id, c.nome])]
+      .map(([id, nome]) => `<button type="button" class="filtro-chip" role="tab" data-filtro="${escapar(id)}">${escapar(nome)}</button>`).join("");
     $("#circulos").innerHTML = S.categorias.filter((c) => imagemCat(c)).map((c) => {
       const qtd = S.produtos.filter((p) => p.categoria === c.id).length;
       return `
@@ -82,26 +89,105 @@
     const cat = e.target.closest("[data-cat]");
     const todos = e.target.closest("[data-todos], #ver-todos");
     if (cat) {
-      if (!cat.dataset.cat) { e.preventDefault(); filtrar("ofertas"); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
       filtrar(cat.dataset.cat);
-      if (cat.tagName === "BUTTON") $("#ofertas").scrollIntoView({ behavior: "smooth" });
+      $("#catalogo").scrollIntoView({ behavior: "smooth" });
     } else if (todos) {
       filtrar("todos");
+    }
+    const chip = e.target.closest("[data-filtro]");
+    if (chip && chip.closest("#filtros-catalogo")) filtrar(chip.dataset.filtro);
+    if (e.target.closest("[data-abrir-procura]")) abrirProcura();
+    // cartões fora da grade (destaques, miniaturas do topo, produto em destaque)
+    const area = e.target.closest("#destaques-grade, #hero-miniaturas, #produto-destaque");
+    if (area) {
+      const alvo = e.target.closest("[data-ver], [data-add], [data-comprar], [data-reservar]");
+      if (!alvo) return;
+      if (alvo.dataset.add) adicionar(alvo.dataset.add);
+      else if (alvo.dataset.comprar) irParaCompra(alvo.dataset.comprar, "compra");
+      else if (alvo.dataset.reservar) irParaCompra(alvo.dataset.reservar, "reserva30");
+      else abrirProduto(alvo.dataset.ver);
     }
   });
 
   function marcarFiltro() {
     const f = estado.filtro;
-    $$(".lateral a").forEach((a) => a.classList.toggle("ativo", (a.dataset.cat || "ofertas") === f));
+    $$("#filtros-catalogo [data-filtro]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.filtro === f)));
     $$(".circulo").forEach((b) => b.classList.toggle("ativo", b.dataset.cat === f));
   }
 
   function filtrar(f) {
     estado.filtro = f;
     marcarFiltro();
-    $("#titulo-ofertas").textContent = f === "ofertas" ? "Ofertas do dia" : f === "todos" ? "Todos os produtos" : categoria(f).nome;
-    $("#ver-todos").hidden = f === "todos";
+    $("#titulo-ofertas").textContent = f === "ofertas" ? "Ofertas" : f === "todos" ? "Catálogo" : categoria(f).nome;
+    $("#ver-todos").hidden = true;
     renderGrade();
+  }
+
+  /* ---------- vitrine: miniaturas do topo, destaques e produto em destaque ---------- */
+  const comFoto = (p) => p.imagem && estoque(p) > 0;
+  function ofertasPrimeiro() {
+    return [...S.produtos].sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0));
+  }
+
+  function renderMiniaturas() {
+    // até 3 peças de categorias diferentes, ofertas primeiro
+    const vistas = new Set();
+    const lista = ofertasPrimeiro().filter((p) => comFoto(p) && !vistas.has(p.categoria) && vistas.add(p.categoria)).slice(0, 3);
+    $("#hero-miniaturas").innerHTML = lista.map((p) => `
+      <button type="button" class="miniatura ilha-escura" data-ver="${escapar(p.id)}" aria-label="Ver ${escapar(p.nome)}">
+        <img src="${escapar(p.imagem)}" alt="">
+        <span><b>${escapar(p.nome)}</b>${moeda(p.preco)}</span>
+      </button>`).join("");
+  }
+
+  function renderDestaques() {
+    const lista = ofertasPrimeiro().filter((p) => estoque(p) > 0).slice(0, 3);
+    $("#destaques").hidden = !lista.length;
+    $("#destaques-grade").innerHTML = lista.map((p) => `
+      <article class="destaque">
+        <button type="button" class="destaque__foto ilha-escura" data-ver="${escapar(p.id)}" aria-label="Ver ${escapar(p.nome)}">
+          ${img(p)}
+          ${desconto(p) ? `<span class="selo">-${desconto(p)}%</span>` : ""}
+        </button>
+        <div class="destaque__info">
+          <span class="destaque__cat">${escapar(categoria(p.categoria).nome)}</span>
+          <h3>${escapar(p.nome)}</h3>
+          <p>${escapar(p.descricao || "")}</p>
+          <div class="destaque__rodape">
+            ${precos(p)}
+            <div class="destaque__botoes">
+              <button type="button" class="icone-acao icone-acao--borda" data-add="${escapar(p.id)}" aria-label="Adicionar ${escapar(p.nome)} ao carrinho"><svg><use href="#i-cart"/></svg></button>
+              <button type="button" class="btn btn--pequeno" data-comprar="${escapar(p.id)}">Comprar agora</button>
+            </div>
+          </div>
+        </div>
+      </article>`).join("");
+  }
+
+  function renderProdutoDestaque() {
+    const alvo = $("#produto-destaque");
+    const p = porId(S.config.produtoDestaque) || ofertasPrimeiro().find((x) => estoque(x) > 0 && x.imagem);
+    alvo.hidden = !p;
+    if (!p) return;
+    const detalhes = Array.isArray(p.detalhes) ? p.detalhes.filter(Boolean) : [];
+    const q = estoque(p);
+    alvo.innerHTML = `
+      <div class="vitrine">
+        <button type="button" class="vitrine__foto ilha-escura" data-ver="${escapar(p.id)}" aria-label="Ver ${escapar(p.nome)}">${img(p)}</button>
+        <div class="vitrine__info">
+          <p class="rotulo">Produto em destaque · ${escapar(categoria(p.categoria).nome)}</p>
+          <h2 class="titulo-grande">${escapar(p.nome)}</h2>
+          <p class="vitrine__desc">${escapar(p.descricao || "")}</p>
+          ${detalhes.length ? `<ul class="vitrine__detalhes">${detalhes.map((d) => `<li><svg><use href="#i-check"/></svg>${escapar(d)}</li>`).join("")}</ul>` : ""}
+          <div class="vitrine__preco">${precos(p)}<span>${q === 0 ? "Esgotado" : q <= 5 ? `Últimas ${q} peças` : `${q} em estoque`}</span></div>
+          ${q === 0 ? "" : `
+          <div class="vitrine__acoes">
+            <button type="button" class="btn btn--grande" data-comprar="${escapar(p.id)}">Comprar agora <svg><use href="#i-arrow"/></svg></button>
+            <button type="button" class="btn btn--grande btn--contorno" data-reservar="${escapar(p.id)}">Reservar e retirar</button>
+            <button type="button" class="icone-acao icone-acao--borda icone-acao--grande" data-add="${escapar(p.id)}" aria-label="Adicionar ao carrinho"><svg><use href="#i-cart"/></svg></button>
+          </div>`}
+        </div>
+      </div>`;
   }
 
   /* ---------- produtos ---------- */
@@ -157,9 +243,9 @@
     clearTimeout(atraso);
     atraso = setTimeout(() => {
       estado.busca = e.target.value;
-      $("#titulo-ofertas").textContent = estado.busca.trim() ? `Resultados para "${estado.busca.trim()}"` : "Ofertas do dia";
+      $("#titulo-ofertas").textContent = estado.busca.trim() ? `Resultados para "${estado.busca.trim()}"` : "Catálogo";
       renderGrade();
-      if (estado.busca.trim()) $("#ofertas").scrollIntoView({ behavior: "smooth" });
+      if (estado.busca.trim()) $("#catalogo").scrollIntoView({ behavior: "smooth" });
     }, 250);
   });
   $("#abrir-menu").addEventListener("click", () => $("#menu").classList.toggle("aberto"));
@@ -362,7 +448,7 @@
     if (modo) estado.modo = modo.dataset.modo;
     if (e.target.closest("#ir-compra")) estado.modo = "compra";
     const ofertas = e.target.closest("[data-ir-ofertas]");
-    if (ofertas) { e.preventDefault(); history.pushState(null, "", location.pathname + location.search); rota(); filtrar("ofertas"); $("#ofertas").scrollIntoView(); }
+    if (ofertas) { e.preventDefault(); history.pushState(null, "", location.pathname + location.search); rota(); filtrar("todos"); $("#catalogo").scrollIntoView(); }
   });
 
   /* ---------- compra e reserva ---------- */
@@ -729,7 +815,7 @@
   $("#logo").addEventListener("click", (e) => {
     e.preventDefault();
     if (telaAtual) { history.pushState(null, "", location.pathname + location.search); rota(); }
-    filtrar("ofertas");
+    filtrar("todos");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
@@ -769,7 +855,7 @@
     if (!opcao || opcao.disabled) return;
     modalProcura.close();
     filtrar(opcao.dataset.procura);
-    $("#ofertas").scrollIntoView({ behavior: "smooth" });
+    $("#catalogo").scrollIntoView({ behavior: "smooth" });
   });
 
   /* ---------- avaliações ---------- */
@@ -846,7 +932,10 @@
   Dados.ouvir(() => {
     renderTextos();
     renderCategorias();
-    renderGrade();
+    filtrar(estado.filtro in { todos: 1, ofertas: 1 } || S.categorias.some((c) => c.id === estado.filtro) ? estado.filtro : "todos");
+    renderMiniaturas();
+    renderDestaques();
+    renderProdutoDestaque();
     // tira do carrinho o que sumiu do catálogo
     Object.keys(estado.carrinho).forEach((id) => { if (!porId(id)) delete estado.carrinho[id]; });
     renderCarrinho();

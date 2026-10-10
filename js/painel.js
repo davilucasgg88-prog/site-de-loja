@@ -324,6 +324,7 @@
           </div>
           <label class="campo"><span>Estoque (unidades)</span><input name="estoque" type="number" step="1" min="0" value="${escapar(estoque(p))}"></label>
           <label class="campo"><span>Descrição</span><textarea name="descricao" rows="4">${escapar(p.descricao)}</textarea></label>
+          <label class="campo"><span>Detalhes <em>um por linha, opcional</em></span><textarea name="detalhes" rows="3" placeholder="Malha 100% algodão&#10;Tamanhos do P ao GG">${escapar((p.detalhes || []).join("\n"))}</textarea></label>
           <label class="aceite"><input type="checkbox" name="oferta" ${p.oferta ? "checked" : ""}><span>Mostrar em <strong>Ofertas do dia</strong></span></label>
           <p class="erro-form" id="erro-produto" role="alert" hidden></p>
         </div>
@@ -380,6 +381,7 @@
       precoAntigo: f.precoAntigo ? centavos(f.precoAntigo) : null,
       estoque: Math.max(0, parseInt(f.estoque, 10) || 0),
       descricao: f.descricao.trim(), imagem: f.imagem, oferta: form.oferta.checked,
+      detalhes: (f.detalhes || "").split("\n").map((l) => l.trim()).filter(Boolean),
     };
     const botao = form.querySelector("[type=submit]");
     botao.disabled = true;
@@ -461,7 +463,17 @@
           <label class="campo"><span>Texto</span><textarea name="texto" rows="3">${escapar(c.texto || "")}</textarea></label>
         </section>
         <section class="bloco">
-          <h2>Banner de oferta</h2>
+          <h2>Produto em destaque</h2>
+          <label class="campo"><span>Produto mostrado na seção "Produto em destaque"</span>
+            <select name="produtoDestaque">
+              <option value="">Automático (primeira oferta com foto)</option>
+              ${S.produtos.map((p) => `<option value="${escapar(p.id)}" ${String(c.produtoDestaque) === p.id ? "selected" : ""}>${escapar(p.nome)}</option>`).join("")}
+            </select>
+          </label>
+          <p class="nota">Os detalhes da lista aparecem do cadastro do produto (campo "Detalhes").</p>
+        </section>
+        <section class="bloco">
+          <h2>Chamada final</h2>
           <div class="campos-2">${campo("bannerTag", "Etiqueta")}${campo("bannerTitulo", "Título")}</div>
           <div class="campos-2">${campo("bannerSub", "Subtítulo")}${campo("bannerBotao", "Texto do botão")}</div>
           ${campo("bannerTexto", "Texto")}
@@ -497,6 +509,11 @@
         <section class="bloco">
           <h2>Contato</h2>
           <div class="campos-2">${campo("whatsapp", "WhatsApp da loja (com DDI e DDD)", "tel", 'placeholder="5511999999999"')}${campo("instagram", "Link do Instagram", "url")}</div>
+        </section>
+        <section class="bloco">
+          <h2>Loja física</h2>
+          <div class="campos-2">${campo("endereco", "Endereço", "text", 'placeholder="Rua, número, bairro, cidade"')}${campo("horario", "Horário de funcionamento", "text", 'placeholder="Seg–Sáb 9h–19h"')}</div>
+          <p class="nota">Aparecem no rodapé e ajudam quem vai retirar reserva na loja.</p>
         </section>
         <section class="bloco">
           <h2>Pix para os sinais</h2>

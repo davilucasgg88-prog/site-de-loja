@@ -4,8 +4,10 @@ TMZ, a loja que veste o povo. Loja online em HTML, CSS e JavaScript puro, sem de
 
 ## O que tem
 
-**Loja**
-- Destaque, faixa de avisos, categorias em círculo, "Ofertas do dia", banner e avaliações
+**Loja**, nesta ordem: topo com "Comprar agora", destaque principal com miniaturas, destaques da semana,
+categorias em círculo, catálogo com filtros por categoria, produto em destaque (escolhido no painel),
+avaliações, chamada final e rodapé com atendimento e redes.
+- Faixa de avisos no topo e tema claro/escuro pela lua
 - "Compre agora" abre a tela "O que você procura?" com o estoque de cada categoria
 - Produto esgotado não pode ir para o carrinho; o carrinho respeita o estoque
 - Tela do produto com "Comprar agora", "Adicionar ao carrinho" e "Reservar e retirar na loja"
@@ -70,7 +72,7 @@ sumir o aviso "Comentários de exemplo".
 O site abre no tema claro; a lua no topo liga o modo escuro e a escolha fica salva no navegador.
 As cores dos dois temas ficam no topo de `css/style.css` (`:root` é o claro, `html[data-tema="escuro"]` o escuro);
 banner, fotos e cards de categoria ficam escuros nos dois (classe `ilha-escura`). As telas novas estão em `css/telas.css`.
-As fontes (Barlow, Barlow Condensed e Inter) estão em `fonts/`.
+As fontes (Anton nos títulos e Inter no texto) estão em `fonts/`.
 
 ## Rodar
 
