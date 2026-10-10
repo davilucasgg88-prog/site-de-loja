@@ -107,7 +107,15 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .logo { gap: 10px; }
 .logo__marca { height: 30px; width: auto; }
 .logo__store { font-size: 17px; letter-spacing: .32em; font-weight: 600; padding-top: 2px; }
-.menu { display: flex; gap: 32px; font-size: 14px; font-weight: 500; }
+.menu { display: flex; gap: 26px; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.topo__cta { white-space: nowrap; }
+.logo { flex-shrink: 0; }
+/* com o botão do painel visível, o topo economiza espaço */
+@media (max-width: 1440px) {
+  .topo:has(.botao-painel:not([hidden])) .topo__cta { display: none; }
+  .topo:has(.botao-painel:not([hidden])) .botao-painel span { display: none; }
+  .topo:has(.botao-painel:not([hidden])) .botao-painel { width: 44px; height: 44px; padding: 0; justify-content: center; }
+}
 .menu a { position: relative; padding: 6px 0; opacity: .92; }
 .menu a:hover { opacity: 1; }
 .menu a:hover::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--acento); }
@@ -522,8 +530,18 @@ html[data-tema="escuro"] .tema-btn .lua { display: none; }
 html.trocando-tema, html.trocando-tema * { transition: background-color .35s, color .35s, border-color .35s !important; }
 
 /* Responsivo */
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
   .topo__cta { display: none; }
+}
+@media (max-width: 1100px) {
+  .menu-btn { display: grid; }
+  .menu {
+    display: none; position: absolute; top: 76px; left: 0; right: 0; flex-direction: column; gap: 0;
+    background: var(--fundo); border-bottom: 1px solid var(--borda); padding: 8px 24px;
+  }
+  .menu.aberto { display: flex; }
+  .menu a { padding: 12px 0; font-size: 15px; }
+  .topo__linha { height: 76px; }
 }
 @media (max-width: 1000px) {
   .hero__grade, .vitrine { grid-template-columns: 1fr; }
@@ -535,14 +553,6 @@ html.trocando-tema, html.trocando-tema * { transition: background-color .35s, co
 @media (max-width: 860px) {
   .procura__grade { grid-template-columns: repeat(2, 1fr); }
   .opcao { aspect-ratio: 1 / 1.1; }
-  .menu-btn { display: grid; }
-  .menu {
-    display: none; position: absolute; top: 76px; left: 0; right: 0; flex-direction: column; gap: 0;
-    background: var(--fundo); border-bottom: 1px solid var(--borda); padding: 8px 24px;
-  }
-  .menu.aberto { display: flex; }
-  .menu a { padding: 12px 0; font-size: 15px; }
-  .topo__linha { height: 76px; }
   .hero { padding: 32px 0 56px; }
   .hero__onda { opacity: .7; }
   .circulos { display: flex; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }

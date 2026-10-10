@@ -13,6 +13,7 @@
     ["produtos", "Produtos e estoque", "i-tag"],
     ["categorias", "Categorias", "i-sacola"],
     ["destaque", "Destaque e textos", "i-editar"],
+    ["medidas", "Medidas", "i-regua"],
     ["config", "Configurações", "i-loja"],
   ];
 
@@ -80,12 +81,12 @@
   function renderAba() {
     const alvo = $("#painel-aba", raiz);
     if (!alvo) return;
-    alvo.innerHTML = ({ resumo, pedidos, produtos, categorias, destaque, config })[ui.aba]();
+    alvo.innerHTML = ({ resumo, pedidos, produtos, categorias, destaque, config, medidas })[ui.aba]();
     if (ui.aba === "destaque") atualizarPrevia();
   }
 
   // Abas com formulário não são redesenhadas quando os dados mudam, para não apagar o que está sendo digitado
-  const abasDeFormulario = ["categorias", "destaque", "config"];
+  const abasDeFormulario = ["categorias", "destaque", "config", "medidas"];
 
   /* ---------- resumo ---------- */
   function resumo() {
@@ -497,6 +498,33 @@
     $("#previa-sub", raiz).textContent = f.sub.value;
   }
 
+  /* ---------- medidas ---------- */
+  function medidas() {
+    const tabs = window.Medidas.tabelas();
+    const fmt = (v) => (v ?? "");
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Provador</p><h1>Tabela de medidas</h1><p class="painel__sub">Medidas da peça em centímetros, do P ao GG. A coluna "veste" é a medida do corpo usada para recomendar o tamanho.</p></div>
+      </header>
+      <form id="form-medidas" class="form-painel">
+        ${Object.entries(tabs).map(([cat, t]) => `
+          <section class="bloco">
+            <h2>${escapar(t.nome)}</h2>
+            <div class="tabela-medidas__rolagem">
+              <table class="tabela-editavel">
+                <thead><tr><th>Tam.</th>${t.campos.map((c) => `<th>${escapar(c.nome)}</th>`).join("")}<th>Veste de</th><th>até</th></tr></thead>
+                <tbody>${window.Medidas.TAMANHOS.map((x) => `
+                  <tr><th>${x}</th>${t.campos.map((c) => `<td><input ${c.texto ? "" : 'type="number" step="0.1" min="0"'} data-cat="${cat}" data-tam="${x}" data-campo="${c.id}" value="${escapar(fmt(t.tamanhos[x][c.id]))}" aria-label="${escapar(t.nome)} ${x} ${escapar(c.nome)}"></td>`).join("")}
+                  <td><input type="number" step="0.1" min="0" data-cat="${cat}" data-tam="${x}" data-campo="corpo0" value="${fmt(t.tamanhos[x].corpo[0])}" aria-label="${escapar(t.nome)} ${x} veste de"></td>
+                  <td><input type="number" step="0.1" min="0" data-cat="${cat}" data-tam="${x}" data-campo="corpo1" value="${fmt(t.tamanhos[x].corpo[1])}" aria-label="${escapar(t.nome)} ${x} veste até"></td></tr>`).join("")}
+                </tbody>
+              </table>
+            </div>
+          </section>`).join("")}
+        <footer class="barra-salvar"><button type="button" class="link-simples" data-medidas-padrao>Voltar às medidas padrão</button><button class="btn">Salvar medidas</button></footer>
+      </form>`;
+  }
+
   /* ---------- configurações ---------- */
   function config() {
     const c = S.config;
@@ -547,6 +575,7 @@
     if (aba) { ui.aba = aba.dataset.aba; ui.cancelando = null; ui.excluindo = null; render(); $("#painel").scrollTop = 0; return; }
     const ir = t.closest("[data-ir]");
     if (ir) { ui.aba = ir.dataset.ir; if (ir.dataset.filtro) ui.filtro = ir.dataset.filtro; render(); return; }
+    if (t.closest("[data-medidas-padrao]")) { await Dados.salvarConfig({ medidas: null }); toast("Medidas padrão restauradas"); return renderAba(); }
     if (t.closest("[data-sair]")) { Dados.sairPainelLocal(); location.hash = ""; return; }
     const filtro = t.closest("[data-filtro-pedido]");
     if (filtro) { ui.filtro = filtro.dataset.filtroPedido; ui.cancelando = null; renderAba(); return; }
@@ -653,6 +682,18 @@
         d.avisos = d.avisos.split("\n").map((l) => l.trim()).filter(Boolean);
         await Dados.salvarConfig(d);
         toast("Textos salvos. Já aparecem na loja.");
+      }
+      if (f.id === "form-medidas") {
+        const novo = {};
+        f.querySelectorAll("input[data-cat]").forEach((i) => {
+          const { cat, tam, campo } = i.dataset;
+          const alvo = ((novo[cat] ||= {})[tam] ||= { corpo: [0, 0] });
+          const texto = i.type !== "number";
+          const v = texto ? i.value.trim() : Number(String(i.value).replace(",", ".")) || 0;
+          if (campo === "corpo0") alvo.corpo[0] = v; else if (campo === "corpo1") alvo.corpo[1] = v; else alvo[campo] = v;
+        });
+        await Dados.salvarConfig({ medidas: novo });
+        toast("Medidas salvas. O provador já usa os novos valores.");
       }
       if (f.id === "form-config") {
         const d = Object.fromEntries(new FormData(f));

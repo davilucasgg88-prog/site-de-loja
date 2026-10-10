@@ -15,6 +15,12 @@ avaliações, chamada final e rodapé com atendimento e redes.
   que combinam (bermuda → camiseta, chinelo, boné…). O dono escolhe as combinações em
   Painel → Categorias
 
+**Provador TMZ / Guia de medidas** (`#medidas`): no topo do site, um card com manequim mostra as
+medidas da peça (A, B, C, D) para cada tamanho do P ao GG, em centímetros, para camisetas, bermudas
+e calçados. A tela completa tem também calças e bonés, tabela de todos os tamanhos e uma calculadora
+("Descubra seu tamanho") que recomenda o tamanho pela medida do corpo. Os valores iniciais estão em
+`MEDIDAS` (`js/produtos.js`) e o dono ajusta em Painel → Medidas. A tela do produto tem link para o guia.
+
 **Carrinho** (`#carrinho`): tela cheia com quantidades, barra de frete grátis e resumo.
 
 **Compra e reserva** (`#compra`), três formas:

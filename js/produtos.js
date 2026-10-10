@@ -91,3 +91,87 @@ const COMENTARIOS = [
   { nome: "Matheus L.", cidade: "Rio de Janeiro, RJ", nota: 5, produto: "Camiseta Lacoste Faixa", texto: "Terceira compra na TMZ. Sempre o mesmo padrão de qualidade, recomendo de olho fechado.", exemplo: true },
   { nome: "Ana C.", cidade: "Fortaleza, CE", nota: 5, produto: "Headphone Max", texto: "Chegou certinho, bem embalado e igual às fotos. Já indiquei para as amigas.", exemplo: true },
 ];
+
+// Guia de medidas (Provador TMZ). Valores de referência em centímetros, do P ao GG.
+// O dono ajusta pelo Painel → Medidas com as medidas reais das peças.
+// "campos": medidas da peça (aparecem no manequim com as letras A, B, C, D).
+// "corpo": medida do corpo usada para recomendar o tamanho [mínimo, máximo].
+const MEDIDAS = {
+  camisetas: {
+    nome: "Camisetas", figura: "tronco",
+    campos: [
+      { id: "largura", nome: "Largura", dica: "De uma axila à outra, com a peça esticada na mesa." },
+      { id: "comprimento", nome: "Comprimento", dica: "Do ponto mais alto do ombro até a barra." },
+      { id: "ombro", nome: "Ombro", dica: "De uma costura do ombro até a outra." },
+      { id: "manga", nome: "Manga", dica: "Da costura do ombro até a ponta da manga." },
+    ],
+    corpo: { nome: "Tórax", dica: "Passe a fita em volta do peito, na altura das axilas, sem apertar." },
+    tamanhos: {
+      P: { largura: 50, comprimento: 70, ombro: 44, manga: 20, corpo: [88, 94] },
+      M: { largura: 53, comprimento: 72, ombro: 46, manga: 21, corpo: [94, 100] },
+      G: { largura: 56, comprimento: 74, ombro: 48, manga: 22, corpo: [100, 106] },
+      GG: { largura: 59, comprimento: 76, ombro: 50, manga: 23, corpo: [106, 112] },
+    },
+  },
+  bermudas: {
+    nome: "Bermudas e shorts", figura: "bermuda",
+    campos: [
+      { id: "cintura", nome: "Cintura", dica: "Contorno do cós, sem esticar o elástico." },
+      { id: "quadril", nome: "Quadril", dica: "Contorno na parte mais larga do quadril." },
+      { id: "comprimento", nome: "Comprimento", dica: "Do cós até a barra, pela lateral." },
+      { id: "entreperna", nome: "Entreperna", dica: "Da costura do gancho até a barra." },
+    ],
+    corpo: { nome: "Cintura", dica: "Passe a fita na altura do umbigo, sem apertar." },
+    tamanhos: {
+      P: { cintura: 76, quadril: 98, comprimento: 47, entreperna: 19, corpo: [72, 78] },
+      M: { cintura: 82, quadril: 102, comprimento: 48, entreperna: 20, corpo: [78, 84] },
+      G: { cintura: 88, quadril: 106, comprimento: 49, entreperna: 21, corpo: [84, 90] },
+      GG: { cintura: 94, quadril: 110, comprimento: 50, entreperna: 22, corpo: [90, 96] },
+    },
+  },
+  calcas: {
+    nome: "Calças", figura: "calca",
+    campos: [
+      { id: "cintura", nome: "Cintura", dica: "Contorno do cós, com a calça fechada." },
+      { id: "quadril", nome: "Quadril", dica: "Contorno na parte mais larga do quadril." },
+      { id: "comprimento", nome: "Comprimento", dica: "Do cós até a barra, pela lateral." },
+      { id: "entreperna", nome: "Entreperna", dica: "Da costura do gancho até a barra." },
+    ],
+    corpo: { nome: "Cintura", dica: "Passe a fita na altura do umbigo, sem apertar." },
+    tamanhos: {
+      P: { cintura: 76, quadril: 98, comprimento: 102, entreperna: 76, corpo: [72, 78] },
+      M: { cintura: 82, quadril: 102, comprimento: 104, entreperna: 78, corpo: [78, 84] },
+      G: { cintura: 88, quadril: 106, comprimento: 106, entreperna: 80, corpo: [84, 90] },
+      GG: { cintura: 94, quadril: 110, comprimento: 108, entreperna: 82, corpo: [90, 96] },
+    },
+  },
+  bones: {
+    nome: "Bonés", figura: "cabeca",
+    campos: [
+      { id: "circunferencia", nome: "Circunferência", dica: "Contorno interno do boné, na faixa de suor." },
+      { id: "aba", nome: "Aba", dica: "Da costura da copa até a ponta da aba." },
+    ],
+    corpo: { nome: "Cabeça", dica: "Passe a fita 2 cm acima das sobrancelhas e das orelhas." },
+    tamanhos: {
+      P: { circunferencia: 55, aba: 7, corpo: [54, 55.5] },
+      M: { circunferencia: 57, aba: 7, corpo: [55.5, 57.5] },
+      G: { circunferencia: 59, aba: 7.5, corpo: [57.5, 59.5] },
+      GG: { circunferencia: 61, aba: 7.5, corpo: [59.5, 61.5] },
+    },
+  },
+  calcados: {
+    nome: "Calçados e sandálias", figura: "pe",
+    campos: [
+      { id: "palmilha", nome: "Palmilha", dica: "Comprimento interno, do calcanhar até a ponta." },
+      { id: "largura", nome: "Largura", dica: "Parte mais larga do pé, na altura dos dedos." },
+      { id: "numeracao", nome: "Numeração", dica: "Numeração brasileira equivalente.", texto: true },
+    ],
+    corpo: { nome: "Comprimento do pé", dica: "Pise numa folha, marque o calcanhar e o dedo maior e meça a distância." },
+    tamanhos: {
+      P: { palmilha: 25, largura: 9.4, numeracao: "37–38", corpo: [24, 25] },
+      M: { palmilha: 26.3, largura: 9.8, numeracao: "39–40", corpo: [25, 26.3] },
+      G: { palmilha: 27.6, largura: 10.2, numeracao: "41–42", corpo: [26.3, 27.6] },
+      GG: { palmilha: 28.9, largura: 10.6, numeracao: "43–44", corpo: [27.6, 28.9] },
+    },
+  },
+};

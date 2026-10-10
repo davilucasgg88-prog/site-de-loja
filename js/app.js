@@ -311,6 +311,7 @@
           <h3>${escapar(p.nome)}</h3>
           ${precos(p)}
           <p>${escapar(p.descricao)}</p>
+          ${typeof MEDIDAS !== "undefined" && MEDIDAS[p.categoria] ? `<a class="detalhe__medidas" href="#medidas" data-medidas="${escapar(p.categoria)}"><svg><use href="#i-regua"/></svg>Guia de medidas: P ao GG em cm</a>` : ""}
           <p class="detalhe__estoque">${q === 0 ? "Esgotado no momento" : q <= 5 ? `Últimas ${q} ${q === 1 ? "peça" : "peças"}` : `${q} peças em estoque`}</p>
           ${q === 0 ? `<button class="btn btn--bloco" disabled>Esgotado</button>` : `
           <div class="detalhe__acoes">
@@ -770,7 +771,7 @@
   setInterval(() => { if (!$("#tela-reservas").hidden) renderReservas(); }, 30000);
 
   /* ---------- telas cheias (rotas por #) ---------- */
-  const TELAS = { carrinho: "#tela-carrinho", compra: "#tela-compra", reservas: "#tela-reservas", painel: "#painel" };
+  const TELAS = { carrinho: "#tela-carrinho", compra: "#tela-compra", reservas: "#tela-reservas", medidas: "#tela-medidas", painel: "#painel" };
   let rolagemLoja = 0;
   let telaAtual = "";
 
