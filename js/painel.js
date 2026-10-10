@@ -12,6 +12,7 @@
     ["faturamento", "Faturamento", "i-grafico"],
     ["pedidos", "Pedidos e reservas", "i-relogio"],
     ["historico", "Histórico de compras", "i-lista"],
+    ["clientes", "Clientes", "i-usuario"],
     ["visitas", "Visitas", "i-olho"],
     ["produtos", "Produtos e preços", "i-tag"],
     ["categorias", "Categorias", "i-sacola"],
@@ -69,12 +70,13 @@
   function renderAba() {
     const alvo = $("#painel-aba", raiz);
     if (!alvo) return;
-    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
+    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, clientes, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
     if (ui.aba === "destaque") atualizarPrevia();
+    if (ui.aba === "clientes") carregarClientes();
   }
 
   // Abas com formulário não são redesenhadas quando os dados mudam, para não apagar o que está sendo digitado
-  const abasDeFormulario = ["categorias", "destaque", "config", "medidas", "contato"];
+  const abasDeFormulario = ["clientes", "categorias", "destaque", "config", "medidas", "contato"];
 
   /* ---------- resumo ---------- */
   function resumo() {
@@ -687,6 +689,45 @@
       .filter((p) => !termo || `${p.codigo} ${p.cliente?.nome} ${p.cliente?.telefone} ${p.itens.map((i) => i.nome).join(" ")}`.toLowerCase().includes(termo))
       .sort((a, b) => b.criadoEm - a.criadoEm);
   }
+  /* ---------- clientes cadastrados ---------- */
+  function clientes() {
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Contas</p><h1>Clientes</h1><p class="painel__sub" id="clientes-total">Carregando…</p></div>
+      </header>
+      <div id="clientes-lista"></div>`;
+  }
+  async function carregarClientes() {
+    const alvo = $("#clientes-lista", raiz);
+    let lista;
+    try { lista = await Dados.listarClientes(); } catch { lista = []; }
+    if (!alvo?.isConnected) return;
+    if (lista === null) {
+      $("#clientes-total", raiz).textContent = "As contas ficam no Supabase";
+      alvo.innerHTML = `<p class="nota">Veja e gerencie as contas em Authentication → Users, no painel do Supabase.</p>`;
+      return;
+    }
+    lista.sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+    $("#clientes-total", raiz).textContent = `${lista.length} ${lista.length === 1 ? "conta criada" : "contas criadas"}`;
+    alvo.innerHTML = lista.length ? `
+      <div class="tabela-medidas__rolagem">
+        <table class="tabela-historico">
+          <thead><tr><th>Cliente</th><th>E-mail</th><th>WhatsApp</th><th>Cadastro</th><th>Compras</th></tr></thead>
+          <tbody>${lista.map((c) => {
+            const compras = S.pedidos.filter((p) => (p.cliente?.email || "").toLowerCase() === c.email).length;
+            return `
+            <tr>
+              <td><strong>${escapar(c.nome)}</strong></td>
+              <td>${escapar(c.email)}</td>
+              <td>${c.whats ? `<a href="https://wa.me/${digitos(c.whats).length <= 11 ? "55" : ""}${digitos(c.whats)}" target="_blank" rel="noopener">${escapar(c.whats)}</a>` : "—"}</td>
+              <td>${c.criadoEm ? dataHora(c.criadoEm) : "—"}</td>
+              <td class="num">${compras}</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>` : `<p class="vazio-curto">Ninguém criou conta ainda. Os clientes se cadastram pelo ícone de pessoa no topo da loja.</p>`;
+  }
+
   function historico() {
     const lista = filtrarHistorico();
     const soma = lista.filter((p) => p.pago).reduce((s, p) => s + (p.tipo === "compra" ? p.total : p.sinal), 0);

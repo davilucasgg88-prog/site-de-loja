@@ -70,6 +70,7 @@ const Dados = (() => {
     podeEditar = user ? await user.canEdit() : false;
     estado.admin = podeEditar && !!estado.conta?.admin;
     estado.uid = user ? await user.id() : null;
+    await retomarSessaoNuvem();
     estado.pedidos = [];
     estado.meusPedidos = [];
     estado.visitas = {};
@@ -231,10 +232,11 @@ const Dados = (() => {
   let tentativas = 0;
   let bloqueadoAte = 0;
 
-  const lojas = () => [localStorage, sessionStorage];
+  // o navegador pode bloquear o armazenamento (aba anônima, esboço publicado): aí a sessão vale só na memória
+  const lojas = () => ["localStorage", "sessionStorage"].flatMap((n) => { try { return [window[n]]; } catch { return []; } });
   function lerSessao() {
     for (const loja of lojas()) {
-      try { const s = JSON.parse(loja.getItem(CHAVE_SESSAO)); if (s) return { ...s, loja }; } catch {}
+      try { const s = JSON.parse(loja.getItem(CHAVE_SESSAO)); if (s) return { ...s, lembrar: loja === window.localStorage }; } catch {}
     }
     return null;
   }
@@ -287,7 +289,7 @@ const Dados = (() => {
     try {
       const { ok, dados } = await supabase("token?grant_type=refresh_token", { refresh_token: s.renovar });
       if (!ok) throw new Error();
-      gravarSessao(sessaoSupabase(dados), s.loja === localStorage);
+      gravarSessao(sessaoSupabase(dados), s.lembrar);
     } catch {
       apagarSessao();
       aplicarSessao(null);
@@ -305,9 +307,31 @@ const Dados = (() => {
     if (tentativas >= 5) { bloqueadoAte = Date.now() + 60000; tentativas = 0; }
     return { ok: false, erro };
   }
+  // No esboço publicado (sem Supabase) as contas ficam no banco da loja, em contas/<id de quem acessa>:
+  // cada pessoa só lê a própria conta e o dono vê a lista de clientes.
+  const naNuvem = () => estado.login.tipo === "teste" && estado.modo === "nuvem" && db && estado.uid;
+  const refConta = () => db.doc("contas/" + estado.uid);
+  async function lerContaNuvem() {
+    const snap = await refConta().get();
+    return snap.exists ? snap.data() : null;
+  }
+  async function gravarContaNuvem(campos) {
+    const atual = (await lerContaNuvem()) || {};
+    await refConta().set({ ...atual, ...campos });
+  }
+  async function retomarSessaoNuvem() {
+    if (!naNuvem()) return;
+    try {
+      const conta = await lerContaNuvem();
+      const s = conta?.sessao;
+      if (sessaoValida(s)) aplicarSessao(s);
+    } catch {}
+  }
+
   function concluir(sessao, lembrar) {
     tentativas = 0;
     gravarSessao(sessao, lembrar);
+    if (naNuvem()) gravarContaNuvem({ sessao }).catch(() => {});
     aplicarSessao(sessao);
     if (sessao.admin && estado.modo === "nuvem" && !podeEditar) {
       return { ok: true, aviso: "Você entrou, mas esta cópia da loja só pode ser alterada pela conta que a publicou." };
@@ -332,8 +356,14 @@ const Dados = (() => {
       if (String(senha) !== String(estado.config.pinPainel)) return falhou("E-mail ou senha incorretos.");
       return concluir({ tipo: "teste", email, nome: "Lojista TMZ", admin: true }, lembrar);
     }
-    const conta = contasLocais()[email];
-    if (!conta || conta.hash !== await resumo(conta.sal, senha)) return falhou("E-mail ou senha incorretos.");
+    let conta;
+    if (naNuvem()) {
+      try { conta = await lerContaNuvem(); } catch { return { ok: false, erro: "Sem conexão. Tente de novo." }; }
+      if (conta && conta.email !== email) conta = null;
+    } else {
+      conta = contasLocais()[email];
+    }
+    if (!conta?.hash || conta.hash !== await resumo(conta.sal, senha)) return falhou("E-mail ou senha incorretos.");
     return concluir({ tipo: "teste", email, nome: conta.nome, whats: conta.whats, admin: false }, lembrar);
   }
 
@@ -356,10 +386,21 @@ const Dados = (() => {
       if (!r.dados.access_token) return { ok: true, confirmar: true, msg: "Conta criada! Enviamos um link para o seu e-mail. Confirme e depois entre." };
       return concluir(sessaoSupabase(r.dados), true);
     }
+    const sal = crypto.getRandomValues(new Uint32Array(4)).join("-");
+    const nova = { nome, email, whats, sal, hash: await resumo(sal, senha), criadoEm: Date.now() };
+    if (naNuvem()) {
+      try {
+        const atual = await lerContaNuvem();
+        if (atual?.hash) {
+          return { ok: false, erro: atual.email === email ? "Este e-mail já tem conta. Use Entrar." : `Você já tem uma conta (${atual.email}). Use Entrar.` };
+        }
+        await gravarContaNuvem(nova);
+      } catch { return { ok: false, erro: "Não deu para salvar a conta. Tente de novo." }; }
+      return concluir({ tipo: "teste", email, nome, whats, admin: false }, true);
+    }
     const contas = contasLocais();
     if (contas[email]) return { ok: false, erro: "Este e-mail já tem conta. Use Entrar." };
-    const sal = crypto.getRandomValues(new Uint32Array(4)).join("-");
-    contas[email] = { nome, whats, sal, hash: await resumo(sal, senha), criadoEm: Date.now() };
+    contas[email] = nova;
     try { localStorage.setItem(CHAVE_CONTAS, JSON.stringify(contas)); }
     catch { return { ok: false, erro: "Este navegador não deixou salvar a conta." }; }
     return concluir({ tipo: "teste", email, nome, whats, admin: false }, true);
@@ -369,7 +410,19 @@ const Dados = (() => {
     const s = lerSessao();
     if (s?.tipo === "servidor") supabase("logout", {}, s.token).catch(() => {});
     apagarSessao();
+    if (naNuvem()) gravarContaNuvem({ sessao: null }).catch(() => {});
     aplicarSessao(null);
+  }
+
+  // Lista de clientes para o painel (sem as senhas)
+  async function listarClientes() {
+    const tirar = ({ sal, hash, sessao, ...c }) => c;
+    if (naNuvem()) {
+      const snap = await db.collection("contas").get();
+      return snap.docs.map((d) => d.data()).filter((c) => c.hash).map(tirar);
+    }
+    if (estado.login.tipo === "teste") return Object.entries(contasLocais()).map(([email, c]) => tirar({ email, ...c }));
+    return null; // no Supabase a lista fica em Authentication → Users
   }
 
   async function recuperarSenha(email) {
@@ -445,6 +498,6 @@ const Dados = (() => {
     ouvir(fn) { ouvintes.add(fn); fn(estado); return () => ouvintes.delete(fn); },
     reembolso,
     salvarProduto, apagarProduto, ajustarEstoque, salvarCategorias, salvarConfig,
-    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, novoId,
+    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, novoId,
   };
 })();

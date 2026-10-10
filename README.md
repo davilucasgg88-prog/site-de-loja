@@ -46,11 +46,14 @@ vê "Sem acesso". Depois de 5 erros seguidos, a tela espera 1 minuto.
 - **Login de verdade (Supabase):** crie um projeto grátis em supabase.com, crie o usuário do dono em
   *Authentication → Users → Add user* e preencha `supabaseUrl` e `supabaseChave` (a chave **anon public**)
   em `ACESSO`. Contas e senhas ficam só no servidor e "Esqueci a senha" manda o link por e-mail.
+- **No esboço publicado no Claude:** as contas ficam no banco da loja (`contas/<id de quem acessa>`,
+  senha só como hash). Cada pessoa só lê a própria conta e o dono vê todas em Painel → Clientes.
 - **Sem Supabase (teste):** o dono entra com o e-mail de `ACESSO` e a senha de teste (inicial `1234`,
   muda em Configurações); as contas de clientes ficam no navegador (senha guardada só como hash).
   Não é proteção de verdade.
 
 **Painel do lojista** (botão "Painel" no topo ou "Área do lojista" no rodapé):
+- Clientes: contas criadas, com e-mail, WhatsApp, data de cadastro e número de compras
 - Resumo: pagamentos pendentes, pedidos para retirar/enviar, devoluções, faturamento e visitas de hoje
 - Faturamento: total de 7/30/90 dias, ticket médio, a receber, devolvido, gráfico por dia,
   mais vendidos e divisão por forma de compra (conta o que o dono confirmou como pago)

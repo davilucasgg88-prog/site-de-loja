@@ -124,7 +124,7 @@ const Conta = (() => {
   function logado(painel) {
     const conta = S.conta;
     const primeiro = escapar((conta.nome || conta.email).split(" ")[0]);
-    if (painel && !conta.admin) {
+    if (painel && !S.admin) {
       return `
         <h1>Sem acesso</h1>
         <p class="login__sub">Você entrou como <b>${escapar(conta.email)}</b>.</p>
@@ -138,7 +138,7 @@ const Conta = (() => {
       <h1>Olá, ${primeiro}!</h1>
       <p class="login__sub">${escapar(conta.email)}${conta.admin ? " · Lojista" : ""}</p>
       <div class="login__acoes">
-        ${conta.admin ? `<a href="#painel" class="login__entrar">Abrir o painel</a>` : `<button type="button" class="login__entrar" data-comprar>Comprar agora</button>`}
+        ${S.admin ? `<a href="#painel" class="login__entrar">Abrir o painel</a>` : `<button type="button" class="login__entrar" data-comprar>Comprar agora</button>`}
         <a href="#reservas" class="login__secundario">Minhas reservas</a>
         <button type="button" class="login__secundario" data-sair-conta>Sair da conta</button>
       </div>`;
@@ -243,7 +243,7 @@ const Conta = (() => {
       if (r.aviso) toast(r.aviso);
       aba = "entrar";
       if (painel) return; // o painel se redesenha sozinho quando o dono entra
-      if (S.conta.admin) { location.hash = "painel"; return; }
+      if (S.admin) { location.hash = "painel"; return; }
       toast(`Bem-vindo, ${(S.conta.nome || "").split(" ")[0] || "cliente"}!`);
       montar(raiz, { painel });
     });
@@ -262,7 +262,8 @@ const Conta = (() => {
     const agora = JSON.stringify(S.conta);
     if (agora === contaAntes) return;
     contaAntes = agora;
-    if (aberta && !tela.contains(document.activeElement)) montar(tela);
+    // entrou (ou a sessão salva voltou): mostra a conta; saiu: só redesenha se ninguém estiver digitando
+    if (aberta && (S.conta || !tela.contains(document.activeElement))) montar(tela);
   });
 
   return { montar };
