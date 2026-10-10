@@ -17,6 +17,12 @@ const LOJA = {
   // Loja física (aparece no rodapé quando preenchido)
   endereco: "",
   horario: "",
+  email: "",
+  tiktok: "",
+  facebook: "",
+  linkExtra: "",
+  linkExtraNome: "",
+  bannerImagem: "",
   // Produto da seção "Produto em destaque" (id); vazio = primeira oferta com foto
   produtoDestaque: "4",
   // Regras de reserva

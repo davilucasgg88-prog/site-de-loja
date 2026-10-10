@@ -5,15 +5,19 @@
   const { combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, categoria, nomeTipo, NOMES_STATUS, centavos, digitos } = window.TMZ;
   const raiz = $("#painel");
 
-  const ui = { aba: "resumo", filtro: "aguardando", busca: "", catFiltro: "", editando: null, cancelando: null, excluindo: null, aberto: false };
+  const ui = { periodo: 30, histPeriodo: 30, histStatus: "todos", histBusca: "", soOfertas: false, aba: "resumo", filtro: "aguardando", busca: "", catFiltro: "", editando: null, cancelando: null, excluindo: null, aberto: false };
 
   const ABAS = [
     ["resumo", "Resumo", "i-painel"],
+    ["faturamento", "Faturamento", "i-grafico"],
     ["pedidos", "Pedidos e reservas", "i-relogio"],
-    ["produtos", "Produtos e estoque", "i-tag"],
+    ["historico", "Histórico de compras", "i-lista"],
+    ["visitas", "Visitas", "i-olho"],
+    ["produtos", "Produtos e preços", "i-tag"],
     ["categorias", "Categorias", "i-sacola"],
     ["destaque", "Destaque e textos", "i-editar"],
     ["medidas", "Medidas", "i-regua"],
+    ["contato", "Contato e links", "i-link"],
     ["config", "Configurações", "i-loja"],
   ];
 
@@ -81,19 +85,18 @@
   function renderAba() {
     const alvo = $("#painel-aba", raiz);
     if (!alvo) return;
-    alvo.innerHTML = ({ resumo, pedidos, produtos, categorias, destaque, config, medidas })[ui.aba]();
+    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
     if (ui.aba === "destaque") atualizarPrevia();
   }
 
   // Abas com formulário não são redesenhadas quando os dados mudam, para não apagar o que está sendo digitado
-  const abasDeFormulario = ["categorias", "destaque", "config", "medidas"];
+  const abasDeFormulario = ["categorias", "destaque", "config", "medidas", "contato"];
 
   /* ---------- resumo ---------- */
   function resumo() {
     const aguardando = S.pedidos.filter((p) => p.status === "aguardando");
     const confirmados = S.pedidos.filter((p) => p.status === "confirmado");
     const baixos = S.produtos.filter((p) => estoque(p) <= 5).sort((a, b) => estoque(a) - estoque(b));
-    const recebido = S.pedidos.filter((p) => p.pago && p.status !== "estornado").reduce((s, p) => s + (p.tipo === "compra" ? p.total : p.sinal), 0);
     const recentes = [...S.pedidos].sort((a, b) => b.criadoEm - a.criadoEm).slice(0, 5);
     return `
       <header class="painel__cabeca">
@@ -112,10 +115,14 @@
           <span>Devoluções pendentes</span><strong>${pendentesEstorno().length}</strong>
           <small>${moeda(pendentesEstorno().reduce((s, p) => s + p.reembolso, 0))} para devolver</small>
         </button>
-        <div class="kpi">
-          <span>Recebido</span><strong>${moeda(recebido)}</strong>
-          <small>Sinais e pedidos confirmados</small>
-        </div>
+        <button type="button" class="kpi" data-ir="faturamento">
+          <span>Faturamento · 30 dias</span><strong>${moeda(somaPeriodo(30))}</strong>
+          <small>Hoje: ${moeda(somaPeriodo(1))}</small>
+        </button>
+        <button type="button" class="kpi" data-ir="visitas">
+          <span>Visitas hoje</span><strong>${visitasDoDia(0).pessoas}</strong>
+          <small>${visitasDoDia(0).vistas} páginas abertas</small>
+        </button>
       </div>
       <div class="duas-colunas">
         <section class="bloco">
@@ -247,7 +254,7 @@
   /* ---------- produtos ---------- */
   function produtos() {
     const termo = ui.busca.trim().toLowerCase();
-    const lista = S.produtos.filter((p) => (!ui.catFiltro || p.categoria === ui.catFiltro) && (!termo || p.nome.toLowerCase().includes(termo)));
+    const lista = S.produtos.filter((p) => (!ui.catFiltro || p.categoria === ui.catFiltro) && (!ui.soOfertas || p.oferta) && (!termo || p.nome.toLowerCase().includes(termo)));
     const total = S.produtos.reduce((s, p) => s + estoque(p), 0);
     return `
       <header class="painel__cabeca">
@@ -257,9 +264,11 @@
       <div class="barra-ferramentas">
         <label class="campo campo--busca"><span class="sr">Buscar produto</span><input type="search" id="busca-produto" placeholder="Buscar produto" value="${escapar(ui.busca)}"></label>
         <label class="campo campo--curto"><span class="sr">Categoria</span>
-          <select id="filtro-categoria"><option value="">Todas as categorias</option>${S.categorias.map((c) => `<option value="${escapar(c.id)}" ${ui.catFiltro === c.id ? "selected" : ""}>${escapar(c.nome)}</option>`).join("")}</select>
+          <select id="filtro-categoria" aria-label="Categoria"><option value="">Todas as categorias</option>${S.categorias.map((c) => `<option value="${escapar(c.id)}" ${ui.catFiltro === c.id ? "selected" : ""}>${escapar(c.nome)}</option>`).join("")}</select>
         </label>
+        <label class="chip-mini chip-mini--grande"><input type="checkbox" id="so-ofertas" ${ui.soOfertas ? "checked" : ""}><span>Só ofertas</span></label>
       </div>
+      <p class="nota nota--topo">Mude o preço direto na tabela: digite e saia do campo para salvar. "de" é o preço antigo, que mostra o desconto na loja.</p>
       <div class="tabela-produtos" role="table" aria-label="Produtos">
         <div class="tp-linha tp-cabeca" role="row"><span>Produto</span><span>Preço</span><span>Estoque</span><span>Entrada</span><span>Oferta</span><span></span></div>
         ${lista.map((p) => `
@@ -268,7 +277,10 @@
               <span class="tp-foto">${p.imagem ? `<img src="${escapar(p.imagem)}" alt="">` : `<svg><use href="#i-${iconeCat(p.categoria)}"/></svg>`}</span>
               <span><strong>${escapar(p.nome)}</strong><small>${escapar(categoria(p.categoria).nome)}</small></span>
             </div>
-            <div class="tp-preco"><strong>${moeda(p.preco)}</strong>${p.precoAntigo > p.preco ? `<s>${moeda(p.precoAntigo)}</s>` : ""}</div>
+            <div class="tp-preco">
+              <label class="preco-rapido"><span>R$</span><input type="number" step="0.01" min="0" value="${Number(p.preco).toFixed(2)}" data-preco="${escapar(p.id)}" aria-label="Preço de ${escapar(p.nome)}"></label>
+              <label class="preco-rapido preco-rapido--antigo" title="Preço antigo (deixe vazio para tirar o desconto)"><span>de</span><input type="number" step="0.01" min="0" value="${p.precoAntigo ? Number(p.precoAntigo).toFixed(2) : ""}" placeholder="—" data-preco-antigo="${escapar(p.id)}" aria-label="Preço antigo de ${escapar(p.nome)}"></label>
+            </div>
             <div class="contador-qtd contador-qtd--painel" aria-label="Estoque de ${escapar(p.nome)}">
               <button type="button" data-estoque="-1" data-id="${escapar(p.id)}" aria-label="Tirar uma unidade" ${estoque(p) === 0 ? "disabled" : ""}><svg><use href="#i-menos"/></svg></button>
               <output class="${estoque(p) <= 5 ? "baixo" : ""}">${estoque(p)}</output>
@@ -344,7 +356,7 @@
   }
 
   // Reduz a foto para caber no banco (no máximo ~700 px)
-  function reduzirFoto(arquivo) {
+  function reduzirFoto(arquivo, maximo = 700) {
     return new Promise((ok, falha) => {
       const leitor = new FileReader();
       leitor.onerror = falha;
@@ -352,7 +364,7 @@
         const im = new Image();
         im.onerror = falha;
         im.onload = () => {
-          const escala = Math.min(1, 700 / Math.max(im.width, im.height));
+          const escala = Math.min(1, maximo / Math.max(im.width, im.height));
           const c = document.createElement("canvas");
           c.width = Math.round(im.width * escala);
           c.height = Math.round(im.height * escala);
@@ -475,6 +487,14 @@
         </section>
         <section class="bloco">
           <h2>Chamada final</h2>
+          <div class="foto-campo">
+            <div class="foto-campo__previa foto-campo__previa--larga" id="previa-banner"><img src="${escapar(c.bannerImagem || "img/banner.jpg")}" alt=""></div>
+            <div>
+              <label class="btn btn--contorno btn--pequeno"><svg><use href="#i-upload"/></svg>Trocar foto<input type="file" accept="image/*" id="foto-banner" hidden></label>
+              ${c.bannerImagem ? `<button type="button" class="link-simples" data-banner-padrao>Voltar à foto padrão</button>` : ""}
+              <p class="nota">Aparece ao fundo da chamada final, perto do rodapé.</p>
+            </div>
+          </div>
           <div class="campos-2">${campo("bannerTag", "Etiqueta")}${campo("bannerTitulo", "Título")}</div>
           <div class="campos-2">${campo("bannerSub", "Subtítulo")}${campo("bannerBotao", "Texto do botão")}</div>
           ${campo("bannerTexto", "Texto")}
@@ -535,15 +555,6 @@
       </header>
       <form id="form-config" class="form-painel">
         <section class="bloco">
-          <h2>Contato</h2>
-          <div class="campos-2">${campo("whatsapp", "WhatsApp da loja (com DDI e DDD)", "tel", 'placeholder="5511999999999"')}${campo("instagram", "Link do Instagram", "url")}</div>
-        </section>
-        <section class="bloco">
-          <h2>Loja física</h2>
-          <div class="campos-2">${campo("endereco", "Endereço", "text", 'placeholder="Rua, número, bairro, cidade"')}${campo("horario", "Horário de funcionamento", "text", 'placeholder="Seg–Sáb 9h–19h"')}</div>
-          <p class="nota">Aparecem no rodapé e ajudam quem vai retirar reserva na loja.</p>
-        </section>
-        <section class="bloco">
           <h2>Pix para os sinais</h2>
           <div class="campos-2">${campo("pixChave", "Chave Pix")}${campo("pixNome", "Nome de quem recebe")}</div>
           <p class="nota">Sem chave cadastrada, o cliente pede a chave pelo WhatsApp.</p>
@@ -568,6 +579,230 @@
       </form>`;
   }
 
+  /* ---------- números: faturamento e visitas ---------- */
+  const DIA = 864e5;
+  const chaveDia = (ms) => new Date(ms).toLocaleDateString("sv-SE");
+  const inicioDoDia = (offset = 0) => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() - offset * DIA; };
+
+  // Cada dinheiro que entrou ou saiu, com a data: pagamento, restante na retirada e devoluções feitas
+  function lancamentos() {
+    const l = [];
+    S.pedidos.forEach((p) => {
+      if (!p.pago) return;
+      const pago = p.tipo === "compra" ? p.total : p.sinal;
+      l.push({ em: p.confirmadoEm || p.criadoEm, valor: pago, p });
+      if (p.tipo !== "compra" && p.status === "retirado" && p.restante) l.push({ em: p.concluidoEm || p.confirmadoEm || p.criadoEm, valor: p.restante, p });
+      if (p.status === "estornado" && p.reembolso) l.push({ em: p.estornadoEm || p.canceladoEm || Date.now(), valor: -p.reembolso, p });
+    });
+    return l;
+  }
+  function somaPeriodo(dias) {
+    const desde = inicioDoDia(dias - 1);
+    return centavos(lancamentos().filter((x) => x.em >= desde).reduce((s, x) => s + x.valor, 0));
+  }
+  function visitasDoDia(offset) {
+    return S.visitas[chaveDia(inicioDoDia(offset))] || { pessoas: 0, vistas: 0 };
+  }
+
+  // Gráfico de barras de uma série: barras finas com ponta arredondada e dica ao passar o mouse
+  function grafico(dados, formatar, rotulo) {
+    const L = 720, A = 220, M = { t: 16, r: 8, b: 26, l: 8 };
+    const max = Math.max(1, ...dados.map((d) => d.valor));
+    const passo = (L - M.l - M.r) / dados.length;
+    const larg = Math.max(4, passo - 4);
+    const y = (v) => M.t + (A - M.t - M.b) * (1 - Math.max(0, v) / max);
+    const barras = dados.map((d, i) => {
+      const x = M.l + i * passo + (passo - larg) / 2;
+      const topo = y(d.valor);
+      const h = Math.max(d.valor > 0 ? 2 : 0, A - M.b - topo);
+      const r = Math.min(4, larg / 2, h);
+      const caminho = h ? `M${x} ${A - M.b}V${A - M.b - h + r}Q${x} ${A - M.b - h} ${x + r} ${A - M.b - h}H${x + larg - r}Q${x + larg} ${A - M.b - h} ${x + larg} ${A - M.b - h + r}V${A - M.b}Z` : "";
+      return `<g class="barra"><rect class="barra__alvo" x="${M.l + i * passo}" y="${M.t}" width="${passo}" height="${A - M.t - M.b}"/>${caminho ? `<path d="${caminho}"/>` : ""}<title>${escapar(d.titulo)}: ${escapar(formatar(d.valor))}</title></g>`;
+    }).join("");
+    const marcas = dados.map((d, i) => (i % 5 === 0 || i === dados.length - 1) ? `<text x="${M.l + i * passo + passo / 2}" y="${A - 8}">${escapar(d.curto)}</text>` : "").join("");
+    return `
+      <figure class="grafico">
+        <figcaption>${escapar(rotulo)} <span>máx. ${escapar(formatar(max))}</span></figcaption>
+        <svg viewBox="0 0 ${L} ${A}" role="img" aria-label="${escapar(rotulo)}">
+          <line class="grafico__base" x1="${M.l}" x2="${L - M.r}" y1="${A - M.b}" y2="${A - M.b}"/>
+          <line class="grafico__grade" x1="${M.l}" x2="${L - M.r}" y1="${y(max / 2)}" y2="${y(max / 2)}"/>
+          ${barras}<g class="grafico__eixo">${marcas}</g>
+        </svg>
+        <div class="grafico__dica" hidden></div>
+      </figure>`;
+  }
+  function serieDias(dias, valorDoDia) {
+    return Array.from({ length: dias }, (_, i) => {
+      const ms = inicioDoDia(dias - 1 - i);
+      const d = new Date(ms);
+      return { valor: valorDoDia(chaveDia(ms), ms), titulo: d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" }), curto: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) };
+    });
+  }
+  const periodos = (atual, attr) => `<div class="filtros">${[[7, "7 dias"], [30, "30 dias"], [90, "90 dias"]].map(([n, t]) => `<button type="button" class="filtro${atual === n ? " ativo" : ""}" ${attr}="${n}">${t}</button>`).join("")}</div>`;
+
+  /* ---------- faturamento ---------- */
+  function faturamento() {
+    const dias = ui.periodo;
+    const desde = inicioDoDia(dias - 1);
+    const lanc = lancamentos();
+    const noPeriodo = lanc.filter((x) => x.em >= desde);
+    const total = centavos(noPeriodo.reduce((s, x) => s + x.valor, 0));
+    const pagos = S.pedidos.filter((p) => p.pago && (p.confirmadoEm || p.criadoEm) >= desde);
+    const ticket = pagos.length ? total / pagos.length : 0;
+    const porDia = {};
+    lanc.forEach((x) => { const k = chaveDia(x.em); porDia[k] = (porDia[k] || 0) + x.valor; });
+    const aReceber = S.pedidos.filter((p) => p.status === "aguardando").reduce((s, p) => s + p.sinal, 0) + S.pedidos.filter((p) => p.status === "confirmado").reduce((s, p) => s + (p.restante || 0), 0);
+    const devolvido = noPeriodo.filter((x) => x.valor < 0).reduce((s, x) => s - x.valor, 0);
+    // mais vendidos (pedidos pagos que não foram cancelados)
+    const vendidos = {};
+    S.pedidos.filter((p) => p.pago && !["cancelado", "estornado"].includes(p.status) && (p.confirmadoEm || p.criadoEm) >= desde)
+      .forEach((p) => p.itens.forEach((i) => { const v = vendidos[i.nome] || (vendidos[i.nome] = { qtd: 0, valor: 0 }); v.qtd += i.qtd; v.valor += i.qtd * i.preco; }));
+    const top = Object.entries(vendidos).sort((a, b) => b[1].valor - a[1].valor).slice(0, 6);
+    const maxTop = Math.max(1, ...top.map(([, v]) => v.valor));
+    const porForma = ["compra", "reserva30", "reserva50"].map((t) => {
+      const ps = pagos.filter((p) => p.tipo === t);
+      return { t, qtd: ps.length, valor: ps.reduce((s, p) => s + (t === "compra" ? p.total : p.sinal + (p.status === "retirado" ? p.restante : 0)), 0) };
+    });
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Dinheiro</p><h1>Faturamento</h1><p class="painel__sub">Conta o que foi confirmado como pago no painel, menos as devoluções feitas.</p></div>
+        ${periodos(dias, "data-periodo")}
+      </header>
+      <div class="kpis">
+        <div class="kpi"><span>Faturamento · ${dias} dias</span><strong>${moeda(total)}</strong><small>Hoje: ${moeda(somaPeriodo(1))}</small></div>
+        <div class="kpi"><span>Pedidos pagos</span><strong>${pagos.length}</strong><small>Ticket médio ${moeda(ticket)}</small></div>
+        <div class="kpi"><span>A receber</span><strong>${moeda(aReceber)}</strong><small>Sinais pendentes e restantes</small></div>
+        <div class="kpi"><span>Devolvido</span><strong>${moeda(devolvido)}</strong><small>Estornos no período</small></div>
+      </div>
+      <section class="bloco">${grafico(serieDias(dias, (k) => Math.max(0, porDia[k] || 0)), moeda, `Faturamento por dia · últimos ${dias} dias`)}</section>
+      <div class="duas-colunas">
+        <section class="bloco">
+          <header class="bloco__topo"><h2>Mais vendidos</h2></header>
+          ${top.length ? `<ul class="ranking">${top.map(([nome, v]) => `
+            <li><span class="ranking__nome">${escapar(nome)}<small>${v.qtd} un.</small></span><i style="--p:${(v.valor / maxTop) * 100}%"></i><b>${moeda(v.valor)}</b></li>`).join("")}</ul>`
+            : `<p class="vazio-curto">Os produtos aparecem aqui quando houver pedidos pagos no período.</p>`}
+        </section>
+        <section class="bloco">
+          <header class="bloco__topo"><h2>Por forma de compra</h2></header>
+          <ul class="lista-curta">${porForma.map((f) => `
+            <li><span>${f.t === "compra" ? "Compra completa" : f.t === "reserva30" ? `Reserva ${S.config.reservaPercentual}%` : `Reserva ${moeda(S.config.reservaFixa)}`}</span><span class="lista-curta__cat">${f.qtd} ${f.qtd === 1 ? "pedido" : "pedidos"}</span><b>${moeda(f.valor)}</b></li>`).join("")}</ul>
+        </section>
+      </div>`;
+  }
+
+  /* ---------- histórico de compras ---------- */
+  function filtrarHistorico() {
+    const desde = ui.histPeriodo ? inicioDoDia(ui.histPeriodo - 1) : 0;
+    const termo = ui.histBusca.trim().toLowerCase();
+    return S.pedidos
+      .filter((p) => p.criadoEm >= desde)
+      .filter((p) => ui.histStatus === "todos" || p.status === ui.histStatus)
+      .filter((p) => !termo || `${p.codigo} ${p.cliente?.nome} ${p.cliente?.telefone} ${p.itens.map((i) => i.nome).join(" ")}`.toLowerCase().includes(termo))
+      .sort((a, b) => b.criadoEm - a.criadoEm);
+  }
+  function historico() {
+    const lista = filtrarHistorico();
+    const soma = lista.filter((p) => p.pago).reduce((s, p) => s + (p.tipo === "compra" ? p.total : p.sinal), 0);
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Registro</p><h1>Histórico de compras</h1><p class="painel__sub">${lista.length} ${lista.length === 1 ? "pedido" : "pedidos"} · ${moeda(soma)} já pagos</p></div>
+        <button type="button" class="btn btn--contorno" data-exportar ${lista.length ? "" : "disabled"}><svg><use href="#i-upload"/></svg>Exportar planilha (CSV)</button>
+      </header>
+      <div class="barra-ferramentas">
+        <label class="campo campo--busca"><span class="sr">Buscar</span><input type="search" id="busca-historico" placeholder="Buscar por cliente, código, telefone ou produto" value="${escapar(ui.histBusca)}"></label>
+        <label class="campo campo--curto"><span class="sr">Período</span>
+          <select id="hist-periodo">${[[7, "Últimos 7 dias"], [30, "Últimos 30 dias"], [90, "Últimos 90 dias"], [0, "Tudo"]].map(([n, t]) => `<option value="${n}" ${ui.histPeriodo === n ? "selected" : ""}>${t}</option>`).join("")}</select>
+        </label>
+        <label class="campo campo--curto"><span class="sr">Situação</span>
+          <select id="hist-status"><option value="todos">Todas as situações</option>${Object.entries(NOMES_STATUS).map(([k, v]) => `<option value="${k}" ${ui.histStatus === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+        </label>
+      </div>
+      ${lista.length ? `
+      <div class="tabela-medidas__rolagem">
+        <table class="tabela-historico">
+          <thead><tr><th>Data</th><th>Código</th><th>Cliente</th><th>Itens</th><th>Forma</th><th>Total</th><th>Pago</th><th>Situação</th></tr></thead>
+          <tbody>${lista.map((p) => `
+            <tr>
+              <td>${dataHora(p.criadoEm)}</td>
+              <td class="tabela-historico__cod">${escapar(p.codigo)}</td>
+              <td><strong>${escapar(p.cliente?.nome)}</strong><small>${escapar(p.cliente?.telefone || "")}</small></td>
+              <td>${p.itens.map((i) => `${i.qtd}× ${escapar(i.nome)}`).join("<br>")}</td>
+              <td>${escapar(nomeTipo(p))}<small>${p.receber === "entrega" ? "Entrega" : "Retirada"}</small></td>
+              <td class="num">${moeda(p.total)}</td>
+              <td class="num">${p.pago ? moeda(p.tipo === "compra" ? p.total : p.sinal + (p.status === "retirado" ? p.restante : 0)) : "—"}</td>
+              <td><span class="status status--${p.status}">${NOMES_STATUS[p.status]}</span></td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>` : `<p class="vazio-curto">Nenhum pedido nesse filtro.</p>`}`;
+  }
+  async function exportarCSV() {
+    const lista = filtrarHistorico();
+    const campo = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const linhas = [["Data", "Código", "Cliente", "Telefone", "E-mail", "Itens", "Forma", "Receber", "Endereço", "Total", "Sinal", "Restante", "Pago", "Situação", "Devolução"]]
+      .concat(lista.map((p) => [dataHora(p.criadoEm), p.codigo, p.cliente?.nome, p.cliente?.telefone, p.cliente?.email, p.itens.map((i) => `${i.qtd}x ${i.nome}`).join("; "), nomeTipo(p), p.receber, `${p.cliente?.endereco || ""} ${p.cliente?.cep || ""}`.trim(), p.total, p.sinal, p.restante, p.pago ? "sim" : "não", NOMES_STATUS[p.status], p.reembolso ?? ""]));
+    const texto = "\ufeff" + linhas.map((l) => l.map(campo).join(";")).join("\r\n");
+    const nome = `tmz-historico-${chaveDia(Date.now())}.csv`;
+    const downloads = await window.claude?.use?.("downloads").catch(() => null);
+    if (downloads) {
+      try { await downloads.save({ filename: nome, data: new Blob([texto], { type: "text/csv" }) }); } catch (e) { if (e?.code !== "declined") toast("Não deu para baixar aqui."); }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([texto], { type: "text/csv;charset=utf-8" }));
+    a.download = nome;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  /* ---------- visitas ---------- */
+  function visitas() {
+    const dias = ui.periodo;
+    const serie = serieDias(dias, (k) => (S.visitas[k] || {}).pessoas || 0);
+    const soma = (n, campo) => serieDias(n, (k) => (S.visitas[k] || {})[campo] || 0).reduce((s, d) => s + d.valor, 0);
+    const pessoas = soma(dias, "pessoas");
+    const pedidosPeriodo = S.pedidos.filter((p) => p.criadoEm >= inicioDoDia(dias - 1)).length;
+    const hoje = visitasDoDia(0), ontem = visitasDoDia(1);
+    const variacao = ontem.pessoas ? Math.round(((hoje.pessoas - ontem.pessoas) / ontem.pessoas) * 100) : null;
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Movimento</p><h1>Visitas</h1><p class="painel__sub">Quantas pessoas abriram a loja por dia. Suas próprias visitas como dono não entram na conta.</p></div>
+        ${periodos(dias, "data-periodo")}
+      </header>
+      ${S.modo === "local" ? `<p class="faixa-aviso">No modo de teste só dá para contar as visitas deste navegador. Com o site no servidor, aqui aparecem as visitas de todos os clientes.</p>` : ""}
+      <div class="kpis">
+        <div class="kpi"><span>Hoje</span><strong>${hoje.pessoas}</strong><small>${variacao == null ? "Sem visitas ontem para comparar" : `${variacao >= 0 ? "+" : ""}${variacao}% em relação a ontem`}</small></div>
+        <div class="kpi"><span>Ontem</span><strong>${ontem.pessoas}</strong><small>${ontem.vistas} páginas abertas</small></div>
+        <div class="kpi"><span>Pessoas · ${dias} dias</span><strong>${pessoas}</strong><small>${soma(dias, "vistas")} páginas abertas</small></div>
+        <div class="kpi"><span>Conversão · ${dias} dias</span><strong>${pessoas ? ((pedidosPeriodo / pessoas) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : 0}%</strong><small>${pedidosPeriodo} pedidos e reservas</small></div>
+      </div>
+      <section class="bloco">${grafico(serie, (v) => `${v} ${v === 1 ? "pessoa" : "pessoas"}`, `Pessoas por dia · últimos ${dias} dias`)}</section>`;
+  }
+
+  /* ---------- contato e links ---------- */
+  function contato() {
+    const c = S.config;
+    const campo = (nome, rotulo, tipo = "text", extra = "") => `<label class="campo"><span>${rotulo}</span><input name="${nome}" type="${tipo}" value="${escapar(c[nome] ?? "")}" ${extra}></label>`;
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Onde te achar</p><h1>Contato e links</h1><p class="painel__sub">Aparecem no rodapé, nos botões de WhatsApp e no aviso do Instagram. Deixe vazio o que não usa.</p></div>
+      </header>
+      <form id="form-contato" class="form-painel">
+        <section class="bloco">
+          <h2>Atendimento</h2>
+          <div class="campos-2">${campo("whatsapp", "WhatsApp da loja (com DDI e DDD)", "tel", 'placeholder="5511999999999"')}${campo("email", "E-mail", "email", 'placeholder="contato@tmzstore.com"')}</div>
+          <div class="campos-2">${campo("endereco", "Endereço da loja", "text", 'placeholder="Rua, número, bairro, cidade"')}${campo("horario", "Horário de funcionamento", "text", 'placeholder="Seg–Sáb 9h–19h"')}</div>
+        </section>
+        <section class="bloco">
+          <h2>Redes e links</h2>
+          <div class="campos-2">${campo("instagram", "Instagram (link)", "url", 'placeholder="https://www.instagram.com/tmz_storee/"')}${campo("tiktok", "TikTok (link)", "url", 'placeholder="https://www.tiktok.com/@..."')}</div>
+          <div class="campos-2">${campo("facebook", "Facebook (link)", "url", 'placeholder="https://facebook.com/..."')}${campo("linkExtra", "Outro link (catálogo, Linktree…)", "url", 'placeholder="https://..."')}</div>
+          ${campo("linkExtraNome", "Nome do outro link", "text", 'placeholder="Catálogo completo"')}
+        </section>
+        <footer class="barra-salvar"><button class="btn">Salvar contato e links</button></footer>
+      </form>`;
+  }
+
   /* ---------- eventos ---------- */
   raiz.addEventListener("click", async (e) => {
     const t = e.target;
@@ -575,6 +810,10 @@
     if (aba) { ui.aba = aba.dataset.aba; ui.cancelando = null; ui.excluindo = null; render(); $("#painel").scrollTop = 0; return; }
     const ir = t.closest("[data-ir]");
     if (ir) { ui.aba = ir.dataset.ir; if (ir.dataset.filtro) ui.filtro = ir.dataset.filtro; render(); return; }
+    const per = t.closest("[data-periodo]");
+    if (per) { ui.periodo = Number(per.dataset.periodo); return renderAba(); }
+    if (t.closest("[data-exportar]")) return exportarCSV();
+    if (t.closest("[data-banner-padrao]")) { await Dados.salvarConfig({ bannerImagem: "" }); toast("Foto padrão de volta"); return renderAba(); }
     if (t.closest("[data-medidas-padrao]")) { await Dados.salvarConfig({ medidas: null }); toast("Medidas padrão restauradas"); return renderAba(); }
     if (t.closest("[data-sair]")) { Dados.sairPainelLocal(); location.hash = ""; return; }
     const filtro = t.closest("[data-filtro-pedido]");
@@ -625,6 +864,26 @@
       if (p) { await Dados.salvarProduto({ ...p, oferta: t.checked }); toast(t.checked ? "Produto em Ofertas do dia" : "Produto saiu das ofertas"); }
     }
     if (t.id === "filtro-categoria") { ui.catFiltro = t.value; renderAba(); }
+    if (t.id === "so-ofertas") { ui.soOfertas = t.checked; renderAba(); }
+    if (t.id === "hist-periodo") { ui.histPeriodo = Number(t.value); renderAba(); }
+    if (t.id === "hist-status") { ui.histStatus = t.value; renderAba(); }
+    if (t.matches("[data-preco], [data-preco-antigo]")) {
+      const id = t.dataset.preco || t.dataset.precoAntigo;
+      const prod = S.produtos.find((x) => x.id === id);
+      const v = t.value === "" ? null : centavos(t.value);
+      if (!prod) return;
+      if (t.dataset.preco && !(v > 0)) { toast("O preço precisa ser maior que zero"); t.value = Number(prod.preco).toFixed(2); return; }
+      await Dados.salvarProduto({ ...prod, [t.dataset.preco ? "preco" : "precoAntigo"]: v });
+      toast(t.dataset.preco ? `Preço de ${prod.nome}: ${moeda(v)}` : v ? `Preço antigo: ${moeda(v)}` : "Desconto removido");
+    }
+    if (t.id === "foto-banner" && t.files[0]) {
+      try {
+        const url = await reduzirFoto(t.files[0], 1400);
+        await Dados.salvarConfig({ bannerImagem: url });
+        toast("Foto do banner trocada");
+        renderAba();
+      } catch { toast("Não deu para ler essa imagem"); }
+    }
     if (t.id === "foto-arquivo" && t.files[0]) {
       try {
         const url = await reduzirFoto(t.files[0]);
@@ -652,6 +911,14 @@
       campo.setSelectionRange(pos, pos);
     }
     if (e.target.closest("#form-destaque")) atualizarPrevia();
+    if (e.target.id === "busca-historico") {
+      ui.histBusca = e.target.value;
+      const pos = e.target.selectionStart;
+      renderAba();
+      const campo = $("#busca-historico", raiz);
+      campo.focus();
+      campo.setSelectionRange(pos, pos);
+    }
   });
 
   raiz.addEventListener("submit", async (e) => {
@@ -695,12 +962,18 @@
         await Dados.salvarConfig({ medidas: novo });
         toast("Medidas salvas. O provador já usa os novos valores.");
       }
+      if (f.id === "form-contato") {
+        const d = Object.fromEntries(new FormData(f));
+        d.whatsapp = digitos(d.whatsapp);
+        Object.keys(d).forEach((k) => { d[k] = String(d[k]).trim(); });
+        await Dados.salvarConfig(d);
+        toast("Contato e links salvos");
+      }
       if (f.id === "form-config") {
         const d = Object.fromEntries(new FormData(f));
         ["frete", "freteGratisAcima", "reservaPercentual", "reservaFixa", "estornoJanelaMin", "estornoDepoisPerc"].forEach((k) => { d[k] = Math.max(0, Number(d[k]) || 0); });
         d.reservaPercentual = Math.min(99, Math.max(1, d.reservaPercentual));
         d.estornoDepoisPerc = Math.min(100, d.estornoDepoisPerc);
-        d.whatsapp = digitos(d.whatsapp);
         if (d.pinPainel !== undefined && String(d.pinPainel).trim().length < 4) { toast("O PIN precisa de pelo menos 4 números"); return; }
         await Dados.salvarConfig(d);
         toast("Configurações salvas");
@@ -711,6 +984,19 @@
   });
 
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ui.editando) fecharEditor(); });
+  raiz.addEventListener("pointermove", (e) => {
+    const g = e.target.closest(".grafico .barra");
+    const fig = e.target.closest(".grafico");
+    if (!fig) return;
+    const dica = fig.querySelector(".grafico__dica");
+    if (!g) { dica.hidden = true; return; }
+    const r = fig.getBoundingClientRect();
+    dica.textContent = g.querySelector("title").textContent;
+    dica.hidden = false;
+    dica.style.left = `${Math.min(r.width - 150, Math.max(0, e.clientX - r.left - 70))}px`;
+    dica.style.top = `${e.clientY - r.top - 44}px`;
+  });
+  raiz.addEventListener("pointerleave", () => raiz.querySelectorAll(".grafico__dica").forEach((d) => { d.hidden = true; }), true);
 
   /* ---------- quando abrir e quando os dados mudarem ---------- */
   window.addEventListener("tmz:rota", (e) => {
@@ -723,7 +1009,7 @@
   Dados.ouvir(() => {
     if (!ui.aberto) return;
     if (S.admin !== eraAdmin) { eraAdmin = S.admin; return render(); }
-    if (ui.editando || abasDeFormulario.includes(ui.aba) || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto")) {
+    if (ui.editando || abasDeFormulario.includes(ui.aba) || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
       // só atualiza o contador do menu
       const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length;
       const b = raiz.querySelector('[data-aba="pedidos"]');

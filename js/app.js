@@ -52,7 +52,12 @@
     $("#banner-botao").textContent = c.bannerBotao || "Ver ofertas";
     $("#link-whats").href = linkWhats();
     $("#link-avaliar").href = c.instagram || "#";
-    $("#rodape-insta").href = c.instagram || "#";
+    const redes = [
+      [c.instagram, "Instagram"], [c.tiktok, "TikTok"], [c.facebook, "Facebook"],
+      [c.email ? `mailto:${c.email}` : "", c.email], [c.linkExtra, c.linkExtraNome || "Mais links"],
+    ].filter(([url]) => url);
+    $("#rodape-redes").innerHTML = redes.map(([url, nome]) => `<li><a href="${escapar(url)}" ${url.startsWith("mailto:") ? "" : 'target="_blank" rel="noopener"'}>${escapar(nome)}</a></li>`).join("");
+    $("#cta-final-img").src = c.bannerImagem || "img/banner.jpg";
     $("#rodape-endereco").hidden = !c.endereco;
     $("#rodape-endereco").textContent = c.endereco || "";
     $("#rodape-horario").hidden = !c.horario;

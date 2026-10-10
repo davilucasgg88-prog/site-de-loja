@@ -38,13 +38,19 @@ Os valores (30%, R$ 50, 1 hora, 50%) são editáveis no painel.
 e cancela, com o valor a devolver calculado pela regra.
 
 **Painel do lojista** (`#painel`, botão "Painel" no topo ou "Área do lojista" no rodapé):
-- Resumo: pagamentos pendentes, pedidos para retirar/enviar, devoluções, estoque baixo
+- Resumo: pagamentos pendentes, pedidos para retirar/enviar, devoluções, faturamento e visitas de hoje
+- Faturamento: total de 7/30/90 dias, ticket médio, a receber, devolvido, gráfico por dia,
+  mais vendidos e divisão por forma de compra (conta o que o dono confirmou como pago)
+- Histórico de compras: todos os pedidos com busca, filtro de período e situação, e exportação em CSV
+- Visitas: pessoas por dia, páginas abertas, comparação com ontem e taxa de conversão
+  (visitas do dono não entram; no modo local só conta o próprio navegador)
+- Contato e links: WhatsApp, e-mail, endereço, horário, Instagram, TikTok, Facebook e um link extra
 - Pedidos e reservas: confirmar sinal recebido (baixa o estoque), marcar retirado/enviado,
   cancelar com o valor de devolução já calculado, registrar devolução feita, voltar peças ao estoque
-- Produtos e estoque: somar entradas, +/− unidade, ligar/desligar oferta, cadastrar, editar
+- Produtos e preços: preço e preço antigo editáveis direto na tabela, filtro "só ofertas", somar entradas, +/− unidade, ligar/desligar oferta, cadastrar, editar
   (com foto), excluir. Serve para qualquer produto, inclusive celulares
 - Categorias: criar (ex.: Celulares), renomear, trocar foto, remover
-- Destaque e textos: título, palavra vazada, subtítulo, botão, banner e faixa do topo, com prévia
+- Destaque e textos: título, palavra vazada, subtítulo, botão, produto em destaque, foto e textos da chamada final e faixa do topo, com prévia
 - Configurações: WhatsApp, Instagram, chave Pix, frete e regras de reserva
 
 ## Onde ficam os dados

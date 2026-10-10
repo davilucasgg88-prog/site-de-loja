@@ -23,6 +23,7 @@ const Dados = (() => {
     uid: "local",
     ...padrao(),
     meusPedidos: [],
+    visitas: {}, // { "2026-10-10": { pessoas, vistas } } — só o dono enxerga
   };
 
   let db = null;
@@ -220,7 +221,63 @@ const Dados = (() => {
     avisar();
   }
 
-  conectar().catch(() => {});
+  /* ---------- visitas diárias ---------- */
+  const hoje = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso do visitante
+  function podar(dias) {
+    const limite = new Date(Date.now() - 120 * 864e5).toLocaleDateString("sv-SE");
+    Object.keys(dias).forEach((d) => { if (d < limite) delete dias[d]; });
+    return dias;
+  }
+  function visitasLocais() {
+    try { estado.visitas = JSON.parse(localStorage.getItem("tmz-visitas")) || {}; } catch { estado.visitas = {}; }
+  }
+  function registrarVisitaLocal() {
+    visitasLocais();
+    const d = hoje();
+    const v = estado.visitas[d] || { pessoas: 0, vistas: 0 };
+    let jaContou = false;
+    try { jaContou = sessionStorage.getItem("tmz-visita-dia") === d || localStorage.getItem("tmz-visitante-dia") === d; } catch {}
+    v.vistas += 1;
+    if (!jaContou) v.pessoas += 1;
+    estado.visitas[d] = v;
+    try {
+      localStorage.setItem("tmz-visitas", JSON.stringify(podar(estado.visitas)));
+      localStorage.setItem("tmz-visitante-dia", d);
+      sessionStorage.setItem("tmz-visita-dia", d);
+    } catch {}
+  }
+  // Na nuvem cada visitante grava só o próprio documento (visitas/<id>); o dono soma todos.
+  async function registrarVisitaNuvem() {
+    if (!estado.uid || estado.admin) return;
+    try {
+      const ref = db.doc("visitas/" + estado.uid);
+      const snap = await ref.get();
+      const dias = podar({ ...(snap.exists ? snap.data().dias || {} : {}) });
+      dias[hoje()] = (dias[hoje()] || 0) + 1;
+      await ref.set({ dias });
+    } catch {}
+  }
+  function ouvirVisitasNuvem() {
+    db.collection("visitas").onSnapshot((s) => {
+      const total = {};
+      s.docs.forEach((doc) => {
+        Object.entries(doc.data().dias || {}).forEach(([d, n]) => {
+          const v = total[d] || (total[d] = { pessoas: 0, vistas: 0 });
+          v.pessoas += 1;
+          v.vistas += Number(n) || 0;
+        });
+      });
+      estado.visitas = total;
+      avisar();
+    }, () => {});
+  }
+  registrarVisitaLocal();
+
+  conectar().then(() => {
+    if (estado.modo !== "nuvem") return;
+    estado.visitas = {};
+    if (estado.admin) ouvirVisitasNuvem(); else registrarVisitaNuvem();
+  }).catch(() => {});
 
   return {
     estado,
