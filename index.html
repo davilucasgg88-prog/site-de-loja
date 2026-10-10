@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TMZ STORE</title>
   <meta name="description" content="TMZ, a loja que veste o povo. Peças peruanas de primeira linha: Lacoste, Nike, Tommy Hilfiger e mais.">
+  <script>try { if (localStorage.getItem("tmz-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) {}</script>
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/telas.css">
@@ -45,6 +46,8 @@
       <symbol id="i-celulares" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
       <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1 1 0 0 1 0 1.4l-7.6 7.6a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.4"/></symbol>
       <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
+      <symbol id="i-lua" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+      <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
     </defs>
   </svg>
@@ -70,6 +73,7 @@
       </nav>
       <div class="topo__acoes">
         <a class="botao-painel" id="botao-painel" href="#painel" hidden><svg><use href="#i-painel"/></svg>Painel</a>
+        <button class="icone tema-btn" id="alternar-tema" type="button" aria-label="Ativar modo escuro" title="Modo escuro"><svg class="lua"><use href="#i-lua"/></svg><svg class="sol"><use href="#i-sol"/></svg></button>
         <button class="icone" id="abrir-busca" aria-label="Buscar"><svg><use href="#i-search"/></svg></button>
         <button class="icone carrinho-btn" id="abrir-carrinho" aria-label="Carrinho">
           <svg><use href="#i-cart"/></svg><span class="contador" id="contador">0</span>
@@ -143,7 +147,7 @@
     </section>
 
     <section class="container">
-      <div class="banner">
+      <div class="banner ilha-escura">
         <img class="banner__img" src="img/banner.jpg" alt="">
         <div class="banner__texto">
           <p class="banner__tag" id="banner-tag">Oferta exclusiva</p>
@@ -337,7 +341,7 @@
     <button class="fechar" data-fechar aria-label="Fechar"><svg aria-hidden="true"><use href="#i-fechar"/></svg></button>
     <h2 id="procura-titulo">O que você procura?</h2>
     <p class="procura__sub">Escolha a categoria. O número mostra quantas peças temos agora.</p>
-    <div class="procura__grade" id="procura-grade"></div>
+    <div class="procura__grade ilha-escura" id="procura-grade"></div>
     <button type="button" class="procura__todos" data-procura="todos">Ver todos os produtos <svg><use href="#i-arrow"/></svg></button>
   </dialog>
 

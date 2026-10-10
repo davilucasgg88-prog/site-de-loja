@@ -67,7 +67,7 @@
       const qtd = S.produtos.filter((p) => p.categoria === c.id).length;
       return `
       <button class="circulo" data-cat="${escapar(c.id)}">
-        <span class="circulo__anel">
+        <span class="circulo__anel ilha-escura">
           <span class="circulo__img"><img src="${escapar(imagemCat(c))}" alt=""></span>
           <span class="circulo__ir" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
         </span>
@@ -853,6 +853,25 @@
     if (telaAtual === "compra" && $("#compra-ok").hidden) renderCompra();
     if (telaAtual === "reservas") renderReservas();
   });
+
+  /* ---------- tema claro / escuro ---------- */
+  function aplicarTema(escuro, animar) {
+    const raiz = document.documentElement;
+    if (animar) {
+      raiz.classList.add("trocando-tema");
+      setTimeout(() => raiz.classList.remove("trocando-tema"), 400);
+    }
+    if (escuro) raiz.dataset.tema = "escuro"; else delete raiz.dataset.tema;
+    $$(".tema-btn").forEach((b) => {
+      b.setAttribute("aria-label", escuro ? "Ativar modo claro" : "Ativar modo escuro");
+      b.title = escuro ? "Modo claro" : "Modo escuro";
+    });
+    try { localStorage.setItem("tmz-tema", escuro ? "escuro" : "claro"); } catch {}
+  }
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".tema-btn")) aplicarTema(document.documentElement.dataset.tema !== "escuro", true);
+  });
+  aplicarTema(document.documentElement.dataset.tema === "escuro");
 
   $("#ano").textContent = new Date().getFullYear();
   rota();

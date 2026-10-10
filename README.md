@@ -67,7 +67,9 @@ Depois do primeiro acesso ao painel, vale o que estiver salvo nele.
 `COMENTARIOS` são exemplos (`exemplo: true`); troque pelos comentários reais dos clientes para
 sumir o aviso "Comentários de exemplo".
 
-As cores ficam no topo de `css/style.css`; as telas novas em `css/telas.css`.
+O site abre no tema claro; a lua no topo liga o modo escuro e a escolha fica salva no navegador.
+As cores dos dois temas ficam no topo de `css/style.css` (`:root` é o claro, `html[data-tema="escuro"]` o escuro);
+banner, fotos e cards de categoria ficam escuros nos dois (classe `ilha-escura`). As telas novas estão em `css/telas.css`.
 As fontes (Barlow, Barlow Condensed e Inter) estão em `fonts/`.
 
 ## Rodar

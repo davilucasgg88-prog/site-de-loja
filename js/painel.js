@@ -42,6 +42,7 @@
               </button>`).join("")}
           </nav>
           <div class="painel__pe">
+            <button type="button" class="link-simples tema-btn"><svg class="lua"><use href="#i-lua"/></svg><svg class="sol"><use href="#i-sol"/></svg>Trocar tema</button>
             <a href="#" class="link-simples"><svg><use href="#i-voltar"/></svg>Ver a loja</a>
             ${S.modo === "local" ? `<button type="button" class="link-simples" data-sair>Sair do painel</button>` : ""}
           </div>
