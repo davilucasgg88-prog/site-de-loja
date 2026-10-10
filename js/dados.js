@@ -56,7 +56,6 @@ const Dados = (() => {
       }));
     } catch {}
   }
-  try { estado.admin = sessionStorage.getItem("tmz-painel") === "1"; } catch {}
   lerLocal();
 
   /* ---------- modo nuvem (artifact) ---------- */
@@ -207,19 +206,114 @@ const Dados = (() => {
     }
   }
 
-  function entrarPainelLocal(pin) {
-    if (estado.modo !== "local" || String(pin) !== String(estado.config.pinPainel)) return false;
+  /* ---------- login do painel ---------- */
+  // Só um e-mail entra (ACESSO.emailAdmin). Com o Supabase configurado, a senha é conferida
+  // no servidor; sem ele, vale o login de teste (e-mail + senha de teste) guardado no navegador.
+  const CHAVE_SESSAO = "tmz-sessao";
+  const servidor = () => (ACESSO.supabaseUrl && ACESSO.supabaseChave ? ACESSO.supabaseUrl.replace(/\/+$/, "") : "");
+  const emailDono = () => String(ACESSO.emailAdmin || "").trim().toLowerCase();
+  estado.login = { tipo: servidor() ? "servidor" : "teste", email: emailDono() };
+  let tentativas = 0;
+  let bloqueadoAte = 0;
+
+  const lojas = () => [localStorage, sessionStorage];
+  function lerSessao() {
+    for (const loja of lojas()) {
+      try { const s = JSON.parse(loja.getItem(CHAVE_SESSAO)); if (s) return { ...s, loja }; } catch {}
+    }
+    return null;
+  }
+  function gravarSessao(sessao, lembrar) {
+    apagarSessao();
+    try { (lembrar ? localStorage : sessionStorage).setItem(CHAVE_SESSAO, JSON.stringify(sessao)); } catch {}
+  }
+  function apagarSessao() {
+    lojas().forEach((loja) => { try { loja.removeItem(CHAVE_SESSAO); } catch {} });
+  }
+  const sessaoValida = (s) => s && String(s.email).toLowerCase() === emailDono() && s.tipo === estado.login.tipo;
+
+  async function supabase(caminho, corpo, token) {
+    const r = await fetch(servidor() + "/auth/v1/" + caminho, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: ACESSO.supabaseChave, Authorization: "Bearer " + (token || ACESSO.supabaseChave) },
+      body: JSON.stringify(corpo || {}),
+    });
+    const dados = await r.json().catch(() => ({}));
+    return { ok: r.ok, dados };
+  }
+
+  // Ao abrir o site: retoma a sessão salva (e renova o acesso no Supabase quando venceu)
+  async function retomarSessao() {
+    const s = lerSessao();
+    if (!sessaoValida(s)) { if (s) apagarSessao(); return; }
     estado.admin = true;
-    try { sessionStorage.setItem("tmz-painel", "1"); } catch {}
-    avisar();
-    return true;
+    if (s.tipo !== "servidor" || Date.now() < s.expira - 60000) return;
+    try {
+      const { ok, dados } = await supabase("token?grant_type=refresh_token", { refresh_token: s.renovar });
+      if (!ok || String(dados.user?.email).toLowerCase() !== emailDono()) throw new Error();
+      gravarSessao({ ...s, token: dados.access_token, renovar: dados.refresh_token, expira: Date.now() + dados.expires_in * 1000 }, s.loja === localStorage);
+    } catch {
+      apagarSessao();
+      estado.admin = false;
+      avisar();
+    }
   }
-  function sairPainelLocal() {
+
+  async function entrar(email, senha, lembrar) {
+    if (estado.modo !== "local") return { ok: false, erro: "Aqui o painel abre só com a conta do dono." };
+    if (Date.now() < bloqueadoAte) {
+      return { ok: false, erro: `Muitas tentativas. Espere ${Math.ceil((bloqueadoAte - Date.now()) / 1000)} segundos.` };
+    }
+    email = String(email).trim().toLowerCase();
+    const falhou = (erro) => {
+      tentativas += 1;
+      if (tentativas >= 5) { bloqueadoAte = Date.now() + 60000; tentativas = 0; }
+      return { ok: false, erro };
+    };
+    if (email !== emailDono()) return falhou("Este login não tem acesso ao painel.");
+
+    if (estado.login.tipo === "servidor") {
+      let r;
+      try { r = await supabase("token?grant_type=password", { email, password: senha }); }
+      catch { return { ok: false, erro: "Sem conexão com o servidor. Tente de novo." }; }
+      if (!r.ok) return falhou("E-mail ou senha incorretos.");
+      if (String(r.dados.user?.email).toLowerCase() !== emailDono()) return falhou("Este login não tem acesso ao painel.");
+      gravarSessao({
+        tipo: "servidor", email, token: r.dados.access_token, renovar: r.dados.refresh_token,
+        expira: Date.now() + r.dados.expires_in * 1000,
+      }, lembrar);
+    } else {
+      if (String(senha) !== String(estado.config.pinPainel)) return falhou("E-mail ou senha incorretos.");
+      gravarSessao({ tipo: "teste", email }, lembrar);
+    }
+    tentativas = 0;
+    estado.admin = true;
+    avisar();
+    return { ok: true };
+  }
+
+  function sair() {
     if (estado.modo !== "local") return;
+    const s = lerSessao();
+    if (s?.tipo === "servidor") supabase("logout", {}, s.token).catch(() => {});
+    apagarSessao();
     estado.admin = false;
-    try { sessionStorage.removeItem("tmz-painel"); } catch {}
     avisar();
   }
+
+  async function recuperarSenha(email) {
+    email = String(email || "").trim().toLowerCase();
+    if (estado.login.tipo !== "servidor") {
+      return { ok: false, erro: "No modo de teste a senha fica em Configurações do painel. Com o login no servidor, chega um link por e-mail." };
+    }
+    if (!email) return { ok: false, erro: "Digite seu e-mail para receber o link." };
+    // Responde igual para qualquer e-mail, para não revelar qual é o do dono
+    if (email === emailDono()) {
+      try { await supabase("recover", { email }); } catch { return { ok: false, erro: "Sem conexão com o servidor. Tente de novo." }; }
+    }
+    return { ok: true, msg: "Se este e-mail for o do lojista, chega um link para criar uma nova senha." };
+  }
+  retomarSessao();
 
   /* ---------- visitas diárias ---------- */
   const hoje = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso do visitante
@@ -284,6 +378,6 @@ const Dados = (() => {
     ouvir(fn) { ouvintes.add(fn); fn(estado); return () => ouvintes.delete(fn); },
     reembolso,
     salvarProduto, apagarProduto, ajustarEstoque, salvarCategorias, salvarConfig,
-    criarPedido, atualizarPedido, entrarPainelLocal, sairPainelLocal, novoId,
+    criarPedido, atualizarPedido, entrar, sair, recuperarSenha, novoId,
   };
 })();

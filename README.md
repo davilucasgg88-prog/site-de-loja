@@ -37,7 +37,18 @@ Os valores (30%, R$ 50, 1 hora, 50%) são editáveis no painel.
 **Minhas reservas** (`#reservas`): o cliente acompanha o status, vê o prazo de devolução total
 e cancela, com o valor a devolver calculado pela regra.
 
-**Painel do lojista** (`#painel`, botão "Painel" no topo ou "Área do lojista" no rodapé):
+**Login do painel** (`#painel`): tela "Bem-vindo de volta!" com e-mail, senha (com olho para mostrar),
+"Lembrar de mim", "Esqueci a senha", a logo TMZ no círculo e as redes da loja na lateral.
+Só um login entra: o e-mail em `ACESSO.emailAdmin` (`js/produtos.js`). Depois de 5 erros seguidos,
+a tela espera 1 minuto.
+- **Login de verdade (Supabase):** crie um projeto grátis em supabase.com, crie o usuário do dono em
+  *Authentication → Users → Add user* (com o e-mail e a senha dele) e desligue *Allow new users to sign up*
+  em *Authentication → Sign In / Providers*. Preencha `supabaseUrl` e `supabaseChave` (a chave **anon public**)
+  em `ACESSO`. A senha fica só no Supabase e "Esqueci a senha" manda o link por e-mail.
+- **Sem Supabase (teste):** entra com o e-mail de `ACESSO` e a senha de teste (inicial `1234`,
+  muda em Configurações). Fica no navegador, então não é proteção de verdade.
+
+**Painel do lojista** (botão "Painel" no topo ou "Área do lojista" no rodapé):
 - Resumo: pagamentos pendentes, pedidos para retirar/enviar, devoluções, faturamento e visitas de hoje
 - Faturamento: total de 7/30/90 dias, ticket médio, a receber, devolvido, gráfico por dia,
   mais vendidos e divisão por forma de compra (conta o que o dono confirmou como pago)
@@ -61,13 +72,13 @@ e cancela, com o valor a devolver calculado pela regra.
   O que o dono muda no painel aparece para todos; cada cliente só vê as próprias reservas.
   O painel abre só para quem administra o artifact.
 - **Local** — em qualquer outra hospedagem (GitHub Pages, Netlify…) guarda tudo no navegador.
-  Bom para testar o fluxo inteiro. O painel abre com PIN (inicial `1234`).
+  Bom para testar o fluxo inteiro. O painel abre com o login acima.
 
 > **Para a loja no ar com clientes reais** é preciso um servidor: no modo local, cada navegador
 > tem sua própria cópia dos dados, então o que o dono muda não chega aos clientes e as reservas
 > não chegam ao dono. A troca é só em `js/dados.js`: as funções `salvarProduto`, `criarPedido`,
-> `atualizarPedido` etc. passam a gravar num backend (Firebase, Supabase ou uma API própria), com
-> login de verdade para o painel no lugar do PIN.
+> `atualizarPedido` etc. passam a gravar num backend (o mesmo Supabase do login, com regras que só deixam
+> o e-mail do dono alterar produtos e ver pedidos).
 
 **Pagamento:** o site não cobra sozinho. O cliente paga o sinal por Pix e manda o comprovante
 pelo WhatsApp; o dono confirma no painel. Para cobrança automática, integre um gateway

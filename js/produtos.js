@@ -30,8 +30,17 @@ const LOJA = {
   reservaFixa: 50,         // reserva pagando R$ 50 e o resto depois
   estornoJanelaMin: 60,    // cancelando dentro desse tempo, devolve 100% do sinal
   estornoDepoisPerc: 50,   // depois disso, devolve essa % do sinal
-  // PIN do painel quando o site roda sem servidor (só para testes, não é segurança de verdade)
+  // Senha do login de teste, usada só quando o Supabase (ACESSO) não está configurado
   pinPainel: "1234",
+};
+
+// Login do painel. Só o e-mail abaixo entra.
+//  - Com o Supabase preenchido: login de verdade, a senha fica só no Supabase (nunca aqui).
+//  - Sem o Supabase: login de teste com este e-mail e a senha de teste (pinPainel).
+const ACESSO = {
+  emailAdmin: "admin@tmzstore.com.br",
+  supabaseUrl: "",    // ex.: https://xxxx.supabase.co
+  supabaseChave: "",  // chave "anon public" (Project Settings → API). Nunca a "service_role"
 };
 
 // Textos do destaque, do banner e da faixa do topo

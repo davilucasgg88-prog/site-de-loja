@@ -58,7 +58,6 @@ html[data-tema="escuro"], .ilha-escura {
 html:not([data-tema="escuro"]) .logo__marca,
 html:not([data-tema="escuro"]) .tela__logo,
 html:not([data-tema="escuro"]) .painel__marca img,
-html:not([data-tema="escuro"]) .entrada__caixa img,
 html:not([data-tema="escuro"]) .insta__marca { filter: invert(1); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
