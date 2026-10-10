@@ -67,7 +67,10 @@
     const linha = avisos.map((a) => `<span>${escapar(a)}</span>`).join("");
     $("#faixa").innerHTML = `<div>${linha}</div><div aria-hidden="true">${linha}</div>`;
     $("#botao-painel").hidden = !S.admin;
-    $("#botao-entrar").hidden = S.admin;
+    const entrar = $("#botao-entrar");
+    entrar.classList.toggle("logado", !!S.conta);
+    entrar.title = S.conta ? "Minha conta" : "Entrar ou cadastrar";
+    entrar.setAttribute("aria-label", entrar.title);
   }
 
   /* ---------- categorias ---------- */
@@ -485,6 +488,13 @@
     $("#compra-formulario").hidden = false;
     $("#compra-ok").hidden = true;
     if (!t.itens.length) { location.hash = "carrinho"; return; }
+    // cliente com conta: já preenche os dados
+    if (S.conta && !S.conta.admin) {
+      [["#c-nome", S.conta.nome], ["#c-telefone", S.conta.whats], ["#c-email", S.conta.email]].forEach(([sel, v]) => {
+        const campo = $(sel);
+        if (campo && !campo.value && v) campo.value = v;
+      });
+    }
     if (!modosDisponiveis(t.total).some((m) => m.id === estado.modo)) estado.modo = "compra";
     renderCompra();
   }
@@ -777,7 +787,7 @@
   setInterval(() => { if (!$("#tela-reservas").hidden) renderReservas(); }, 30000);
 
   /* ---------- telas cheias (rotas por #) ---------- */
-  const TELAS = { carrinho: "#tela-carrinho", compra: "#tela-compra", reservas: "#tela-reservas", medidas: "#tela-medidas", painel: "#painel" };
+  const TELAS = { carrinho: "#tela-carrinho", compra: "#tela-compra", reservas: "#tela-reservas", medidas: "#tela-medidas", entrar: "#tela-entrar", painel: "#painel" };
   let rolagemLoja = 0;
   let telaAtual = "";
 

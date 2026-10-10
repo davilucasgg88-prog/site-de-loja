@@ -37,16 +37,18 @@ Os valores (30%, R$ 50, 1 hora, 50%) são editáveis no painel.
 **Minhas reservas** (`#reservas`): o cliente acompanha o status, vê o prazo de devolução total
 e cancela, com o valor a devolver calculado pela regra.
 
-**Login do painel** (`#painel`): tela "Bem-vindo de volta!" com e-mail, senha (com olho para mostrar),
-"Lembrar de mim", "Esqueci a senha", a logo TMZ no círculo e as redes da loja na lateral.
-Só um login entra: o e-mail em `ACESSO.emailAdmin` (`js/produtos.js`). Depois de 5 erros seguidos,
-a tela espera 1 minuto.
+**Entrar / Cadastrar** (`#entrar`, ícone de pessoa no topo): tela "Bem-vindo de volta!" com e-mail,
+senha (olho para mostrar), "Lembrar de mim", "Esqueci a senha" e "Cadastre-se", com a logo TMZ no
+círculo e as redes da loja na lateral. O cliente cria conta com nome, e-mail, WhatsApp e senha; logado,
+os dados já vêm preenchidos na compra.
+**Só um login abre o painel:** o e-mail em `ACESSO.emailAdmin` (`js/produtos.js`). Qualquer outra conta
+vê "Sem acesso". Depois de 5 erros seguidos, a tela espera 1 minuto.
 - **Login de verdade (Supabase):** crie um projeto grátis em supabase.com, crie o usuário do dono em
-  *Authentication → Users → Add user* (com o e-mail e a senha dele) e desligue *Allow new users to sign up*
-  em *Authentication → Sign In / Providers*. Preencha `supabaseUrl` e `supabaseChave` (a chave **anon public**)
-  em `ACESSO`. A senha fica só no Supabase e "Esqueci a senha" manda o link por e-mail.
-- **Sem Supabase (teste):** entra com o e-mail de `ACESSO` e a senha de teste (inicial `1234`,
-  muda em Configurações). Fica no navegador, então não é proteção de verdade.
+  *Authentication → Users → Add user* e preencha `supabaseUrl` e `supabaseChave` (a chave **anon public**)
+  em `ACESSO`. Contas e senhas ficam só no servidor e "Esqueci a senha" manda o link por e-mail.
+- **Sem Supabase (teste):** o dono entra com o e-mail de `ACESSO` e a senha de teste (inicial `1234`,
+  muda em Configurações); as contas de clientes ficam no navegador (senha guardada só como hash).
+  Não é proteção de verdade.
 
 **Painel do lojista** (botão "Painel" no topo ou "Área do lojista" no rodapé):
 - Resumo: pagamentos pendentes, pedidos para retirar/enviar, devoluções, faturamento e visitas de hoje

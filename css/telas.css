@@ -334,7 +334,7 @@ button.kpi:hover { border-color: rgb(var(--c) / 0.25); }
 
 
 /* login do painel: sempre escuro, logo no círculo e redes na lateral */
-.tela--painel:has(.login) { background: #0a0a0b; }
+.tela--painel:has(.login), .tela--login { background: #0a0a0b; }
 .login {
   --l-texto: #f4f4f2; --l-suave: rgba(244, 244, 242, .62); --l-linha: rgba(244, 244, 242, .78);
   position: relative; min-height: 100%; display: grid; grid-template-rows: auto 1fr; overflow: hidden;
@@ -388,6 +388,18 @@ button.kpi:hover { border-color: rgb(var(--c) / 0.25); }
 .login__entrar:hover { background: transparent; color: #fff; }
 .login__entrar:active { transform: scale(.985); }
 .login__entrar:disabled { opacity: .6; cursor: wait; }
+.login__sub b { color: var(--l-texto); font-weight: 600; }
+.login__troca { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--l-texto); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.login__troca:hover { text-decoration-thickness: 2px; }
+.login__campo em { font-style: normal; font-weight: 400; font-size: 12.5px; color: var(--l-suave); margin-left: 4px; }
+.login__dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.login__acoes { display: grid; gap: 12px; margin-top: 8px; }
+.login__acoes .login__entrar { margin-top: 0; }
+.login__secundario {
+  display: grid; place-items: center; height: 50px; border-radius: 999px; border: 1.5px solid var(--l-linha);
+  background: none; color: var(--l-texto); font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; transition: background .2s;
+}
+.login__secundario:hover { background: rgba(255, 255, 255, .08); }
 .login__aviso { color: var(--l-suave); font-size: 14.5px; line-height: 1.6; margin-bottom: 22px; }
 .login__teste { margin-top: 18px; font-size: 12.5px; line-height: 1.55; color: var(--l-suave); }
 .login__teste b { color: var(--l-texto); font-weight: 600; }
@@ -413,6 +425,7 @@ button.kpi:hover { border-color: rgb(var(--c) / 0.25); }
   .login__arte p { display: none; }
   .login__redes { position: static; translate: none; display: flex; justify-content: center; padding-bottom: 32px; }
   .login__menu { gap: 16px; }
+  .login__dupla { grid-template-columns: 1fr; gap: 20px; }
 }
 @media (max-width: 420px) { .login__menu { display: none; } }
 
@@ -660,3 +673,7 @@ button.kpi:hover { border-color: rgb(var(--c) / 0.25); }
 
 /* Anton só tem um peso: evita negrito artificial nos números grandes */
 .kpi strong, .placar__nota strong, .cartao-pix__valor, .modo__valor { font-weight: 400; }
+
+/* topo: bolinha no ícone quando o cliente está logado */
+#botao-entrar { position: relative; }
+#botao-entrar.logado::after { content: ""; position: absolute; right: 9px; bottom: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--texto); box-shadow: 0 0 0 2px var(--fundo); }

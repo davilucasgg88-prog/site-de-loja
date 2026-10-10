@@ -49,7 +49,7 @@
           <div class="painel__pe">
             <button type="button" class="link-simples tema-btn"><svg class="lua"><use href="#i-lua"/></svg><svg class="sol"><use href="#i-sol"/></svg>Trocar tema</button>
             <a href="#" class="link-simples"><svg><use href="#i-voltar"/></svg>Ver a loja</a>
-            ${S.modo === "local" ? `<button type="button" class="link-simples" data-sair>Sair do painel</button>` : ""}
+            <button type="button" class="link-simples" data-sair>Sair da conta</button>
           </div>
         </aside>
         <main class="painel__area" id="painel-area">
@@ -61,71 +61,9 @@
     renderAba();
   }
 
-  /* ---------- login ---------- */
+  // Sem o dono logado, o painel mostra a tela de entrar (js/conta.js)
   function renderEntrada() {
-    const c = S.config;
-    const redes = [
-      [c.instagram, "Instagram", "i-instagram"],
-      [c.tiktok, "TikTok", "i-tiktok"],
-      [c.facebook, "Facebook", "i-facebook"],
-      [c.whatsapp && TMZ.linkWhats(), "WhatsApp", "i-whatsapp"],
-      [c.email && "mailto:" + c.email, "E-mail", "i-email"],
-    ].filter(([url]) => url);
-    const teste = S.login.tipo === "teste";
-    raiz.innerHTML = `
-      <div class="login">
-        <header class="login__topo">
-          <a href="#" class="login__marca"><img src="img/logo-tmz.png" alt="TMZ" width="70" height="20"><span>Store</span></a>
-          <nav class="login__menu" aria-label="Loja">
-            <a href="#">Início</a><a href="#catalogo">Catálogo</a><a href="#medidas">Medidas</a>
-          </nav>
-        </header>
-        <div class="login__corpo">
-          <div class="login__lado">
-            <h1>Bem-vindo de volta!</h1>
-            ${S.modo === "nuvem" ? `
-              <p class="login__sub">Área exclusiva do dono da loja.</p>
-              <p class="login__aviso">Só a conta que administra a TMZ STORE abre o painel. Entre com ela para continuar.</p>
-              <a href="#" class="login__entrar">Voltar à loja</a>` : `
-              <p class="login__sub">Área exclusiva do lojista TMZ.</p>
-              <form id="form-login" class="login__form" novalidate>
-                <label class="login__campo"><span>E-mail</span>
-                  <input id="login-email" type="email" autocomplete="username" placeholder="seuemail@gmail.com" required>
-                </label>
-                <label class="login__campo"><span>Senha</span>
-                  <span class="login__senha">
-                    <input id="login-senha" type="password" autocomplete="current-password" placeholder="••••••" required>
-                    <button type="button" data-ver-senha aria-label="Mostrar senha" aria-pressed="false"><svg><use href="#i-olho-off"/></svg></button>
-                  </span>
-                </label>
-                <div class="login__linha">
-                  <label class="login__lembrar"><input type="checkbox" id="login-lembrar"><span>Lembrar de mim</span></label>
-                  <button type="button" class="login__esqueci" data-esqueci>Esqueci a senha</button>
-                </div>
-                <p class="login__erro" id="login-erro" role="alert" hidden></p>
-                <button class="login__entrar">Entrar</button>
-              </form>
-              ${teste ? `<p class="login__teste">Modo de teste: entre com <b>${escapar(S.login.email)}</b> e ${String(c.pinPainel) === "1234" ? "a senha <b>1234</b>" : "a senha de teste"}. O login de verdade é ligado no Supabase (veja o README).</p>` : ""}`}
-          </div>
-          <div class="login__arte" aria-hidden="true">
-            <div class="login__circulo"><img src="img/logo-tmz.png" alt="" width="220" height="62"></div>
-            <p>A loja que veste o povo</p>
-          </div>
-        </div>
-        ${redes.length ? `
-          <ul class="login__redes" aria-label="Redes sociais">
-            ${redes.map(([url, nome, icone]) => `<li><a href="${escapar(url)}" ${url.startsWith("mailto:") ? "" : 'target="_blank" rel="noopener"'} aria-label="${nome}" title="${nome}"><svg><use href="#${icone}"/></svg></a></li>`).join("")}
-          </ul>` : ""}
-      </div>`;
-    $("#login-email", raiz)?.focus();
-  }
-
-  function erroLogin(texto, ok) {
-    const p = $("#login-erro", raiz);
-    if (!p) return;
-    p.textContent = texto;
-    p.classList.toggle("login__erro--ok", !!ok);
-    p.hidden = !texto;
+    Conta.montar(raiz, { painel: true });
   }
 
   function renderAba() {
@@ -865,20 +803,6 @@
     if (t.closest("[data-banner-padrao]")) { await Dados.salvarConfig({ bannerImagem: "" }); toast("Foto padrão de volta"); return renderAba(); }
     if (t.closest("[data-medidas-padrao]")) { await Dados.salvarConfig({ medidas: null }); toast("Medidas padrão restauradas"); return renderAba(); }
     if (t.closest("[data-sair]")) { Dados.sair(); location.hash = ""; return; }
-    const ver = t.closest("[data-ver-senha]");
-    if (ver) {
-      const campo = $("#login-senha", raiz);
-      const mostrar = campo.type === "password";
-      campo.type = mostrar ? "text" : "password";
-      ver.setAttribute("aria-pressed", mostrar);
-      ver.setAttribute("aria-label", mostrar ? "Esconder senha" : "Mostrar senha");
-      ver.querySelector("use").setAttribute("href", mostrar ? "#i-olho" : "#i-olho-off");
-      return campo.focus();
-    }
-    if (t.closest("[data-esqueci]")) {
-      const r = await Dados.recuperarSenha($("#login-email", raiz).value);
-      return erroLogin(r.ok ? r.msg : r.erro, r.ok || S.login.tipo === "teste");
-    }
     const filtro = t.closest("[data-filtro-pedido]");
     if (filtro) { ui.filtro = filtro.dataset.filtroPedido; ui.cancelando = null; renderAba(); return; }
     const acao = t.closest("[data-acao]");
@@ -988,22 +912,6 @@
     e.preventDefault();
     const f = e.target;
     const botao = f.querySelector("button:not([type=button])");
-    if (f.id === "form-login") {
-      const email = $("#login-email", raiz), senha = $("#login-senha", raiz);
-      if (!email.value.trim() || !senha.value) {
-        erroLogin("Preencha e-mail e senha.");
-        return (email.value.trim() ? senha : email).focus();
-      }
-      botao.disabled = true;
-      botao.textContent = "Entrando…";
-      const r = await Dados.entrar(email.value, senha.value, $("#login-lembrar", raiz).checked);
-      if (r.ok) return render();
-      botao.disabled = false;
-      botao.textContent = "Entrar";
-      erroLogin(r.erro);
-      senha.select();
-      return;
-    }
     if (f.matches("[data-entrada]")) {
       const n = parseInt(f.querySelector("input").value, 10);
       if (!(n > 0)) return f.querySelector("input").focus();
@@ -1080,9 +988,16 @@
   // abriu o site direto em #painel
   if (location.hash === "#painel") { ui.aberto = true; render(); }
   let eraAdmin = S.admin;
+  let contaAntes = JSON.stringify(S.conta);
   Dados.ouvir(() => {
     if (!ui.aberto) return;
-    if (S.admin !== eraAdmin) { eraAdmin = S.admin; return render(); }
+    if (S.admin !== eraAdmin) { eraAdmin = S.admin; contaAntes = JSON.stringify(S.conta); return render(); }
+    if (!S.admin) {
+      // tela de entrar: só redesenha quando a conta muda, para não apagar o que está sendo digitado
+      if (JSON.stringify(S.conta) === contaAntes) return;
+      contaAntes = JSON.stringify(S.conta);
+      return render();
+    }
     if (ui.editando || abasDeFormulario.includes(ui.aba) || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
       // só atualiza o contador do menu
       const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length;

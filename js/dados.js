@@ -27,6 +27,8 @@ const Dados = (() => {
   };
 
   let db = null;
+  let podeEditar = false;  // na nuvem: a conta do Claude pode alterar o banco
+  let ouvindoAdmin = false;
   let produtosNaNuvem = false;
   let categoriasNaNuvem = false;
 
@@ -65,10 +67,12 @@ const Dados = (() => {
     if (!banco) return;
     db = banco;
     estado.modo = "nuvem";
-    estado.admin = user ? await user.canEdit() : false;
+    podeEditar = user ? await user.canEdit() : false;
+    estado.admin = podeEditar && !!estado.conta?.admin;
     estado.uid = user ? await user.id() : null;
     estado.pedidos = [];
     estado.meusPedidos = [];
+    estado.visitas = {};
     estado.config = padrao().config;
     avisar();
 
@@ -88,18 +92,24 @@ const Dados = (() => {
         : padrao().produtos;
       avisar();
     }, () => {});
-    if (estado.admin) {
-      db.collection("reservas").onSnapshot((s) => {
-        estado.pedidos = s.docs.flatMap((d) => (d.data().lista || []).map((p) => ({ ...p, dono: d.id })));
-        avisar();
-      }, () => {});
-    }
+    if (estado.admin) ouvirAdminNuvem();
     if (estado.uid) {
       db.doc("reservas/" + estado.uid).onSnapshot((s) => {
         estado.meusPedidos = s.exists ? (s.data().lista || []).map((p) => ({ ...p, dono: estado.uid })) : [];
         avisar();
       }, () => {});
     }
+  }
+
+  // Pedidos de todos e visitas: só depois que o dono entra
+  function ouvirAdminNuvem() {
+    if (ouvindoAdmin || !db) return;
+    ouvindoAdmin = true;
+    db.collection("reservas").onSnapshot((s) => {
+      estado.pedidos = s.docs.flatMap((d) => (d.data().lista || []).map((p) => ({ ...p, dono: d.id })));
+      avisar();
+    }, () => {});
+    ouvirVisitasNuvem();
   }
 
   // Na primeira edição do dono, grava o catálogo inicial inteiro na nuvem
@@ -206,13 +216,18 @@ const Dados = (() => {
     }
   }
 
-  /* ---------- login do painel ---------- */
-  // Só um e-mail entra (ACESSO.emailAdmin). Com o Supabase configurado, a senha é conferida
-  // no servidor; sem ele, vale o login de teste (e-mail + senha de teste) guardado no navegador.
+  /* ---------- contas: entrar e cadastrar ---------- */
+  // Qualquer cliente pode criar conta. O painel abre só para o e-mail ACESSO.emailAdmin.
+  //  - Com o Supabase configurado: contas e senhas ficam no servidor.
+  //  - Sem ele: as contas ficam neste navegador (senha guardada como hash) e o dono entra
+  //    com a senha de teste. Serve para testar; não é proteção de verdade.
   const CHAVE_SESSAO = "tmz-sessao";
+  const CHAVE_CONTAS = "tmz-contas";
   const servidor = () => (ACESSO.supabaseUrl && ACESSO.supabaseChave ? ACESSO.supabaseUrl.replace(/\/+$/, "") : "");
   const emailDono = () => String(ACESSO.emailAdmin || "").trim().toLowerCase();
+  const limpar = (email) => String(email || "").trim().toLowerCase();
   estado.login = { tipo: servidor() ? "servidor" : "teste", email: emailDono() };
+  estado.conta = null; // { nome, email, whats, admin }
   let tentativas = 0;
   let bloqueadoAte = 0;
 
@@ -230,7 +245,14 @@ const Dados = (() => {
   function apagarSessao() {
     lojas().forEach((loja) => { try { loja.removeItem(CHAVE_SESSAO); } catch {} });
   }
-  const sessaoValida = (s) => s && String(s.email).toLowerCase() === emailDono() && s.tipo === estado.login.tipo;
+  const sessaoValida = (s) => s && s.email && s.tipo === estado.login.tipo && (!s.admin || limpar(s.email) === emailDono());
+
+  function aplicarSessao(s) {
+    estado.conta = s ? { nome: s.nome || "", email: s.email, whats: s.whats || "", admin: !!s.admin } : null;
+    estado.admin = !!s?.admin && (estado.modo === "local" || podeEditar);
+    if (estado.admin && estado.modo === "nuvem") ouvirAdminNuvem();
+    avisar();
+  }
 
   async function supabase(caminho, corpo, token) {
     const r = await fetch(servidor() + "/auth/v1/" + caminho, {
@@ -241,77 +263,123 @@ const Dados = (() => {
     const dados = await r.json().catch(() => ({}));
     return { ok: r.ok, dados };
   }
+  const sessaoSupabase = (d, extra) => ({
+    tipo: "servidor", email: limpar(d.user?.email), nome: d.user?.user_metadata?.nome || "",
+    whats: d.user?.user_metadata?.whats || "", admin: limpar(d.user?.email) === emailDono(),
+    token: d.access_token, renovar: d.refresh_token, expira: Date.now() + d.expires_in * 1000, ...extra,
+  });
+
+  // Senhas das contas de teste: hash SHA-256 com sal, nunca o texto da senha
+  async function resumo(sal, senha) {
+    const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sal + ":" + senha));
+    return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  function contasLocais() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_CONTAS)) || {}; } catch { return {}; }
+  }
 
   // Ao abrir o site: retoma a sessão salva (e renova o acesso no Supabase quando venceu)
   async function retomarSessao() {
     const s = lerSessao();
     if (!sessaoValida(s)) { if (s) apagarSessao(); return; }
-    estado.admin = true;
+    aplicarSessao(s);
     if (s.tipo !== "servidor" || Date.now() < s.expira - 60000) return;
     try {
       const { ok, dados } = await supabase("token?grant_type=refresh_token", { refresh_token: s.renovar });
-      if (!ok || String(dados.user?.email).toLowerCase() !== emailDono()) throw new Error();
-      gravarSessao({ ...s, token: dados.access_token, renovar: dados.refresh_token, expira: Date.now() + dados.expires_in * 1000 }, s.loja === localStorage);
+      if (!ok) throw new Error();
+      gravarSessao(sessaoSupabase(dados), s.loja === localStorage);
     } catch {
       apagarSessao();
-      estado.admin = false;
-      avisar();
+      aplicarSessao(null);
     }
   }
 
-  async function entrar(email, senha, lembrar) {
-    if (estado.modo !== "local") return { ok: false, erro: "Aqui o painel abre só com a conta do dono." };
+  function bloqueio() {
     if (Date.now() < bloqueadoAte) {
       return { ok: false, erro: `Muitas tentativas. Espere ${Math.ceil((bloqueadoAte - Date.now()) / 1000)} segundos.` };
     }
-    email = String(email).trim().toLowerCase();
-    const falhou = (erro) => {
-      tentativas += 1;
-      if (tentativas >= 5) { bloqueadoAte = Date.now() + 60000; tentativas = 0; }
-      return { ok: false, erro };
-    };
-    if (email !== emailDono()) return falhou("Este login não tem acesso ao painel.");
+    return null;
+  }
+  function falhou(erro) {
+    tentativas += 1;
+    if (tentativas >= 5) { bloqueadoAte = Date.now() + 60000; tentativas = 0; }
+    return { ok: false, erro };
+  }
+  function concluir(sessao, lembrar) {
+    tentativas = 0;
+    gravarSessao(sessao, lembrar);
+    aplicarSessao(sessao);
+    if (sessao.admin && estado.modo === "nuvem" && !podeEditar) {
+      return { ok: true, aviso: "Você entrou, mas esta cópia da loja só pode ser alterada pela conta que a publicou." };
+    }
+    return { ok: true };
+  }
 
+  async function entrar(email, senha, lembrar) {
+    const b = bloqueio(); if (b) return b;
+    email = limpar(email);
     if (estado.login.tipo === "servidor") {
       let r;
       try { r = await supabase("token?grant_type=password", { email, password: senha }); }
       catch { return { ok: false, erro: "Sem conexão com o servidor. Tente de novo." }; }
-      if (!r.ok) return falhou("E-mail ou senha incorretos.");
-      if (String(r.dados.user?.email).toLowerCase() !== emailDono()) return falhou("Este login não tem acesso ao painel.");
-      gravarSessao({
-        tipo: "servidor", email, token: r.dados.access_token, renovar: r.dados.refresh_token,
-        expira: Date.now() + r.dados.expires_in * 1000,
-      }, lembrar);
-    } else {
-      if (String(senha) !== String(estado.config.pinPainel)) return falhou("E-mail ou senha incorretos.");
-      gravarSessao({ tipo: "teste", email }, lembrar);
+      if (!r.ok) {
+        if (/confirm/i.test(r.dados.msg || r.dados.error_description || "")) return { ok: false, erro: "Confirme seu e-mail pelo link que enviamos e tente de novo." };
+        return falhou("E-mail ou senha incorretos.");
+      }
+      return concluir(sessaoSupabase(r.dados), lembrar);
     }
-    tentativas = 0;
-    estado.admin = true;
-    avisar();
-    return { ok: true };
+    if (email === emailDono()) {
+      if (String(senha) !== String(estado.config.pinPainel)) return falhou("E-mail ou senha incorretos.");
+      return concluir({ tipo: "teste", email, nome: "Lojista TMZ", admin: true }, lembrar);
+    }
+    const conta = contasLocais()[email];
+    if (!conta || conta.hash !== await resumo(conta.sal, senha)) return falhou("E-mail ou senha incorretos.");
+    return concluir({ tipo: "teste", email, nome: conta.nome, whats: conta.whats, admin: false }, lembrar);
+  }
+
+  async function cadastrar({ nome, email, whats, senha }) {
+    const b = bloqueio(); if (b) return b;
+    email = limpar(email);
+    nome = String(nome || "").trim();
+    if (nome.length < 2) return { ok: false, erro: "Digite seu nome." };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, erro: "Digite um e-mail válido." };
+    if (String(senha).length < 6) return { ok: false, erro: "A senha precisa ter pelo menos 6 caracteres." };
+    if (email === emailDono()) return { ok: false, erro: "Este e-mail já tem conta. Use Entrar." };
+    if (estado.login.tipo === "servidor") {
+      let r;
+      try { r = await supabase("signup", { email, password: senha, data: { nome, whats } }); }
+      catch { return { ok: false, erro: "Sem conexão com o servidor. Tente de novo." }; }
+      if (!r.ok) {
+        const msg = r.dados.msg || r.dados.error_description || "";
+        return { ok: false, erro: /registered|exists/i.test(msg) ? "Este e-mail já tem conta. Use Entrar." : "Não deu para criar a conta. Tente de novo." };
+      }
+      if (!r.dados.access_token) return { ok: true, confirmar: true, msg: "Conta criada! Enviamos um link para o seu e-mail. Confirme e depois entre." };
+      return concluir(sessaoSupabase(r.dados), true);
+    }
+    const contas = contasLocais();
+    if (contas[email]) return { ok: false, erro: "Este e-mail já tem conta. Use Entrar." };
+    const sal = crypto.getRandomValues(new Uint32Array(4)).join("-");
+    contas[email] = { nome, whats, sal, hash: await resumo(sal, senha), criadoEm: Date.now() };
+    try { localStorage.setItem(CHAVE_CONTAS, JSON.stringify(contas)); }
+    catch { return { ok: false, erro: "Este navegador não deixou salvar a conta." }; }
+    return concluir({ tipo: "teste", email, nome, whats, admin: false }, true);
   }
 
   function sair() {
-    if (estado.modo !== "local") return;
     const s = lerSessao();
     if (s?.tipo === "servidor") supabase("logout", {}, s.token).catch(() => {});
     apagarSessao();
-    estado.admin = false;
-    avisar();
+    aplicarSessao(null);
   }
 
   async function recuperarSenha(email) {
-    email = String(email || "").trim().toLowerCase();
-    if (estado.login.tipo !== "servidor") {
-      return { ok: false, erro: "No modo de teste a senha fica em Configurações do painel. Com o login no servidor, chega um link por e-mail." };
-    }
+    email = limpar(email);
     if (!email) return { ok: false, erro: "Digite seu e-mail para receber o link." };
-    // Responde igual para qualquer e-mail, para não revelar qual é o do dono
-    if (email === emailDono()) {
-      try { await supabase("recover", { email }); } catch { return { ok: false, erro: "Sem conexão com o servidor. Tente de novo." }; }
+    if (estado.login.tipo !== "servidor") {
+      return { ok: false, erro: "No modo de teste não dá para mandar e-mail. Com o login no servidor (Supabase), chega um link para criar uma nova senha." };
     }
-    return { ok: true, msg: "Se este e-mail for o do lojista, chega um link para criar uma nova senha." };
+    try { await supabase("recover", { email }); } catch { return { ok: false, erro: "Sem conexão com o servidor. Tente de novo." }; }
+    return { ok: true, msg: "Se este e-mail tiver conta, chega um link para criar uma nova senha." };
   }
   retomarSessao();
 
@@ -342,7 +410,7 @@ const Dados = (() => {
   }
   // Na nuvem cada visitante grava só o próprio documento (visitas/<id>); o dono soma todos.
   async function registrarVisitaNuvem() {
-    if (!estado.uid || estado.admin) return;
+    if (!estado.uid || podeEditar) return;
     try {
       const ref = db.doc("visitas/" + estado.uid);
       const snap = await ref.get();
@@ -369,8 +437,7 @@ const Dados = (() => {
 
   conectar().then(() => {
     if (estado.modo !== "nuvem") return;
-    estado.visitas = {};
-    if (estado.admin) ouvirVisitasNuvem(); else registrarVisitaNuvem();
+    if (estado.admin) ouvirAdminNuvem(); else registrarVisitaNuvem();
   }).catch(() => {});
 
   return {
@@ -378,6 +445,6 @@ const Dados = (() => {
     ouvir(fn) { ouvintes.add(fn); fn(estado); return () => ouvintes.delete(fn); },
     reembolso,
     salvarProduto, apagarProduto, ajustarEstoque, salvarCategorias, salvarConfig,
-    criarPedido, atualizarPedido, entrar, sair, recuperarSenha, novoId,
+    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, novoId,
   };
 })();
