@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs>
+  <radialGradient id="f" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#2c2c30"/><stop offset=".7" stop-color="#121214"/><stop offset="1" stop-color="#0a0a0b"/></radialGradient>
+  <linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f1"/><stop offset="1" stop-color="#cfcfca"/></linearGradient>
+  <radialGradient id="s" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="600" height="600" fill="url(#f)"/>
+<ellipse cx="300" cy="520" rx="190" ry="26" fill="url(#s)"/>
+<g transform="rotate(-14 300 330)">
+<path d="M220 150 C290 140 330 190 332 300 C334 420 300 500 236 500 C180 500 160 430 166 320 C172 210 180 156 220 150 Z" fill="#1d1d20" stroke="#3a3a3f" stroke-width="4"/>
+<path d="M150 250 C200 200 300 200 348 250 L348 320 C300 290 200 290 150 320 Z" fill="url(#t)"/>
+<text x="250" y="290" font-family="Arial Black, Arial" font-weight="900" font-size="30" fill="#1a1a1c" text-anchor="middle">TMZ</text>
+</g>
+<g transform="rotate(10 400 330) translate(150 20)">
+<path d="M220 150 C290 140 330 190 332 300 C334 420 300 500 236 500 C180 500 160 430 166 320 C172 210 180 156 220 150 Z" fill="#1d1d20" stroke="#3a3a3f" stroke-width="4"/>
+<path d="M150 250 C200 200 300 200 348 250 L348 320 C300 290 200 290 150 320 Z" fill="url(#t)"/>
+</g></svg>

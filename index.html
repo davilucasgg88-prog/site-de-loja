@@ -120,7 +120,7 @@
           <ul class="hero__selos">
             <li><svg><use href="#i-shield"/></svg>Primeira linha</li>
             <li><svg><use href="#i-truck"/></svg>Envio para todo o Brasil</li>
-            <li><svg><use href="#i-returns"/></svg>Troca em até 7 dias</li>
+            <li><a href="#trocas" class="selo-link"><svg><use href="#i-returns"/></svg><span id="selo-troca">Troca em até 30 dias</span></a></li>
           </ul>
         </div>
         <div class="hero__vitrine">
@@ -196,7 +196,7 @@
 
     <!-- 6. Chamada final -->
     <section class="cta-final ilha-escura">
-      <img class="cta-final__img" id="cta-final-img" src="img/banner.jpg" alt="">
+      <img class="cta-final__img" id="cta-final-img" src="img/produtos/banner-tmz.svg" alt="">
       <div class="container cta-final__conteudo">
         <p class="rotulo" id="banner-tag">Oferta exclusiva</p>
         <h2 class="cta-final__titulo"><span id="banner-titulo">Até 40% off</span><small id="banner-sub">Em peças selecionadas</small></h2>
@@ -231,6 +231,14 @@
         </ul>
       </div>
       <div>
+        <h3>Ajuda</h3>
+        <ul class="rodape__lista">
+          <li><a href="#trocas">Trocas e devoluções</a></li>
+          <li><a href="#privacidade">Política de privacidade</a></li>
+          <li><a href="#termos">Termos de uso</a></li>
+        </ul>
+      </div>
+      <div>
         <h3>Redes</h3>
         <ul class="rodape__lista" id="rodape-redes">
           <li><a id="rodape-insta" href="#" target="_blank" rel="noopener">Instagram @tmz_storee</a></li>
@@ -238,7 +246,7 @@
       </div>
     </div>
     <div class="container rodape__base">
-      <span>© <span id="ano"></span> <span id="nome-copy">TMZ STORE</span>. Todos os direitos reservados.</span>
+      <span>© <span id="ano"></span> <span id="nome-copy">TMZ STORE</span>. Todos os direitos reservados.<span id="rodape-cnpj"></span></span>
     </div>
   </footer>
 
@@ -275,6 +283,12 @@
         <aside class="resumo" id="resumo">
           <h2 class="resumo__titulo">Resumo</h2>
           <div class="frete-barra" id="frete-barra"><p id="frete-msg"></p><i><b id="frete-progresso"></b></i></div>
+          <form class="cep-form" id="cep-carrinho" novalidate>
+            <label class="campo"><span>Calcular frete</span>
+              <span class="cupom-form__linha"><input inputmode="numeric" maxlength="9" placeholder="Seu CEP" autocomplete="postal-code" aria-label="CEP"><button class="btn btn--contorno btn--pequeno">Calcular</button></span>
+            </label>
+            <p class="cep-info" id="cep-carrinho-info"></p>
+          </form>
           <dl class="resumo__linhas">
             <div><dt>Subtotal</dt><dd id="subtotal"></dd></div>
             <div><dt>Frete</dt><dd id="frete"></dd></div>
@@ -322,7 +336,7 @@
                 <label class="chip-opcao"><input type="radio" name="receber" value="retirada"><span>Retirar na loja</span></label>
               </div>
               <div class="campos" id="campos-endereco">
-                <label class="campo"><span>CEP</span><input name="cep" id="c-cep" inputmode="numeric" maxlength="9" autocomplete="postal-code" placeholder="00000-000"></label>
+                <label class="campo"><span>CEP</span><input name="cep" id="c-cep" inputmode="numeric" maxlength="9" autocomplete="postal-code" placeholder="00000-000"><small class="cep-info" id="cep-info"></small></label>
                 <label class="campo campo--largo"><span>Endereço completo</span><input name="endereco" id="c-endereco" autocomplete="street-address" placeholder="Rua, número, bairro, cidade"></label>
               </div>
             </fieldset>
@@ -344,6 +358,7 @@
 
             <p class="erro-form" id="erro-compra" role="alert" hidden></p>
             <button class="btn btn--bloco btn--grande" id="confirmar-compra" type="submit">Confirmar</button>
+            <p class="checkout__legal">Ao confirmar, você concorda com os <a href="#termos">Termos de uso</a> e a <a href="#trocas">Política de trocas</a>. Seus dados seguem a <a href="#privacidade">Política de privacidade</a>.</p>
           </form>
 
           <aside class="resumo resumo--compra">
@@ -378,6 +393,24 @@
   </section>
 
   <!-- Guia de medidas -->
+  <section class="tela" id="tela-doc" aria-labelledby="doc-titulo" hidden>
+    <header class="tela__barra">
+      <div class="container tela__barra-linha">
+        <a href="#" class="tela__voltar"><svg><use href="#i-voltar"/></svg><span>Voltar à loja</span></a>
+        <img src="img/logo-tmz.png" alt="TMZ" class="tela__logo" width="84" height="24">
+        <span class="tela__seguro"><svg><use href="#i-shield"/></svg>Seus direitos</span>
+      </div>
+    </header>
+    <div class="container tela__corpo doc">
+      <nav class="filtros doc__nav" id="doc-nav" aria-label="Documentos"></nav>
+      <div class="tela__cabeca">
+        <p class="rotulo" id="doc-rotulo"></p>
+        <h1 class="tela__titulo" id="doc-titulo"></h1>
+      </div>
+      <article class="doc__texto" id="doc-conteudo"></article>
+    </div>
+  </section>
+
   <section class="tela tela--login" id="tela-entrar" aria-label="Entrar ou cadastrar" hidden></section>
 
   <section class="tela" id="tela-medidas" aria-labelledby="medidas-titulo" hidden>
@@ -440,14 +473,21 @@
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>
   </button>
 
+  <div class="aviso-cookies" id="aviso-cookies" role="region" aria-label="Aviso de privacidade" hidden>
+    <p>Usamos só o armazenamento necessário para o carrinho, o login e as suas preferências. Nada de anúncios ou rastreadores. <a href="#privacidade">Saiba mais</a></p>
+    <button type="button" class="btn btn--pequeno">Entendi</button>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/produtos.js"></script>
   <script src="js/dados.js"></script>
+  <script src="js/frete.js"></script>
   <script src="js/cupons.js"></script>
   <script src="js/app.js"></script>
   <script src="js/medidas.js"></script>
   <script src="js/conta.js"></script>
+  <script src="js/legal.js"></script>
   <script src="js/painel.js"></script>
 </body>
 </html>

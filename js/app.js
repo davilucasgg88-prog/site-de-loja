@@ -11,7 +11,7 @@
   const digitos = (t) => String(t || "").replace(/\D/g, "");
   const CHAVE_CARRINHO = "carrinho-loja";
 
-  const estado = { filtro: "todos", busca: "", carrinho: lerCarrinho(), modo: "compra", ultimoPedido: null, cupom: lerCupom() };
+  const estado = { filtro: "todos", busca: "", carrinho: lerCarrinho(), modo: "compra", ultimoPedido: null, cupom: lerCupom(), destino: null };
 
   // Cupom escolhido: vem do link (?cupom=CODIGO) ou do campo na finalização
   function lerCupom() {
@@ -74,7 +74,7 @@
       [c.email ? `mailto:${c.email}` : "", c.email], [c.linkExtra, c.linkExtraNome || "Mais links"],
     ].filter(([url]) => url);
     $("#rodape-redes").innerHTML = redes.map(([url, nome]) => `<li><a href="${escapar(url)}" ${url.startsWith("mailto:") ? "" : 'target="_blank" rel="noopener"'}>${escapar(nome)}</a></li>`).join("");
-    $("#cta-final-img").src = c.bannerImagem || "img/banner.jpg";
+    $("#cta-final-img").src = c.bannerImagem || "img/produtos/banner-tmz.svg";
     const cupomInsta = c.cupomInsta && Cupons.achar(c.cupomInsta);
     const caixaInsta = $("#insta-cupom");
     caixaInsta.hidden = !(cupomInsta?.ativo && !(cupomInsta.validade && new Date().toLocaleDateString("sv-SE") > cupomInsta.validade));
@@ -82,6 +82,8 @@
       caixaInsta.querySelector("code").textContent = cupomInsta.codigo;
       caixaInsta.querySelector("small").textContent = `${Cupons.descrever(cupomInsta)}${Number(cupomInsta.minimo) > 0 ? ` acima de ${moeda(cupomInsta.minimo)}` : ""}`;
     }
+    $("#selo-troca").textContent = `Troca em até ${Number(c.prazoTroca) || 30} dias`;
+    $("#rodape-cnpj").textContent = c.cnpj ? ` ${c.razaoSocial || c.nome} · ${c.cnpj.replace(/\D/g, "").length > 11 ? "CNPJ" : "CPF"} ${c.cnpj}` : "";
     $("#rodape-endereco").hidden = !c.endereco;
     $("#rodape-endereco").textContent = c.endereco || "";
     $("#rodape-horario").hidden = !c.horario;
@@ -424,9 +426,39 @@
   function totais(receber = "entrega") {
     const itens = itensCarrinho();
     const subtotal = centavos(itens.reduce((s, i) => s + i.p.preco * i.qtd, 0));
-    const frete = receber === "entrega" && subtotal > 0 && subtotal < S.config.freteGratisAcima ? Number(S.config.frete) : 0;
+    const limite = Number(S.config.freteGratisAcima) || 0;
+    const gratis = limite > 0 && subtotal >= limite;
+    const calc = Frete.calcular(estado.destino, S.config);
+    let frete = 0;
+    let freteFalta = false; // frete por região e o cliente ainda não deu o CEP
+    if (receber === "entrega" && subtotal > 0 && !gratis) {
+      if (calc) frete = calc.valor; else freteFalta = true;
+    }
     const quantidade = itens.reduce((s, i) => s + i.qtd, 0);
-    return { itens, subtotal, frete, total: centavos(subtotal + frete), quantidade };
+    return { itens, subtotal, frete, freteFalta, prazo: receber === "entrega" ? calc?.prazo ?? null : null, total: centavos(subtotal + frete), quantidade };
+  }
+
+  /* ---------- CEP e frete ---------- */
+  function lerCep() { try { return sessionStorage.getItem("tmz-cep") || ""; } catch { return ""; } }
+  const textoPrazo = (dias) => (dias ? `chega em até ${dias} ${dias === 1 ? "dia útil" : "dias úteis"}` : "");
+  async function usarCep(cep) {
+    const d = digitos(cep);
+    if (d.length !== 8) return null;
+    try { sessionStorage.setItem("tmz-cep", d); } catch {}
+    const destino = await Frete.buscarCep(d);
+    if (digitos(cep) !== d) return destino;
+    estado.destino = destino;
+    renderCarrinho();
+    if (telaAtual === "compra" && $("#compra-ok").hidden) renderCompra();
+    return destino;
+  }
+  function descreverDestino(t) {
+    const dest = estado.destino;
+    if (!dest) return "";
+    if (dest.invalido) return `<span class="cep-info__erro">CEP não encontrado. Confira os números.</span>`;
+    const lugar = dest.cidade ? `${escapar(dest.cidade)}/${escapar(dest.uf)}` : escapar(dest.uf);
+    const valor = t.subtotal && !t.frete && !t.freteFalta ? "frete grátis" : t.freteFalta ? "" : moeda(t.frete);
+    return `<svg><use href="#i-truck"/></svg><span>Entrega para <strong>${lugar}</strong>${valor ? ` · ${valor}` : ""}${t.prazo ? ` · ${textoPrazo(t.prazo)}` : ""}</span>`;
   }
 
   function renderCarrinho() {
@@ -455,7 +487,10 @@
     $("#carrinho-sugestoes").hidden = !sug.length;
     $("#carrinho-sugestoes-lista").innerHTML = sug.map(cartaoSugestao).join("");
     $("#subtotal").textContent = moeda(t.subtotal);
-    $("#frete").textContent = t.frete ? moeda(t.frete) : "Grátis";
+    $("#frete").textContent = t.freteFalta ? "Calcule pelo CEP" : t.frete ? moeda(t.frete) : "Grátis";
+    $("#cep-carrinho-info").innerHTML = descreverDestino(t);
+    const campoCep = $("#cep-carrinho input");
+    if (campoCep && !campoCep.value && estado.destino) campoCep.value = estado.destino.cep.replace(/(\d{5})(\d{3})/, "$1-$2");
     $("#total").textContent = moeda(t.total);
     const limite = Number(S.config.freteGratisAcima) || 0;
     const falta = centavos(limite - t.subtotal);
@@ -528,6 +563,7 @@
         if (campo && !campo.value && v) campo.value = v;
       });
     }
+    if (!form.cep.value && estado.destino && !estado.destino.invalido) form.cep.value = estado.destino.cep.replace(/(\d{5})(\d{3})/, "$1-$2");
     if (!modosDisponiveis(t.total).some((m) => m.id === estado.modo)) estado.modo = "compra";
     renderCompra();
   }
@@ -578,12 +614,13 @@
     $("#compra-totais").innerHTML = `
       <div><dt>Subtotal</dt><dd>${moeda(calc.subtotal)}</dd></div>
       ${calc.desconto ? `<div class="resumo__desconto"><dt>Cupom ${escapar(calc.cupom.codigo)}</dt><dd>− ${moeda(calc.desconto)}</dd></div>` : ""}
-      <div><dt>Frete</dt><dd>${calc.receber === "retirada" ? "Retirada na loja" : calc.frete ? moeda(calc.frete) : calc.cupom?.tipo === "frete" && calc.freteEconomizado ? `<s>${moeda(calc.freteEconomizado)}</s> Grátis` : "Grátis"}</dd></div>
+      <div><dt>Frete</dt><dd>${calc.receber === "retirada" ? "Retirada na loja" : calc.freteFalta ? "Informe o CEP" : calc.frete ? moeda(calc.frete) : calc.cupom?.tipo === "frete" && calc.freteEconomizado ? `<s>${moeda(calc.freteEconomizado)}</s> Grátis` : "Grátis"}</dd></div>
       <div class="resumo__total"><dt>Total</dt><dd>${moeda(calc.total)}</dd></div>
       ${reserva ? `
       <div class="resumo__agora"><dt>Pagar agora</dt><dd>${moeda(calc.sinal)}</dd></div>
       <div><dt>${estado.modo === "reserva30" ? "Pagar na retirada" : "Pagar depois"}</dt><dd>${moeda(calc.restante)}</dd></div>` : ""}`;
     renderCupom(calc);
+    $("#cep-info").innerHTML = calc.receber === "entrega" ? descreverDestino(calc) : "";
     $("#confirmar-compra").textContent = reserva ? `Reservar e pagar ${moeda(calc.sinal)}` : "Confirmar pedido";
     $("#erro-compra").hidden = true;
   }
@@ -638,9 +675,33 @@
     if (e.target.name === "modo") estado.modo = e.target.value;
     if (["modo", "receber", "pagamento"].includes(e.target.name)) renderCompra();
   });
-  $("#c-cep").addEventListener("input", (e) => {
-    const d = digitos(e.target.value).slice(0, 8);
-    e.target.value = d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+  const mascaraCep = (campo) => {
+    const d = digitos(campo.value).slice(0, 8);
+    campo.value = d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+    return d;
+  };
+  $("#c-cep").addEventListener("input", async (e) => {
+    const d = mascaraCep(e.target);
+    if (d.length !== 8) return;
+    const dest = await usarCep(d);
+    // preenche o endereço com a rua, o bairro e a cidade; o cliente só completa o número
+    const end = $("#c-endereco");
+    if (dest?.confirmado && !end.value.trim()) {
+      end.value = [dest.logradouro, "", dest.bairro, `${dest.cidade} - ${dest.uf}`].filter((x, i) => x || i === 1).join(", ").replace(/^, /, "");
+      const pos = dest.logradouro ? dest.logradouro.length + 2 : 0;
+      end.focus();
+      end.setSelectionRange(pos, pos);
+    }
+  });
+  $("#cep-carrinho").addEventListener("input", (e) => {
+    const d = mascaraCep(e.target);
+    if (d.length === 8) usarCep(d);
+  });
+  $("#cep-carrinho").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const campo = e.target.querySelector("input");
+    if (digitos(campo.value).length !== 8) { toast("Digite os 8 números do CEP"); return campo.focus(); }
+    usarCep(campo.value);
   });
   $("#c-telefone").addEventListener("input", (e) => {
     const d = digitos(e.target.value).slice(0, 11);
@@ -660,6 +721,8 @@
     if (digitos(form.telefone.value).length < 10) return erro("Confira o número de WhatsApp, com DDD.", form.telefone);
     if (calc.receber === "entrega") {
       if (digitos(form.cep.value).length !== 8) return erro("Confira o CEP: são 8 números.", form.cep);
+      if (estado.destino?.invalido) return erro("Não encontramos esse CEP. Confira os números.", form.cep);
+      if (calc.freteFalta) return erro("Espere o frete ser calculado pelo CEP.", form.cep);
       if (form.endereco.value.trim().length < 8) return erro("Escreva o endereço completo para a entrega.", form.endereco);
     }
     const semEstoque = calc.itens.find(({ p, qtd }) => qtd > estoque(p));
@@ -682,6 +745,7 @@
         subtotal: calc.subtotal, frete: calc.frete, total: calc.total, sinal: calc.sinal, restante: calc.restante,
         cupom: calc.cupom ? { codigo: calc.cupom.codigo, desconto: calc.desconto, freteGratis: calc.cupom.tipo === "frete", freteEconomizado: calc.freteEconomizado || 0 } : null,
         receber: calc.receber,
+        prazoEntrega: calc.receber === "entrega" ? calc.prazo : null,
         pagamento: estado.modo === "compra" ? form.pagamento.value : "Pix",
         cliente: {
           nome: form.nome.value.trim(), telefone: form.telefone.value.trim(), email: form.email.value.trim(),
@@ -867,7 +931,8 @@
   setInterval(() => { if (!$("#tela-reservas").hidden) renderReservas(); }, 30000);
 
   /* ---------- telas cheias (rotas por #) ---------- */
-  const TELAS = { carrinho: "#tela-carrinho", compra: "#tela-compra", reservas: "#tela-reservas", medidas: "#tela-medidas", entrar: "#tela-entrar", painel: "#painel" };
+  const TELAS = { carrinho: "#tela-carrinho", compra: "#tela-compra", reservas: "#tela-reservas", medidas: "#tela-medidas", entrar: "#tela-entrar", painel: "#painel",
+    privacidade: "#tela-doc", trocas: "#tela-doc", termos: "#tela-doc" };
   let rolagemLoja = 0;
   let telaAtual = "";
 
@@ -875,7 +940,7 @@
     const h = location.hash.slice(1);
     const nova = h in TELAS ? h : "";
     if (nova && !telaAtual) rolagemLoja = window.scrollY;
-    Object.entries(TELAS).forEach(([k, sel]) => { $(sel).hidden = k !== nova; });
+    Object.values(TELAS).forEach((sel) => { $(sel).hidden = sel !== TELAS[nova]; });
     document.body.classList.toggle("com-tela", !!nova);
     if (nova === "carrinho") renderCarrinho();
     if (nova === "compra") prepararCompra();
@@ -1066,6 +1131,7 @@
   aplicarTema(document.documentElement.dataset.tema === "escuro");
 
   $("#ano").textContent = new Date().getFullYear();
+  if (lerCep()) usarCep(lerCep());
   rota();
 
   // utilidades para o painel

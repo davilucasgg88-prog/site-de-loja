@@ -10,10 +10,22 @@ const LOJA = {
   moeda: "BRL",
   idioma: "pt-BR",
   freteGratisAcima: 299,
+  // Frete: "regiao" calcula pelo CEP (tabela abaixo); "fixo" cobra sempre o valor de "frete"
+  freteModo: "regiao",
   frete: 19.9,
+  lojaUF: "SP",
+  lojaCidade: "São Paulo",
+  freteTabela: {
+    cidade: { valor: 12, prazo: 2 }, estado: { valor: 19.9, prazo: 4 },
+    regiao: { valor: 24.9, prazo: 6 }, brasil: { valor: 34.9, prazo: 9 },
+  },
   // Pagamento do sinal das reservas
   pixChave: "",            // ex.: CNPJ, e-mail, telefone ou chave aleatória
   pixNome: "TMZ STORE",
+  // Empresa (aparece no rodapé e nas páginas de privacidade, trocas e termos)
+  razaoSocial: "",
+  cnpj: "",
+  prazoTroca: 30, // dias para troca de tamanho/modelo
   // Loja física (aparece no rodapé quando preenchido)
   endereco: "",
   horario: "",
@@ -67,36 +79,37 @@ const DESTAQUE = {
 };
 
 // "combina": categorias sugeridas em "Combina com" quando o cliente olha um produto desta.
-// Ids que ainda não existem (bermudas, calcados, bones, celulares) passam a valer
-// assim que o dono criar a categoria com esse nome no painel.
+// O dono cria, renomeia e troca as fotos das categorias no painel.
 const CATEGORIAS = [
-  { id: "camisetas", nome: "Camisetas", imagem: "img/cat-camisetas.jpg", combina: ["bermudas", "calcados", "oculos", "bones", "wearables"] },
-  { id: "oculos", nome: "Óculos", imagem: "img/cat-oculos.jpg", combina: ["camisetas", "bones", "wearables", "bermudas"] },
-  { id: "wearables", nome: "Relógios", imagem: "img/cat-wearables.jpg", combina: ["camisetas", "oculos", "audio"] },
-  { id: "audio", nome: "Fones", imagem: "img/cat-audio.jpg", combina: ["celulares", "wearables", "gaming", "camisetas"] },
-  { id: "accessories", nome: "Acessórios", combina: ["camisetas", "bermudas", "oculos"] },
-  { id: "gaming", nome: "Games", imagem: "img/cat-gaming.jpg", combina: ["audio", "camisetas"] },
-  { id: "cameras", nome: "Câmeras", imagem: "img/cat-cameras.jpg", combina: ["accessories", "celulares", "audio"] },
+  { id: "camisetas", nome: "Camisetas", imagem: "img/cat-camisetas.jpg", combina: ["bermudas", "calcados", "bones", "oculos"] },
+  { id: "bermudas", nome: "Bermudas", imagem: "img/produtos/bermuda-moletom.svg", combina: ["camisetas", "calcados", "bones"] },
+  { id: "calcados", nome: "Calçados", imagem: "img/produtos/tenis-casual.svg", combina: ["bermudas", "camisetas", "bones"] },
+  { id: "bones", nome: "Bonés", imagem: "img/produtos/bone-aba-curva.svg", combina: ["camisetas", "oculos", "bermudas"] },
+  { id: "oculos", nome: "Óculos", imagem: "img/cat-oculos.jpg", combina: ["camisetas", "bones", "acessorios"] },
+  { id: "acessorios", nome: "Acessórios", imagem: "img/cat-wearables.jpg", combina: ["camisetas", "oculos", "bones"] },
 ];
 
 // Combinações para categorias que o dono ainda pode criar no painel
 const COMBINA_PADRAO = {
-  bermudas: ["camisetas", "calcados", "bones", "oculos"],
   shorts: ["camisetas", "calcados", "bones", "oculos"],
-  calcados: ["bermudas", "camisetas", "meias", "bones"],
-  bones: ["camisetas", "oculos", "bermudas"],
   calcas: ["camisetas", "calcados", "bones"],
-  celulares: ["audio", "wearables", "accessories"],
+  moletons: ["calcas", "bermudas", "calcados", "bones"],
+  celulares: ["acessorios"],
 };
 
+// Catálogo inicial. As peças com foto em img/produtos/*.svg são ilustrações: troque pelas
+// fotos reais em Painel → Produtos e preços → Editar todos os produtos.
 const PRODUTOS = [
-  { id: 1, nome: "Fone Bluetooth Pro", categoria: "audio", estoque: 15, preco: 149.9, precoAntigo: 199.9, imagem: "img/deal-buds.jpg", oferta: true, descricao: "Fone sem fio com cancelamento de ruído e até 24 horas de bateria com o estojo." },
-  { id: 2, nome: "Relógio Smart X", categoria: "wearables", estoque: 8, preco: 249.9, precoAntigo: 349.9, imagem: "img/deal-watch.jpg", oferta: true, descricao: "Tela sempre ligada, monitor de batimentos e sono, resistente à água." },
-  { id: 3, nome: "Óculos Juliet", categoria: "oculos", estoque: 12, preco: 189.9, precoAntigo: 249.9, imagem: "img/oculos-juliet.jpg", oferta: true, descricao: "Óculos peruano de primeira linha, armação metálica cromada e lentes escuras espelhadas.", detalhes: ["Armação metálica cromada", "Lentes escuras espelhadas", "Acompanha estojo"] },
   { id: 4, nome: "Camiseta Lacoste Faixa", categoria: "camisetas", estoque: 24, preco: 119.9, precoAntigo: 159.9, imagem: "img/camiseta-lacoste.jpg", oferta: true, descricao: "Camiseta peruana de primeira linha, malha de algodão com faixa preta e estampa Lacoste.", detalhes: ["Malha de algodão encorpada", "Faixa preta com estampa frontal", "Etiqueta e acabamento de primeira linha", "Tamanhos do P ao GG"] },
-  { id: 6, nome: "Headphone Max", categoria: "audio", estoque: 6, preco: 299.9, precoAntigo: 399.9, imagem: "img/cat-audio.jpg", descricao: "Headphone com som imersivo e até 40 horas de bateria." },
-  { id: 7, nome: "Controle sem fio", categoria: "gaming", estoque: 10, preco: 179.9, imagem: "img/cat-gaming.jpg", descricao: "Controle sem fio com baixa latência e vibração." },
-  { id: 8, nome: "Câmera Z", categoria: "cameras", estoque: 3, preco: 2999.9, imagem: "img/cat-cameras.jpg", descricao: "Câmera com sensor de 24 MP e vídeo em 4K." },
+  { id: 1, nome: "Camiseta Essential Branca", categoria: "camisetas", estoque: 30, preco: 99.9, precoAntigo: 129.9, imagem: "img/produtos/camiseta-branca.svg", oferta: true, descricao: "Camiseta peruana de algodão penteado, gola reforçada e caimento reto.", detalhes: ["Algodão penteado fio 30", "Gola canelada reforçada", "Tamanhos do P ao GG"] },
+  { id: 5, nome: "Camiseta Marinho Logo", categoria: "camisetas", estoque: 18, preco: 109.9, imagem: "img/produtos/camiseta-marinho.svg", descricao: "Camiseta azul-marinho com estampa frontal, malha encorpada que não deforma.", detalhes: ["Malha 100% algodão", "Estampa em silk de alta durabilidade", "Tamanhos do P ao GG"] },
+  { id: 6, nome: "Polo Piquet Grafite", categoria: "camisetas", estoque: 14, preco: 159.9, precoAntigo: 199.9, imagem: "img/produtos/polo-piquet.svg", oferta: true, descricao: "Polo em malha piquet peruana, gola e punhos canelados, dois botões.", detalhes: ["Malha piquet de algodão", "Gola e punhos canelados", "Tamanhos do P ao GG"] },
+  { id: 7, nome: "Bermuda Moletom TMZ", categoria: "bermudas", estoque: 20, preco: 89.9, imagem: "img/produtos/bermuda-moletom.svg", descricao: "Bermuda de moletom flanelado, cós com elástico e cordão, bolsos laterais.", detalhes: ["Moletom flanelado", "Cós com elástico e cordão", "Tamanhos do P ao GG"] },
+  { id: 8, nome: "Tênis Casual Branco", categoria: "calcados", estoque: 9, preco: 249.9, precoAntigo: 299.9, imagem: "img/produtos/tenis-casual.svg", oferta: true, descricao: "Tênis casual de cabedal sintético, solado de borracha e palmilha macia.", detalhes: ["Solado de borracha antiderrapante", "Palmilha acolchoada", "Numeração do 37 ao 44"] },
+  { id: 9, nome: "Chinelo Slide TMZ", categoria: "calcados", estoque: 26, preco: 59.9, imagem: "img/produtos/chinelo-slide.svg", descricao: "Slide confortável de borracha macia com tira larga.", detalhes: ["Borracha macia", "Tira larga", "Numeração do 37 ao 44"] },
+  { id: 10, nome: "Boné Aba Curva", categoria: "bones", estoque: 16, preco: 69.9, imagem: "img/produtos/bone-aba-curva.svg", descricao: "Boné de aba curva com fecho regulável e bordado frontal.", detalhes: ["Fecho regulável", "Bordado frontal", "Tamanho único ajustável"] },
+  { id: 3, nome: "Óculos Juliet", categoria: "oculos", estoque: 12, preco: 189.9, precoAntigo: 249.9, imagem: "img/oculos-juliet.jpg", oferta: true, descricao: "Óculos peruano de primeira linha, armação metálica cromada e lentes escuras espelhadas.", detalhes: ["Armação metálica cromada", "Lentes escuras espelhadas", "Acompanha estojo"] },
+  { id: 2, nome: "Relógio Smart X", categoria: "acessorios", estoque: 8, preco: 249.9, precoAntigo: 349.9, imagem: "img/deal-watch.jpg", descricao: "Tela sempre ligada, monitor de batimentos e sono, resistente à água." },
 ];
 
 // Comentários da seção "Avaliações". Os abaixo são EXEMPLOS para mostrar o visual:
@@ -106,11 +119,11 @@ const COMENTARIOS = [
   { nome: "Rafael S.", cidade: "São Paulo, SP", nota: 5, produto: "Camiseta Lacoste Faixa", texto: "Malha grossa, costura caprichada e o caimento ficou perfeito. Já vou pegar mais duas cores.", exemplo: true },
   { nome: "Juliana M.", cidade: "Belo Horizonte, MG", nota: 5, produto: "Óculos Juliet", texto: "O óculos é pesado, bem acabado e a lente é escura de verdade. Chegou em 4 dias.", exemplo: true },
   { nome: "Lucas P.", cidade: "Recife, PE", nota: 5, produto: "Camiseta Lacoste Faixa", texto: "Atendimento rápido no WhatsApp, tiraram todas as minhas dúvidas de tamanho antes de fechar.", exemplo: true },
-  { nome: "Bruna A.", cidade: "Curitiba, PR", nota: 4, produto: "Relógio Smart X", texto: "Gostei muito do relógio. Só demorou um pouco mais para chegar por causa da transportadora.", exemplo: true },
+  { nome: "Bruna A.", cidade: "Curitiba, PR", nota: 4, produto: "Polo Piquet Grafite", texto: "Gostei muito da polo, malha boa. Só demorou um pouco mais para chegar por causa da transportadora.", exemplo: true },
   { nome: "Diego R.", cidade: "Salvador, BA", nota: 5, produto: "Óculos Juliet", texto: "Comprei pro meu irmão e ele não tira do rosto. Embalagem bem protegida.", exemplo: true },
-  { nome: "Camila T.", cidade: "Goiânia, GO", nota: 5, produto: "Fone Bluetooth Pro", texto: "Bateria dura o dia inteiro e o som é muito limpo. Preço justo demais.", exemplo: true },
+  { nome: "Camila T.", cidade: "Goiânia, GO", nota: 5, produto: "Bermuda Moletom TMZ", texto: "Bermuda confortável demais, o moletom é grosso e não fez bolinha. Preço justo.", exemplo: true },
   { nome: "Matheus L.", cidade: "Rio de Janeiro, RJ", nota: 5, produto: "Camiseta Lacoste Faixa", texto: "Terceira compra na TMZ. Sempre o mesmo padrão de qualidade, recomendo de olho fechado.", exemplo: true },
-  { nome: "Ana C.", cidade: "Fortaleza, CE", nota: 5, produto: "Headphone Max", texto: "Chegou certinho, bem embalado e igual às fotos. Já indiquei para as amigas.", exemplo: true },
+  { nome: "Ana C.", cidade: "Fortaleza, CE", nota: 5, produto: "Tênis Casual Branco", texto: "Chegou certinho, bem embalado e igual às fotos. Já indiquei para as amigas.", exemplo: true },
 ];
 
 // Guia de medidas (Provador TMZ). Valores de referência em centímetros, do P ao GG.

@@ -567,7 +567,7 @@
         <section class="bloco">
           <h2>Chamada final</h2>
           <div class="foto-campo">
-            <div class="foto-campo__previa foto-campo__previa--larga" id="previa-banner"><img src="${escapar(c.bannerImagem || "img/banner.jpg")}" alt=""></div>
+            <div class="foto-campo__previa foto-campo__previa--larga" id="previa-banner"><img src="${escapar(c.bannerImagem || "img/produtos/banner-tmz.svg")}" alt=""></div>
             <div>
               <label class="btn btn--contorno btn--pequeno"><svg><use href="#i-upload"/></svg>Trocar foto<input type="file" accept="image/*" id="foto-banner" hidden></label>
               ${c.bannerImagem ? `<button type="button" class="link-simples" data-banner-padrao>Voltar à foto padrão</button>` : ""}
@@ -640,7 +640,32 @@
         </section>
         <section class="bloco">
           <h2>Frete</h2>
-          <div class="campos-2">${campo("frete", "Valor do frete (R$)", "number", 'step="0.01" min="0"')}${campo("freteGratisAcima", "Frete grátis acima de (R$)", "number", 'step="0.01" min="0"')}</div>
+          <div class="campos-2">
+            <label class="campo"><span>Como cobrar</span>
+              <select name="freteModo">
+                <option value="regiao" ${c.freteModo === "regiao" ? "selected" : ""}>Pelo CEP do cliente (tabela abaixo)</option>
+                <option value="fixo" ${c.freteModo !== "regiao" ? "selected" : ""}>Valor fixo para todo o Brasil</option>
+              </select>
+            </label>
+            ${campo("freteGratisAcima", "Frete grátis acima de (R$)", "number", 'step="0.01" min="0"')}
+          </div>
+          <div data-frete-fixo ${c.freteModo === "regiao" ? "hidden" : ""}>${campo("frete", "Valor do frete fixo (R$)", "number", 'step="0.01" min="0"')}</div>
+          <div data-frete-regiao ${c.freteModo === "regiao" ? "" : "hidden"} class="frete-regiao">
+            <div class="campos-2">
+              <label class="campo"><span>Estado da loja</span><select name="lojaUF">${Frete.UFS.map((uf) => `<option ${c.lojaUF === uf ? "selected" : ""}>${uf}</option>`).join("")}</select></label>
+              ${campo("lojaCidade", "Cidade da loja", "text")}
+            </div>
+            <table class="tabela-frete">
+              <thead><tr><th>Para onde</th><th>Valor (R$)</th><th>Prazo (dias úteis)</th></tr></thead>
+              <tbody>${Object.entries(Frete.NOMES_FAIXA).map(([k, nome]) => {
+                const linha = { ...Frete.TABELA_PADRAO[k], ...((c.freteTabela || {})[k] || {}) };
+                return `<tr><td>${nome}</td>
+                  <td><input name="ft_${k}_valor" type="number" step="0.01" min="0" value="${escapar(linha.valor)}" aria-label="Valor ${nome}"></td>
+                  <td><input name="ft_${k}_prazo" type="number" step="1" min="1" value="${escapar(linha.prazo)}" aria-label="Prazo ${nome}"></td></tr>`;
+              }).join("")}</tbody>
+            </table>
+            <p class="nota">O cliente digita o CEP no carrinho ou na compra, o endereço se preenche sozinho (ViaCEP) e o frete sai por esta tabela. "Mesma região" segue as regiões do IBGE (Sudeste, Sul…).</p>
+          </div>
         </section>
         <section class="bloco">
           <h2>Regras de reserva</h2>
@@ -1087,6 +1112,13 @@
           <div class="campos-2">${campo("facebook", "Facebook (link)", "url", 'placeholder="https://facebook.com/..."')}${campo("linkExtra", "Outro link (catálogo, Linktree…)", "url", 'placeholder="https://..."')}</div>
           ${campo("linkExtraNome", "Nome do outro link", "text", 'placeholder="Catálogo completo"')}
         </section>
+        <section class="bloco">
+          <h2>Empresa e documentos legais</h2>
+          <p class="nota">Aparecem no rodapé e nas páginas <a href="#privacidade" target="_blank">Privacidade</a>, <a href="#trocas" target="_blank">Trocas</a> e <a href="#termos" target="_blank">Termos</a>, que já vêm prontas com os dados da loja.</p>
+          <div class="campos-2">${campo("razaoSocial", "Razão social ou nome do responsável", "text", 'placeholder="TMZ Comércio de Roupas LTDA"')}${campo("cnpj", "CNPJ ou CPF", "text", 'placeholder="00.000.000/0001-00"')}</div>
+          <div class="campos-2">${campo("prazoTroca", "Prazo para troca de tamanho (dias)", "number", 'min="7" step="1" placeholder="30"')}<span></span></div>
+          <p class="nota">Por lei, compras com entrega podem ser devolvidas em até 7 dias depois de recebidas, com reembolso total (art. 49 do CDC). Peça para um advogado revisar os textos antes de abrir a loja.</p>
+        </section>
         <footer class="barra-salvar"><button class="btn">Salvar contato e links</button></footer>
       </form>`;
   }
@@ -1197,6 +1229,10 @@
       await salvarCupons(Cupons.lista().map((c) => (c.codigo === codigo ? { ...c, ativo: t.checked } : c)));
       toast(t.checked ? `Cupom ${codigo} ligado` : `Cupom ${codigo} desligado`);
       return renderAba();
+    }
+    if (t.name === "freteModo" && t.closest("#form-config")) {
+      $("[data-frete-fixo]", raiz).hidden = t.value === "regiao";
+      $("[data-frete-regiao]", raiz).hidden = t.value !== "regiao";
     }
     if (t.id === "cupom-insta") { await Dados.salvarConfig({ cupomInsta: t.value }); toast(t.value ? `Aviso do Instagram mostra ${t.value}` : "Aviso sem cupom"); }
     if (t.closest("#form-cupom-painel") && t.name === "tipo") {
@@ -1351,11 +1387,19 @@
         const d = Object.fromEntries(new FormData(f));
         d.whatsapp = digitos(d.whatsapp);
         Object.keys(d).forEach((k) => { d[k] = String(d[k]).trim(); });
+        d.prazoTroca = Math.max(7, parseInt(d.prazoTroca, 10) || 30);
+        d.legalAtualizado = Date.now();
         await Dados.salvarConfig(d);
         toast("Contato e links salvos");
       }
       if (f.id === "form-config") {
         const d = Object.fromEntries(new FormData(f));
+        d.freteTabela = {};
+        Object.keys(Frete.NOMES_FAIXA).forEach((k) => {
+          d.freteTabela[k] = { valor: Math.max(0, Number(d[`ft_${k}_valor`]) || 0), prazo: Math.max(1, parseInt(d[`ft_${k}_prazo`], 10) || 1) };
+          delete d[`ft_${k}_valor`]; delete d[`ft_${k}_prazo`];
+        });
+        if (d.lojaCidade !== undefined) d.lojaCidade = d.lojaCidade.trim();
         ["frete", "freteGratisAcima", "reservaPercentual", "reservaFixa", "estornoJanelaMin", "estornoDepoisPerc"].forEach((k) => { d[k] = Math.max(0, Number(d[k]) || 0); });
         d.reservaPercentual = Math.min(99, Math.max(1, d.reservaPercentual));
         d.estornoDepoisPerc = Math.min(100, d.estornoDepoisPerc);

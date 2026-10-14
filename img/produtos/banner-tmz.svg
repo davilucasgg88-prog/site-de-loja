@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 800">
+<defs><radialGradient id="g" cx="68%" cy="50%" r="60%"><stop offset="0" stop-color="#2e2e33"/><stop offset=".6" stop-color="#121214"/><stop offset="1" stop-color="#0a0a0b"/></radialGradient>
+<linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f1"/><stop offset="1" stop-color="#c9c9c4"/></linearGradient>
+<linearGradient id="t2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#151517"/></linearGradient></defs>
+<rect width="1400" height="800" fill="url(#g)"/>
+<text x="1000" y="560" font-family="Arial Black, Arial" font-weight="900" font-size="380" fill="none" stroke="#ffffff" stroke-opacity=".07" stroke-width="3" text-anchor="middle">TMZ</text>
+<g transform="translate(760 150) rotate(-8 240 260)"><path d="M156 60 C176 76 304 76 324 60 L410 98 L448 190 L384 216 L362 176 L362 470 L118 470 L118 176 L96 216 L32 190 L70 98 Z" fill="url(#t2)" stroke="#3a3a3f" stroke-width="3"/></g>
+<g transform="translate(860 190) rotate(6 240 260)"><path d="M156 60 C176 76 304 76 324 60 L410 98 L448 190 L384 216 L362 176 L362 470 L118 470 L118 176 L96 216 L32 190 L70 98 Z" fill="url(#t)"/>
+<path d="M156 60 C176 96 304 96 324 60" stroke="#1a1a1c" stroke-opacity=".35" stroke-width="5" fill="none"/>
+<text x="240" y="250" font-family="Arial Black, Arial" font-weight="900" font-size="64" fill="#111113" text-anchor="middle">TMZ</text></g>
+<ellipse cx="1080" cy="700" rx="300" ry="30" fill="#000" opacity=".45"/>
+</svg>

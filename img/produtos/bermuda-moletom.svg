@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs>
+  <radialGradient id="f" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#2c2c30"/><stop offset=".7" stop-color="#121214"/><stop offset="1" stop-color="#0a0a0b"/></radialGradient>
+  <linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a9a96"/><stop offset="1" stop-color="#6e6e6a"/></linearGradient>
+  <radialGradient id="s" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="600" height="600" fill="url(#f)"/>
+<ellipse cx="300" cy="520" rx="190" ry="26" fill="url(#s)"/>
+<path d="M170 150 L430 150 L452 470 L322 486 L300 300 L278 486 L148 470 Z" fill="url(#t)"/>
+<rect x="170" y="150" width="260" height="34" fill="#7c7c78"/>
+<path d="M270 184 L262 230 M330 184 L338 230" stroke="#1a1a1c" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+<path d="M190 200 C220 230 230 260 226 300 M410 200 C380 230 370 260 374 300" stroke="#1a1a1c" stroke-opacity=".25" stroke-width="3" fill="none" stroke-linecap="round"/>
+<path d="M156 440 L292 456 M444 440 L308 456" stroke="#1a1a1c" stroke-opacity=".25" stroke-width="3" fill="none" stroke-linecap="round"/>
+<text x="398" y="452" font-family="Arial Black, Arial" font-weight="900" font-size="22" fill="#1a1a1c" opacity=".65" text-anchor="middle">TMZ</text></svg>
