@@ -647,6 +647,23 @@ const Dados = (() => {
     guardarCarrinhoAtual(null);
   }
 
+  /* ---------- acompanhar pedido ---------- */
+  // Acha o pedido pelo código e pelos 4 últimos números do WhatsApp usado na compra
+  async function buscarPedido(codigo, final) {
+    codigo = String(codigo || "").trim().toUpperCase();
+    final = String(final || "").replace(/\D/g, "").slice(-4);
+    const confere = (p) => p.codigo === codigo && String(p.cliente?.telefone || "").replace(/\D/g, "").endsWith(final);
+    const meu = estado.meusPedidos.find((p) => p.codigo === codigo);
+    if (meu) return meu; // pedido feito neste aparelho ou nesta conta: não precisa do telefone
+    if (final.length < 4) return null;
+    const local = (estado.modo === "local" || estado.admin) && estado.pedidos.find(confere);
+    if (local) return local;
+    if (Supa.ativo() && estado.modo === "nuvem") {
+      try { return (await Supa.rpc("rastrear_pedido", { codigo, final_telefone: final })) || null; } catch { return null; }
+    }
+    return null;
+  }
+
   /* ---------- avise-me quando chegar ---------- */
   // Cliente deixa o contato num produto esgotado; o dono vê a lista de espera e avisa quando repõe.
   async function pedirAviso(produto, contato) {
@@ -741,6 +758,6 @@ const Dados = (() => {
     ouvir(fn) { ouvintes.add(fn); fn(estado); return () => ouvintes.delete(fn); },
     reembolso,
     salvarProduto, apagarProduto, ajustarEstoque, salvarCategorias, salvarConfig,
-    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, registrarCarrinho, concluirCarrinho, pedirAviso, marcarAvisados, novoId,
+    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, registrarCarrinho, concluirCarrinho, pedirAviso, marcarAvisados, buscarPedido, novoId,
   };
 })();

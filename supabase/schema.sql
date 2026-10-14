@@ -86,5 +86,20 @@ language sql stable security definer set search_path = public as $$
 $$;
 grant execute on function public.status_pagamento(text) to anon, authenticated;
 
+-- Acompanhar pedido: qualquer pessoa com o código e os 4 últimos números do WhatsApp vê a situação
+-- (sem endereço nem telefone; do cliente só o primeiro nome)
+create or replace function public.rastrear_pedido(codigo text, final_telefone text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select (p - 'cliente') || jsonb_build_object('cliente', jsonb_build_object('nome', split_part(p -> 'cliente' ->> 'nome', ' ', 1)))
+  from public.docs d, jsonb_array_elements(d.dados -> 'lista') p
+  where d.colecao = 'reservas'
+    and d.dados -> 'lista' @> jsonb_build_array(jsonb_build_object('codigo', codigo))
+    and p ->> 'codigo' = codigo
+    and length(regexp_replace(final_telefone, '\D', '', 'g')) = 4
+    and right(regexp_replace(p -> 'cliente' ->> 'telefone', '\D', '', 'g'), 4) = regexp_replace(final_telefone, '\D', '', 'g')
+  limit 1;
+$$;
+grant execute on function public.rastrear_pedido(text, text) to anon, authenticated;
+
 -- Para achar rápido o pedido pelo código (usado pelo pagamento)
 create index if not exists docs_lista_gin on public.docs using gin ((dados -> 'lista'));

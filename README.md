@@ -35,6 +35,14 @@ Sem servidor, o limite total de usos é conferido com os pedidos que o navegador
 cidade, e o frete e o prazo saem pela distância da loja (mesma cidade, mesmo estado, mesma região ou
 resto do Brasil). Tabela, cidade da loja e frete grátis em Painel → Configurações (`js/frete.js`).
 
+**Acompanhar pedido** (`#acompanhar`, `js/rastreio.js`): linha do tempo do pedido (feito → pago → em
+separação → enviado com código de rastreio e previsão → entregue; ou pronto para retirar → retirado).
+O cliente abre pelo link `?pedido=TMZ-AB12C#acompanhar` ou digita o código e os 4 últimos números do
+WhatsApp, de qualquer aparelho (no Supabase pela função `rastrear_pedido`, sem mostrar endereço nem
+telefone). No painel, a aba Pedidos tem um **quadro** por etapa (A pagar, Separar, Em separação,
+Enviados e prontos, Concluídos), botões para avançar cada etapa, transportadora e código de rastreio,
+e **Avisar cliente**, que abre o WhatsApp com a mensagem da etapa e o link de acompanhamento.
+
 **Avise-me quando chegar:** produto esgotado mostra um campo para o cliente deixar WhatsApp ou e-mail.
 Em Painel → Lista de espera o dono vê o que mais procuram e, quando repõe, avisa cada um com um clique.
 

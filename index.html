@@ -246,6 +246,7 @@
       <div>
         <h3>Ajuda</h3>
         <ul class="rodape__lista">
+          <li><a href="#acompanhar">Acompanhar pedido</a></li>
           <li><a href="#trocas">Trocas e devoluções</a></li>
           <li><a href="#privacidade">Política de privacidade</a></li>
           <li><a href="#termos">Termos de uso</a></li>
@@ -406,6 +407,29 @@
   </section>
 
   <!-- Guia de medidas -->
+  <section class="tela" id="tela-acompanhar" aria-labelledby="acompanhar-titulo" hidden>
+    <header class="tela__barra">
+      <div class="container tela__barra-linha">
+        <a href="#" class="tela__voltar"><svg><use href="#i-voltar"/></svg><span>Voltar à loja</span></a>
+        <img src="img/logo-tmz.png" alt="TMZ" class="tela__logo" width="84" height="24">
+        <span class="tela__seguro"><svg><use href="#i-truck"/></svg>Rastreio em tempo real</span>
+      </div>
+    </header>
+    <div class="container tela__corpo acompanhar">
+      <div class="tela__cabeca">
+        <p class="rotulo">Seu pedido</p>
+        <h1 class="tela__titulo" id="acompanhar-titulo">Acompanhar pedido</h1>
+      </div>
+      <form class="acompanhar__busca" id="form-acompanhar" novalidate>
+        <label class="campo"><span>Código do pedido</span><input name="codigo" placeholder="TMZ-AB12C" autocapitalize="characters" spellcheck="false" autocomplete="off"></label>
+        <label class="campo"><span>4 últimos números do WhatsApp</span><input name="final" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off"></label>
+        <button class="btn">Acompanhar</button>
+        <p class="erro-form" id="erro-acompanhar" role="alert" hidden></p>
+      </form>
+      <div id="acompanhar-resultado"></div>
+    </div>
+  </section>
+
   <section class="tela" id="tela-doc" aria-labelledby="doc-titulo" hidden>
     <header class="tela__barra">
       <div class="container tela__barra-linha">
@@ -499,6 +523,7 @@
   <script src="js/frete.js"></script>
   <script src="js/cupons.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/rastreio.js"></script>
   <script src="js/medidas.js"></script>
   <script src="js/conta.js"></script>
   <script src="js/legal.js"></script>

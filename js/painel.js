@@ -148,11 +148,60 @@
       .sort((a, b) => b.criadoEm - a.criadoEm);
     return `
       <header class="painel__cabeca">
-        <div><p class="rotulo">Vendas</p><h1>Pedidos e reservas</h1></div>
+        <div><p class="rotulo">Vendas</p><h1>Pedidos e reservas</h1><p class="painel__sub">Do pagamento à entrega: avance cada etapa e o cliente acompanha em tempo real.</p></div>
+        <div class="filtros modo-pedidos">
+          <button type="button" class="filtro${ui.pedVista !== "lista" ? " ativo" : ""}" data-ped-vista="quadro"><svg><use href="#i-painel"/></svg>Quadro</button>
+          <button type="button" class="filtro${ui.pedVista === "lista" ? " ativo" : ""}" data-ped-vista="lista"><svg><use href="#i-lista"/></svg>Lista</button>
+        </div>
       </header>
+      ${ui.pedVista !== "lista" ? quadroPedidos() : `
       <div class="filtros">${FILTROS.map(([id, nome]) => `<button type="button" class="filtro${ui.filtro === id ? " ativo" : ""}" data-filtro-pedido="${id}">${nome}<b>${contar(id)}</b></button>`).join("")}</div>
       <div class="pedidos pedidos--painel">
         ${lista.length ? lista.map(cartaoPedido).join("") : `<p class="vazio-curto">Nada por aqui.</p>`}
+      </div>`}`;
+  }
+
+  // Quadro: cada coluna é uma etapa; o botão de cada cartão leva o pedido para a próxima
+  function quadroPedidos() {
+    const semana = Date.now() - 7 * 864e5;
+    const colunas = [
+      ["pagar", "A pagar", (p) => p.status === "aguardando"],
+      ["separar", "Separar", (p) => p.status === "confirmado" && !p.etapa],
+      ["separando", "Em separação", (p) => p.status === "confirmado" && p.etapa === "separando"],
+      ["saiu", "Enviados e prontos", (p) => p.status === "confirmado" && ["enviado", "pronto"].includes(p.etapa)],
+      ["fim", "Concluídos · 7 dias", (p) => p.status === "retirado" && (p.concluidoEm || p.criadoEm) >= semana],
+    ];
+    const ordenados = [...S.pedidos].sort((a, b) => a.criadoEm - b.criadoEm);
+    const acao = (p) => {
+      const chave = escapar(`${p.dono}|${p.codigo}`);
+      const entrega = p.receber === "entrega";
+      if (p.status === "aguardando") return `<button type="button" class="btn btn--pequeno" data-acao="confirmar" data-chave="${chave}">Pagamento recebido</button>`;
+      if (p.status !== "confirmado") return "";
+      if (!p.etapa) return `<button type="button" class="btn btn--pequeno" data-acao="separar" data-chave="${chave}">Separar</button>`;
+      if (p.etapa === "separando") return entrega
+        ? `<button type="button" class="btn btn--pequeno" data-ped-detalhe="${escapar(p.codigo)}" data-enviar-chave="${chave}">Enviar…</button>`
+        : `<button type="button" class="btn btn--pequeno" data-acao="pronto" data-chave="${chave}">Pronto p/ retirar</button>`;
+      return `<button type="button" class="btn btn--pequeno" data-acao="concluir" data-chave="${chave}">${entrega ? "Entregue" : "Retirado"}</button>`;
+    };
+    return `
+      <div class="quadro">
+        ${colunas.map(([id, nome, filtro]) => {
+          const itens = ordenados.filter(filtro);
+          return `
+          <section class="quadro__coluna quadro__coluna--${id}">
+            <header><h2>${nome}</h2><b>${itens.length}</b></header>
+            ${itens.map((p) => `
+              <article class="quadro__cartao">
+                <button type="button" class="quadro__abrir" data-ped-detalhe="${escapar(p.codigo)}">
+                  <span class="quadro__codigo">${escapar(p.codigo)}</span>
+                  <strong>${escapar((p.cliente?.nome || "Cliente").split(" ").slice(0, 2).join(" "))}</strong>
+                  <small>${p.itens.reduce((s, i) => s + i.qtd, 0)} ${p.itens.reduce((s, i) => s + i.qtd, 0) === 1 ? "peça" : "peças"} · ${moeda(p.total)}</small>
+                  <small>${p.receber === "entrega" ? "Entrega" : "Retirada"} · ${tempo(p.etapa === "enviado" ? p.enviadoEm : p.etapa === "pronto" ? p.prontoEm : p.etapa === "separando" ? p.separandoEm : p.status === "confirmado" ? p.confirmadoEm || p.criadoEm : p.criadoEm)}</small>
+                </button>
+                ${acao(p)}
+              </article>`).join("") || `<p class="quadro__vazio">Nada aqui</p>`}
+          </section>`;
+        }).join("")}
       </div>`;
   }
 
@@ -176,8 +225,28 @@
     } else if (p.status === "aguardando") {
       acoes = `<button type="button" class="btn btn--pequeno" data-acao="confirmar" data-chave="${escapar(chave)}"><svg><use href="#i-check"/></svg>${reserva ? `Sinal de ${moeda(p.sinal)} recebido` : "Pagamento recebido"}</button>
                <button type="button" class="link-simples" data-acao="cancelar" data-chave="${escapar(chave)}">Cancelar</button>`;
+    } else if (ui.enviando === chave) {
+      acoes = `
+        <div class="enviar-pedido">
+          <label class="campo"><span>Transportadora</span>
+            <select id="envio-transportadora">${Object.entries(Rastreio.TRANSPORTADORAS).map(([k, t]) => `<option value="${k}">${t.nome}</option>`).join("")}</select>
+          </label>
+          <label class="campo"><span>Código de rastreio <em>opcional</em></span><input id="envio-codigo" placeholder="AA123456789BR" autocapitalize="characters" spellcheck="false"></label>
+          <div class="linha-botoes">
+            <button type="button" class="btn btn--pequeno" data-acao="enviar-ok" data-chave="${escapar(chave)}"><svg><use href="#i-truck"/></svg>Confirmar envio</button>
+            <button type="button" class="link-simples" data-acao="enviar-nao">Voltar</button>
+          </div>
+        </div>`;
     } else if (p.status === "confirmado") {
-      acoes = `<button type="button" class="btn btn--pequeno" data-acao="concluir" data-chave="${escapar(chave)}"><svg><use href="#i-check"/></svg>${p.receber === "entrega" ? "Marcar como enviado" : "Marcar como retirado"}${reserva && p.restante ? ` (+${moeda(p.restante)})` : ""}</button>
+      const entrega = p.receber === "entrega";
+      const proximo = !p.etapa
+        ? `<button type="button" class="btn btn--pequeno" data-acao="separar" data-chave="${escapar(chave)}"><svg><use href="#i-sacola"/></svg>Começar a separar</button>`
+        : p.etapa === "separando"
+          ? entrega
+            ? `<button type="button" class="btn btn--pequeno" data-acao="enviar" data-chave="${escapar(chave)}"><svg><use href="#i-truck"/></svg>Marcar como enviado</button>`
+            : `<button type="button" class="btn btn--pequeno" data-acao="pronto" data-chave="${escapar(chave)}"><svg><use href="#i-loja"/></svg>Pronto para retirar</button>`
+          : `<button type="button" class="btn btn--pequeno" data-acao="concluir" data-chave="${escapar(chave)}"><svg><use href="#i-check"/></svg>${entrega ? "Marcar como entregue" : "Marcar como retirado"}${reserva && p.restante && !entrega ? ` (+${moeda(p.restante)})` : ""}</button>`;
+      acoes = `${proximo}
                <button type="button" class="link-simples" data-acao="cancelar" data-chave="${escapar(chave)}">Cancelar</button>`;
     } else if (p.status === "cancelado") {
       acoes = `${p.reembolso > 0 ? `<button type="button" class="btn btn--pequeno" data-acao="estornar" data-chave="${escapar(chave)}">Devolução de ${moeda(p.reembolso)} feita</button>` : ""}
@@ -209,13 +278,18 @@
         </dl>
         ${reserva && ["aguardando", "confirmado"].includes(p.status) ? `<p class="pedido__prazo"><svg><use href="#i-relogio"/></svg><span>${r.dentro ? `Devolução total se cancelar até ${hora(r.limite)}` : `Desde ${hora(r.limite)} a devolução é de ${S.config.estornoDepoisPerc}%`}</span></p>` : ""}
         ${p.status === "cancelado" && p.canceladoPor ? `<p class="pedido__prazo">Cancelado ${p.canceladoPor === "cliente" ? "pelo cliente" : "pela loja"} em ${dataHora(p.canceladoEm)}</p>` : ""}
-        ${acoes ? `<footer class="pedido__acoes">${acoes}</footer>` : ""}
+        ${["confirmado", "retirado"].includes(p.status) || p.etapa ? Rastreio.linha(p, { compacta: true }) : ""}
+        ${p.rastreio?.codigo ? `<p class="pedido__prazo"><svg><use href="#i-truck"/></svg><span>${escapar(Rastreio.TRANSPORTADORAS[p.rastreio.transportadora]?.nome || "")} · <code>${escapar(p.rastreio.codigo)}</code></span></p>` : ""}
+        ${acoes || zap ? `<footer class="pedido__acoes">${acoes}
+          ${zap && !["cancelado", "estornado"].includes(p.status) && ui.cancelando !== chave && ui.enviando !== chave ? `<a class="link-simples avisar-cliente" href="https://wa.me/55${zap.replace(/^55/, "")}?text=${encodeURIComponent(Rastreio.mensagem(p))}" target="_blank" rel="noopener"><svg><use href="#i-whatsapp"/></svg>Avisar cliente</a>` : ""}</footer>` : ""}
       </article>`;
   }
 
   async function acaoPedido(acao, chave, botao) {
     if (acao === "cancelar-nao") { ui.cancelando = null; return renderAba(); }
     if (acao === "cancelar") { ui.cancelando = chave; return renderAba(); }
+    if (acao === "enviar") { ui.enviando = chave; return renderAba(); }
+    if (acao === "enviar-nao") { ui.enviando = null; return renderAba(); }
     const [dono, codigo] = chave.split("|");
     const p = S.pedidos.find((x) => x.dono === dono && x.codigo === codigo);
     if (!p) return;
@@ -225,6 +299,21 @@
         for (const i of p.itens) await Dados.ajustarEstoque(i.id, -i.qtd);
         await Dados.atualizarPedido(dono, codigo, { status: "confirmado", pago: true, estoqueBaixado: true, confirmadoEm: Date.now() });
         toast("Pagamento confirmado e estoque atualizado");
+      }
+      if (acao === "separar") {
+        await Dados.atualizarPedido(dono, codigo, { etapa: "separando", separandoEm: Date.now() });
+        toast("Pedido em separação");
+      }
+      if (acao === "pronto") {
+        await Dados.atualizarPedido(dono, codigo, { etapa: "pronto", prontoEm: Date.now() });
+        toast("Pronto para retirar. Avise o cliente pelo WhatsApp.");
+      }
+      if (acao === "enviar-ok") {
+        const transportadora = $("#envio-transportadora", raiz).value;
+        const cod = $("#envio-codigo", raiz).value.trim().toUpperCase();
+        await Dados.atualizarPedido(dono, codigo, { etapa: "enviado", enviadoEm: Date.now(), rastreio: { transportadora, codigo: cod } });
+        ui.enviando = null;
+        toast("Pedido enviado. Avise o cliente pelo WhatsApp.");
       }
       if (acao === "concluir") {
         await Dados.atualizarPedido(dono, codigo, { status: "retirado", concluidoEm: Date.now() });
@@ -1238,6 +1327,20 @@
     if (t.closest("[data-banner-padrao]")) { await Dados.salvarConfig({ bannerImagem: "" }); toast("Foto padrão de volta"); return renderAba(); }
     if (t.closest("[data-medidas-padrao]")) { await Dados.salvarConfig({ medidas: null }); toast("Medidas padrão restauradas"); return renderAba(); }
     if (t.closest("[data-sair]")) { Dados.sair(); location.hash = ""; return; }
+    // pedidos: quadro e lista
+    const vista = t.closest("[data-ped-vista]");
+    if (vista) { ui.pedVista = vista.dataset.pedVista; return renderAba(); }
+    const detalhe = t.closest("[data-ped-detalhe]");
+    if (detalhe) {
+      ui.pedVista = "lista"; ui.filtro = "todos";
+      if (detalhe.dataset.enviarChave) ui.enviando = detalhe.dataset.enviarChave;
+      renderAba();
+      const alvo = [...raiz.querySelectorAll(".pedido__codigo")].find((el) => el.textContent === detalhe.dataset.pedDetalhe)?.closest(".pedido");
+      alvo?.scrollIntoView({ block: "center" });
+      alvo?.classList.add("pedido--destaque");
+      return;
+    }
+
     // carrinhos
     const carFiltro = t.closest("[data-car-filtro]");
     if (carFiltro) { ui.carFiltro = carFiltro.dataset.carFiltro; return renderAba(); }
@@ -1555,7 +1658,7 @@
       contaAntes = JSON.stringify(S.conta);
       return render();
     }
-    if (ui.editando || abasDeFormulario.includes(ui.aba) || ui.aba === "produtos" && ui.prodModo === "tudo" || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
+    if (ui.editando || ui.enviando || abasDeFormulario.includes(ui.aba) || ui.aba === "produtos" && ui.prodModo === "tudo" || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
       // só atualiza o contador do menu
       const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length;
       const b = raiz.querySelector('[data-aba="pedidos"]');

@@ -957,11 +957,6 @@
     alvo.innerHTML = lista.map((p) => {
       const reserva = p.tipo !== "compra";
       const r = Dados.reembolso(p, agora);
-      const passos = reserva
-        ? [["aguardando", "Reservado"], ["confirmado", "Sinal confirmado"], ["retirado", p.tipo === "reserva30" ? "Retirado" : "Concluído"]]
-        : [["aguardando", "Pedido feito"], ["confirmado", "Pagamento confirmado"], ["retirado", "Concluído"]];
-      const ordem = ["aguardando", "confirmado", "retirado"];
-      const nivel = ordem.indexOf(p.status);
       const encerrado = ["cancelado", "estornado"].includes(p.status);
       const podeCancelar = reserva && ["aguardando", "confirmado"].includes(p.status);
       const restanteMin = Math.max(0, Math.ceil((r.limite - agora) / 60000));
@@ -975,7 +970,8 @@
             <span class="etiqueta">${escapar(nomeTipo(p))}</span>
             <span class="status status--${p.status}">${NOMES_STATUS[p.status] || p.status}</span>
           </header>
-          ${encerrado ? "" : `<ol class="trilha">${passos.map(([s, nome], i) => `<li class="${i <= nivel ? "feito" : ""}">${nome}</li>`).join("")}</ol>`}
+          ${Rastreio.linha(p, { compacta: true })}
+          <a class="pedido__acompanhar" href="?pedido=${encodeURIComponent(p.codigo)}#acompanhar"><svg><use href="#i-truck"/></svg>Acompanhar entrega e detalhes</a>
           <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${i.qtd}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
           <dl class="pedido__valores">
             <div><dt>Total</dt><dd>${moeda(p.total)}</dd></div>
@@ -999,6 +995,71 @@
     }).join("");
   }
 
+  /* ---------- acompanhar pedido ---------- */
+  let pedidoAcompanhado = null;
+  function prepararAcompanhar() {
+    const f = $("#form-acompanhar");
+    const codigo = new URLSearchParams(location.search).get("pedido");
+    if (codigo && !f.codigo.value) f.codigo.value = codigo;
+    $("#erro-acompanhar").hidden = true;
+    const meu = codigo && S.meusPedidos.find((p) => p.codigo === codigo.toUpperCase());
+    if (meu) { pedidoAcompanhado = meu.codigo; renderAcompanhar(meu); }
+    else if (!pedidoAcompanhado) { $("#acompanhar-resultado").innerHTML = ""; (f.codigo.value ? f.final : f.codigo).focus({ preventScroll: true }); }
+  }
+  function renderAcompanhar(p) {
+    const entrega = p.receber === "entrega";
+    $("#acompanhar-resultado").innerHTML = `
+      <article class="acompanhar__cartao">
+        <header class="acompanhar__topo">
+          <div>
+            <span class="pedido__codigo">${escapar(p.codigo)}</span>
+            <span class="pedido__data">${escapar(nomeTipo(p))} · ${dataHora(p.criadoEm)}${p.cliente?.nome ? ` · ${escapar(p.cliente.nome.split(" ")[0])}` : ""}</span>
+          </div>
+          <span class="status status--${["cancelado", "estornado"].includes(p.status) ? "cancelado" : p.status}">${escapar(Rastreio.situacao(p))}</span>
+        </header>
+        ${Rastreio.linha(p)}
+        <div class="acompanhar__resumo">
+          <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${i.qtd}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
+          <dl class="pedido__valores">
+            <div><dt>Total</dt><dd>${moeda(p.total)}</dd></div>
+            <div><dt>${entrega ? "Entrega" : "Retirada"}</dt><dd>${entrega ? (p.prazoEntrega ? `até ${p.prazoEntrega} dias úteis` : "pelo CEP") : escapar(S.config.endereco || "na loja")}</dd></div>
+          </dl>
+        </div>
+        <footer class="acompanhar__pe">
+          <a class="btn btn--contorno" href="${escapar(linkWhats(`Oi! Quero falar sobre o pedido ${p.codigo}.`))}" target="_blank" rel="noopener">Falar com a loja</a>
+          <button type="button" class="link-simples" data-copiar-texto="${escapar(Rastreio.linkAcompanhar(p.codigo))}">Copiar link deste pedido</button>
+        </footer>
+      </article>`;
+  }
+  $("#form-acompanhar").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const erroEl = $("#erro-acompanhar");
+    const codigo = f.codigo.value.trim().toUpperCase();
+    if (!/^TMZ-[A-Z0-9]{5}$/.test(codigo)) { erroEl.textContent = "O código tem este formato: TMZ-AB12C. Ele está na mensagem do pedido."; erroEl.hidden = false; return f.codigo.focus(); }
+    f.codigo.value = codigo;
+    const botao = f.querySelector("button");
+    botao.disabled = true;
+    const p = await Dados.buscarPedido(codigo, f.final.value);
+    botao.disabled = false;
+    if (!p) {
+      erroEl.textContent = digitos(f.final.value).length < 4 ? "Digite também os 4 últimos números do WhatsApp usado na compra." : "Não achamos esse pedido. Confira o código e os números do WhatsApp.";
+      erroEl.hidden = false;
+      $("#acompanhar-resultado").innerHTML = "";
+      return;
+    }
+    erroEl.hidden = true;
+    pedidoAcompanhado = p.codigo;
+    renderAcompanhar(p);
+  });
+  // copiar código de rastreio ou link
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-copiar-texto]");
+    if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.copiarTexto); toast("Copiado"); }
+    catch { prompt("Copie:", b.dataset.copiarTexto); }
+  });
+
   $("#lista-reservas").addEventListener("click", async (e) => {
     const pedir = e.target.closest("[data-cancelar]");
     const ok = e.target.closest("[data-cancelar-ok]");
@@ -1021,7 +1082,7 @@
 
   /* ---------- telas cheias (rotas por #) ---------- */
   const TELAS = { carrinho: "#tela-carrinho", compra: "#tela-compra", reservas: "#tela-reservas", medidas: "#tela-medidas", entrar: "#tela-entrar", painel: "#painel",
-    privacidade: "#tela-doc", trocas: "#tela-doc", termos: "#tela-doc" };
+    acompanhar: "#tela-acompanhar", privacidade: "#tela-doc", trocas: "#tela-doc", termos: "#tela-doc" };
   let rolagemLoja = 0;
   let telaAtual = "";
 
@@ -1034,6 +1095,7 @@
     if (nova === "carrinho") renderCarrinho();
     if (nova === "compra") prepararCompra();
     if (nova === "reservas") { cancelando = null; renderReservas(); }
+    if (nova === "acompanhar") prepararAcompanhar();
     if (nova && nova !== telaAtual) {
       $(TELAS[nova]).scrollTop = 0;
       $$("dialog[open]").forEach((d) => d.close());
@@ -1198,6 +1260,10 @@
     renderCarrinho();
     if (telaAtual === "compra" && $("#compra-ok").hidden) renderCompra();
     if (telaAtual === "reservas") renderReservas();
+    if (telaAtual === "acompanhar" && pedidoAcompanhado) {
+      const atual = [...S.meusPedidos, ...S.pedidos].find((p) => p.codigo === pedidoAcompanhado);
+      if (atual) renderAcompanhar(atual);
+    }
   });
 
   /* ---------- tema claro / escuro ---------- */
@@ -1221,7 +1287,9 @@
 
   $("#ano").textContent = new Date().getFullYear();
   if (lerCep()) usarCep(lerCep());
-  rota();
+  // Abre a tela do link só depois que todos os scripts carregaram (rastreio, medidas, painel…)
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", rota);
+  else setTimeout(rota);
 
   // utilidades para o painel
   window.TMZ = { combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, imagemCat, categoria, nomeTipo, NOMES_STATUS, duracao, centavos, digitos, linkWhats };

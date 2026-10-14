@@ -75,6 +75,20 @@ teste("a página inicial abre com produtos, categorias e sem erros", async () =>
   await fechar(p);
 });
 
+teste("todas as telas abrem direto pelo link, sem erros", async () => {
+  for (const h of ["carrinho", "compra", "reservas", "medidas", "entrar", "acompanhar", "privacidade", "trocas", "termos", "painel"]) {
+    const p = await abrir({ hash: h });
+    const aberta = await p.evaluate(() => [...document.querySelectorAll(".tela")].filter((t) => !t.hidden).map((t) => t.id).join());
+    confere(h === "compra" ? aberta === "tela-carrinho" : aberta.length > 0, `#${h} não abriu (${aberta || "nenhuma tela"})`);
+    await fechar(p);
+  }
+  const p = await abrir();
+  await p.goto(BASE + "?pedido=TMZ-AAAAA#acompanhar");
+  await p.waitForTimeout(500);
+  confere((await p.inputValue("#form-acompanhar [name=codigo]")) === "TMZ-AAAAA", "link do pedido não preencheu o código");
+  await fechar(p);
+});
+
 teste("nenhuma tela tem rolagem para o lado no celular", async () => {
   const p = await abrir({ largura: 360, altura: 780 });
   for (const h of ["", "carrinho", "medidas", "entrar", "trocas", "reservas"]) {
@@ -217,6 +231,52 @@ teste("avise-me quando chegar: cliente entra na lista e o dono avisa", async () 
   await fechar(p);
 });
 
+teste("acompanhar pedido: dono avança as etapas e o cliente vê pelo código", async () => {
+  const p = await abrir();
+  await adicionar(p, 1);
+  await ir(p, "compra");
+  await p.fill("#c-nome", "Rita Rastreio");
+  await p.fill("#c-telefone", "11955554321");
+  await p.type("#c-cep", "20040020");
+  await p.waitForTimeout(500);
+  await p.fill("#c-endereco", "Avenida Rio Branco, 1, Centro, Rio de Janeiro - RJ");
+  await p.click("#confirmar-compra");
+  await p.waitForTimeout(500);
+  const codigo = (await texto(p, ".concluido__codigo")).match(/TMZ-[A-Z0-9]{5}/)[0];
+  await entrarComoDono(p);
+  await ir(p, "painel");
+  await p.click('[data-aba="pedidos"]');
+  const coluna = async (id) => texto(p, `.quadro__coluna--${id}`);
+  confere((await coluna("pagar")).includes(codigo), "pedido não está em A pagar");
+  await p.click(`.quadro__coluna--pagar [data-acao="confirmar"]`);
+  await p.waitForTimeout(300);
+  await p.click(`.quadro__coluna--separar [data-acao="separar"]`);
+  await p.waitForTimeout(300);
+  confere((await coluna("separando")).includes(codigo), "pedido não foi para Em separação");
+  await p.click(".quadro__coluna--separando [data-enviar-chave]");
+  await p.waitForTimeout(300);
+  await p.selectOption("#envio-transportadora", "correios");
+  await p.fill("#envio-codigo", "aa123456789br");
+  await p.click('[data-acao="enviar-ok"]');
+  await p.waitForTimeout(300);
+  const aviso = await p.getAttribute(".pedido--destaque .avisar-cliente, .avisar-cliente", "href");
+  confere(decodeURIComponent(aviso).includes("AA123456789BR") && decodeURIComponent(aviso).includes("#acompanhar"), "mensagem do WhatsApp sem rastreio ou link");
+  // cliente acompanha em outro aparelho (busca pelo código e telefone)
+  await p.evaluate(() => sessionStorage.removeItem("tmz-sessao"));
+  await ir(p, "acompanhar");
+  await p.fill("#form-acompanhar [name=codigo]", codigo.toLowerCase());
+  await p.fill("#form-acompanhar [name=final]", "0000");
+  await p.click("#form-acompanhar button");
+  await p.waitForTimeout(300);
+  confere(!(await p.isHidden("#erro-acompanhar")) || (await texto(p, "#acompanhar-resultado")).includes(codigo), "busca não respondeu");
+  await p.fill("#form-acompanhar [name=final]", "4321");
+  await p.click("#form-acompanhar button");
+  await p.waitForTimeout(300);
+  const resultado = await texto(p, "#acompanhar-resultado");
+  confere(resultado.includes("Enviado") && resultado.includes("AA123456789BR") && resultado.includes("Previsão de entrega"), "linha do tempo sem envio: " + resultado.slice(0, 200));
+  await fechar(p);
+});
+
 teste("páginas de privacidade, trocas e termos", async () => {
   const p = await abrir({ hash: "trocas" });
   confere((await texto(p, "#doc-conteudo")).includes("7 dias"), "trocas sem o prazo de arrependimento");
@@ -263,8 +323,21 @@ teste("servidor: Pix online, aprovação automática e baixa no estoque", async 
   confere((await texto(cli, "#compra-ok h1")) === "Pagamento aprovado!", "cliente não viu a aprovação");
   const docs = await (await fetch(`http://localhost:${PORTA_SUPA}/teste/docs`)).json();
   confere(docs["produtos/7"].estoque === 19, "estoque não baixou");
+  const outro = await abrir({ supabase: true, hash: "acompanhar" });
+  await outro.fill("#form-acompanhar [name=codigo]", codigo);
+  await outro.fill("#form-acompanhar [name=final]", "1234");
+  await outro.click("#form-acompanhar button");
+  await outro.waitForTimeout(500);
+  confere((await texto(outro, "#erro-acompanhar")).includes("Não achamos"), "achou o pedido com o telefone errado");
+  await outro.fill("#form-acompanhar [name=final]", "7777");
+  await outro.click("#form-acompanhar button");
+  await outro.waitForTimeout(500);
+  const visto = await texto(outro, "#acompanhar-resultado");
+  confere(visto.includes("Pagamento confirmado") && visto.includes("Paula") && !visto.includes("Rio Branco"), "rastreio de outro aparelho errado: " + visto.slice(0, 160));
+  await fechar(outro);
   await dono.waitForTimeout(16000); // o painel atualiza os pagamentos a cada 15 s
   await dono.click('[data-aba="pedidos"]');
+  await dono.click('[data-ped-vista="lista"]');
   await dono.click('[data-filtro-pedido="todos"]').catch(() => {});
   confere((await texto(dono, ".pedidos--painel")).includes("Pix verificado"), "painel não mostrou o Pix verificado");
   await fechar(cli);

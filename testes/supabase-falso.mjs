@@ -59,6 +59,13 @@ const servidor = http.createServer(async (req, res) => {
     const meu = docs.get('reservas/' + quem?.id)?.dados?.lista?.some((p) => p.codigo === corpo.codigo);
     return enviar(200, pg && meu ? pg.dados : null);
   }
+  if (u.pathname === '/rest/v1/rpc/rastrear_pedido') {
+    for (const [k, v] of docs) if (k.startsWith('reservas/')) {
+      const p = v.dados.lista?.find((x) => x.codigo === corpo.codigo && String(x.cliente?.telefone || '').replace(/\D/g, '').endsWith(corpo.final_telefone));
+      if (p) { const { cliente, ...resto } = p; return enviar(200, { ...resto, cliente: { nome: cliente.nome.split(' ')[0] } }); }
+    }
+    return enviar(200, null);
+  }
   if (u.pathname === '/functions/v1/pagamento') {
     const meu = docs.get('reservas/' + quem?.id)?.dados?.lista?.find((p) => p.codigo === corpo.codigo);
     if (!meu) return enviar(404, { erro: 'Pedido não encontrado' });
