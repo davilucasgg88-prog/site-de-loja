@@ -60,6 +60,9 @@ vê "Sem acesso". Depois de 5 erros seguidos, a tela espera 1 minuto.
   Não é proteção de verdade.
 
 **Painel do lojista** (botão "Painel" no topo ou "Área do lojista" no rodapé):
+- Carrinhos: todo carrinho montado na loja, com ID (CRT-…), cliente, itens, valor, última mudança e
+  situação: aguardando, abandonado (parado há 1 hora), concluído (com o ID do pedido, que abre no
+  histórico) ou esvaziado. Mostra taxa de conversão, valor abandonado e botão para chamar no WhatsApp
 - Clientes: contas criadas, com e-mail, WhatsApp, data de cadastro e número de compras
 - Resumo: pagamentos pendentes, pedidos para retirar/enviar, devoluções, faturamento e visitas de hoje
 - Faturamento: total de 7/30/90 dias, ticket médio, a receber, devolvido, gráfico por dia,
@@ -70,6 +73,9 @@ vê "Sem acesso". Depois de 5 erros seguidos, a tela espera 1 minuto.
 - Contato e links: WhatsApp, e-mail, endereço, horário, Instagram, TikTok, Facebook e um link extra
 - Pedidos e reservas: confirmar sinal recebido (baixa o estoque), marcar retirado/enviado,
   cancelar com o valor de devolução já calculado, registrar devolução feita, voltar peças ao estoque
+- Produtos e preços, modo "Editar todos os produtos": nome, descrição, foto (envio ou link), categoria,
+  preço e preço antigo de todos os produtos numa lista só; as mudanças ficam marcadas e vão para a loja
+  no "Salvar tudo"
 - Produtos e preços: preço e preço antigo editáveis direto na tabela, filtro "só ofertas", somar entradas, +/− unidade, ligar/desligar oferta, cadastrar, editar
   (com foto), excluir. Serve para qualquer produto, inclusive celulares
 - Categorias: criar (ex.: Celulares), renomear, trocar foto, remover

@@ -15,6 +15,7 @@ const Dados = (() => {
     categorias: CATEGORIAS.map((c) => ({ ...c })),
     produtos: PRODUTOS.map((p) => ({ ...p, id: String(p.id) })),
     pedidos: [],
+    carrinhos: [],
   });
 
   const estado = {
@@ -49,12 +50,14 @@ const Dados = (() => {
       if (Array.isArray(salvo.categorias)) estado.categorias = salvo.categorias;
       if (Array.isArray(salvo.produtos)) estado.produtos = salvo.produtos;
       if (Array.isArray(salvo.pedidos)) estado.pedidos = salvo.pedidos;
+      if (Array.isArray(salvo.carrinhos)) estado.carrinhos = salvo.carrinhos;
     } catch {}
   }
   function gravarLocal() {
     try {
       localStorage.setItem(CHAVE_LOCAL, JSON.stringify({
         config: estado.config, categorias: estado.categorias, produtos: estado.produtos, pedidos: estado.pedidos,
+        carrinhos: estado.carrinhos,
       }));
     } catch {}
   }
@@ -73,6 +76,7 @@ const Dados = (() => {
     await retomarSessaoNuvem();
     estado.pedidos = [];
     estado.meusPedidos = [];
+    estado.carrinhos = [];
     estado.visitas = {};
     estado.config = padrao().config;
     avisar();
@@ -108,6 +112,10 @@ const Dados = (() => {
     ouvindoAdmin = true;
     db.collection("reservas").onSnapshot((s) => {
       estado.pedidos = s.docs.flatMap((d) => (d.data().lista || []).map((p) => ({ ...p, dono: d.id })));
+      avisar();
+    }, () => {});
+    db.collection("carrinhos").onSnapshot((s) => {
+      estado.carrinhos = s.docs.flatMap((d) => (d.data().lista || []).map((c) => ({ ...c, dono: d.id })));
       avisar();
     }, () => {});
     ouvirVisitasNuvem();
@@ -436,6 +444,86 @@ const Dados = (() => {
   }
   retomarSessao();
 
+  /* ---------- carrinhos ---------- */
+  // Cada carrinho que alguém monta vira um registro: aguardando (ainda montando), concluído (virou
+  // pedido), esvaziado ou, depois de 1 hora parado, abandonado. Na nuvem cada visitante grava só
+  // carrinhos/<id dele>; o dono vê todos.
+  const CHAVE_CARRINHO_ATUAL = "tmz-carrinho-id";
+  let carrinhoAtual = null;
+  try { carrinhoAtual = sessionStorage.getItem(CHAVE_CARRINHO_ATUAL) || localStorage.getItem(CHAVE_CARRINHO_ATUAL); } catch {}
+  function guardarCarrinhoAtual(id) {
+    carrinhoAtual = id;
+    ["localStorage", "sessionStorage"].forEach((n) => {
+      try { id ? window[n].setItem(CHAVE_CARRINHO_ATUAL, id) : window[n].removeItem(CHAVE_CARRINHO_ATUAL); } catch {}
+    });
+  }
+  function codigoCarrinho() {
+    const letras = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let c = "";
+    for (let i = 0; i < 5; i++) c += letras[Math.floor(Math.random() * letras.length)];
+    return "CRT-" + c;
+  }
+  let meusCarrinhosNuvem = null;
+  async function listaCarrinhos() {
+    if (estado.modo !== "nuvem") return estado.carrinhos;
+    if (!meusCarrinhosNuvem) {
+      const snap = await db.doc("carrinhos/" + estado.uid).get();
+      meusCarrinhosNuvem = snap.exists ? snap.data().lista || [] : [];
+    }
+    return meusCarrinhosNuvem;
+  }
+  async function gravarCarrinhos(lista) {
+    lista = lista.slice(-40); // guarda os 40 mais recentes de cada visitante
+    if (estado.modo === "nuvem") {
+      meusCarrinhosNuvem = lista;
+      await db.doc("carrinhos/" + estado.uid).set({ lista });
+    } else {
+      estado.carrinhos = lista;
+      gravarLocal(); avisar();
+    }
+  }
+  const quemCompra = () => (estado.conta && !estado.conta.admin
+    ? { nome: estado.conta.nome, email: estado.conta.email, whats: estado.conta.whats } : null);
+
+  // itens: [{ id, nome, preco, qtd }]
+  async function registrarCarrinho(itens) {
+    if (estado.modo === "nuvem" && !estado.uid) return;
+    try {
+      const lista = [...(await listaCarrinhos())];
+      const agora = Date.now();
+      const valor = Math.round(itens.reduce((s, i) => s + i.preco * i.qtd, 0) * 100) / 100;
+      const i = lista.findIndex((c) => c.id === carrinhoAtual && c.status === "aberto");
+      if (!itens.length) {
+        if (i >= 0) lista[i] = { ...lista[i], status: "vazio", atualizadoEm: agora };
+        guardarCarrinhoAtual(null);
+      } else if (i >= 0) {
+        lista[i] = { ...lista[i], itens, valor, atualizadoEm: agora, cliente: quemCompra() || lista[i].cliente || null };
+      } else {
+        const novo = { id: codigoCarrinho(), criadoEm: agora, atualizadoEm: agora, itens, valor, status: "aberto", cliente: quemCompra() };
+        lista.push(novo);
+        guardarCarrinhoAtual(novo.id);
+      }
+      await gravarCarrinhos(lista);
+    } catch {}
+  }
+
+  // O carrinho virou pedido
+  async function concluirCarrinho(pedido) {
+    if (!carrinhoAtual) return;
+    try {
+      const lista = [...(await listaCarrinhos())];
+      const i = lista.findIndex((c) => c.id === carrinhoAtual);
+      if (i >= 0) {
+        lista[i] = {
+          ...lista[i], status: "concluido", pedido: pedido.codigo, atualizadoEm: Date.now(),
+          cliente: { nome: pedido.cliente?.nome, email: pedido.cliente?.email, whats: pedido.cliente?.telefone },
+        };
+        await gravarCarrinhos(lista);
+      }
+    } catch {}
+    guardarCarrinhoAtual(null);
+  }
+
   /* ---------- visitas diárias ---------- */
   const hoje = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso do visitante
   function podar(dias) {
@@ -498,6 +586,6 @@ const Dados = (() => {
     ouvir(fn) { ouvintes.add(fn); fn(estado); return () => ouvintes.delete(fn); },
     reembolso,
     salvarProduto, apagarProduto, ajustarEstoque, salvarCategorias, salvarConfig,
-    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, novoId,
+    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, registrarCarrinho, concluirCarrinho, novoId,
   };
 })();

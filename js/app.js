@@ -27,8 +27,14 @@
   function lerCarrinho() {
     try { return JSON.parse(localStorage.getItem(CHAVE_CARRINHO)) || {}; } catch { return {}; }
   }
+  let avisoCarrinho = null;
   function gravarCarrinho() {
     try { localStorage.setItem(CHAVE_CARRINHO, JSON.stringify(estado.carrinho)); } catch {}
+    // registra o carrinho para o painel (espera parar de mexer para não gravar a cada clique)
+    clearTimeout(avisoCarrinho);
+    avisoCarrinho = setTimeout(() => {
+      Dados.registrarCarrinho(itensCarrinho().map(({ p, qtd }) => ({ id: p.id, nome: p.nome, preco: p.preco, qtd })));
+    }, 700);
   }
 
   /* ---------- consultas ---------- */
@@ -684,9 +690,11 @@
         regra: { janelaMin: S.config.estornoJanelaMin, percDepois: S.config.estornoDepoisPerc },
       });
       estado.ultimoPedido = pedido;
+      clearTimeout(avisoCarrinho);
+      await Dados.concluirCarrinho(pedido);
       if (pedido.cupom) guardarCupom("");
       estado.carrinho = {};
-      gravarCarrinho();
+      try { localStorage.setItem(CHAVE_CARRINHO, "{}"); } catch {}
       renderCarrinho();
       mostrarConcluido(pedido);
     } catch (err) {

@@ -5,13 +5,15 @@
   const { combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, categoria, nomeTipo, NOMES_STATUS, centavos, digitos } = window.TMZ;
   const raiz = $("#painel");
 
-  const ui = { periodo: 30, histPeriodo: 30, histStatus: "todos", histBusca: "", soOfertas: false, aba: "resumo", filtro: "aguardando", busca: "", catFiltro: "", editando: null, cancelando: null, excluindo: null, aberto: false };
+  const ui = { periodo: 30, histPeriodo: 30, histStatus: "todos", histBusca: "", soOfertas: false, aba: "resumo", filtro: "aguardando", busca: "", catFiltro: "", editando: null, cancelando: null, excluindo: null, aberto: false,
+    prodModo: "estoque", alterados: {}, carFiltro: "todos", carPeriodo: 30 };
 
   const ABAS = [
     ["resumo", "Resumo", "i-painel"],
     ["faturamento", "Faturamento", "i-grafico"],
     ["pedidos", "Pedidos e reservas", "i-relogio"],
     ["historico", "Histórico de compras", "i-lista"],
+    ["carrinhos", "Carrinhos", "i-cart"],
     ["clientes", "Clientes", "i-usuario"],
     ["visitas", "Visitas", "i-olho"],
     ["produtos", "Produtos e preços", "i-tag"],
@@ -71,7 +73,7 @@
   function renderAba() {
     const alvo = $("#painel-aba", raiz);
     if (!alvo) return;
-    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, clientes, cupons, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
+    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, carrinhos, clientes, cupons, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
     if (ui.aba === "destaque") atualizarPrevia();
     if (ui.aba === "clientes") carregarClientes();
   }
@@ -89,7 +91,7 @@
       <header class="painel__cabeca">
         <div><p class="rotulo">Hoje</p><h1>Resumo da loja</h1></div>
       </header>
-      <div class="kpis">
+      <div class="kpis kpis--3">
         <button type="button" class="kpi" data-ir="pedidos" data-filtro="aguardando">
           <span>Aguardando pagamento</span><strong>${aguardando.length}</strong>
           <small>${moeda(aguardando.reduce((s, p) => s + p.sinal, 0))} a receber</small>
@@ -109,6 +111,10 @@
         <button type="button" class="kpi" data-ir="visitas">
           <span>Visitas hoje</span><strong>${visitasDoDia(0).pessoas}</strong>
           <small>${visitasDoDia(0).vistas} páginas abertas</small>
+        </button>
+        <button type="button" class="kpi" data-ir="carrinhos">
+          <span>Carrinhos em aberto</span><strong>${carrinhosCom("aguardando").length + carrinhosCom("abandonado").length}</strong>
+          <small>${carrinhosCom("abandonado").length} abandonados · ${moeda(carrinhosCom("abandonado").reduce((s, c) => s + c.valor, 0))}</small>
         </button>
       </div>
       <div class="duas-colunas">
@@ -256,6 +262,11 @@
         </label>
         <label class="chip-mini chip-mini--grande"><input type="checkbox" id="so-ofertas" ${ui.soOfertas ? "checked" : ""}><span>Só ofertas</span></label>
       </div>
+      <div class="filtros modo-produtos">
+        <button type="button" class="filtro${ui.prodModo === "estoque" ? " ativo" : ""}" data-prod-modo="estoque">Estoque e preços</button>
+        <button type="button" class="filtro${ui.prodModo === "tudo" ? " ativo" : ""}" data-prod-modo="tudo"><svg><use href="#i-editar"/></svg>Editar todos os produtos</button>
+      </div>
+      ${ui.prodModo === "tudo" ? edicaoEmMassa(lista) : `
       <p class="nota nota--topo">Mude o preço direto na tabela: digite e saia do campo para salvar. "de" é o preço antigo, que mostra o desconto na loja.</p>
       <div class="tabela-produtos" role="table" aria-label="Produtos">
         <div class="tp-linha tp-cabeca" role="row"><span>Produto</span><span>Preço</span><span>Estoque</span><span>Entrada</span><span>Oferta</span><span></span></div>
@@ -289,7 +300,86 @@
             </div>
           </div>`).join("")}
         ${lista.length ? "" : `<p class="vazio-curto">Nenhum produto encontrado.</p>`}
+      </div>`}`;
+  }
+
+  // Todos os produtos numa lista editável: nome, descrição, foto, categoria e preços. Salva tudo de uma vez.
+  const valorEdicao = (p, campo) => (ui.alterados[p.id] && campo in ui.alterados[p.id] ? ui.alterados[p.id][campo] : p[campo]);
+  function edicaoEmMassa(lista) {
+    const n = Object.keys(ui.alterados).length;
+    return `
+      <p class="nota nota--topo">Edite à vontade: as mudanças ficam marcadas e só vão para a loja quando você clicar em <strong>Salvar tudo</strong>.</p>
+      <div class="edicao-lista">
+        ${lista.map((p) => {
+          const img = valorEdicao(p, "imagem");
+          const antigo = valorEdicao(p, "precoAntigo");
+          return `
+          <article class="edicao-item${ui.alterados[p.id] ? " alterado" : ""}" data-edicao="${escapar(p.id)}">
+            <div class="edicao-item__foto">
+              <span class="edicao-item__previa">${img ? `<img src="${escapar(img)}" alt="">` : `<svg><use href="#i-${iconeCat(p.categoria)}"/></svg>`}</span>
+              <label class="btn btn--contorno btn--pequeno"><svg><use href="#i-upload"/></svg>Trocar foto<input type="file" accept="image/*" data-foto-massa="${escapar(p.id)}" hidden></label>
+              <input class="edicao-item__link" data-campo="imagem" value="${img && !String(img).startsWith("data:") ? escapar(img) : ""}" placeholder="ou cole o link da foto" aria-label="Link da foto de ${escapar(p.nome)}">
+            </div>
+            <div class="edicao-item__campos">
+              <div class="campos-edicao">
+                <label class="campo campo--largo"><span>Nome</span><input data-campo="nome" value="${escapar(valorEdicao(p, "nome"))}"></label>
+                <label class="campo"><span>Categoria</span><select data-campo="categoria">${S.categorias.map((c) => `<option value="${escapar(c.id)}" ${valorEdicao(p, "categoria") === c.id ? "selected" : ""}>${escapar(c.nome)}</option>`).join("")}</select></label>
+                <label class="campo"><span>Preço (R$)</span><input data-campo="preco" type="number" step="0.01" min="0" value="${Number(valorEdicao(p, "preco")).toFixed(2)}"></label>
+                <label class="campo"><span>Preço antigo <em>opcional</em></span><input data-campo="precoAntigo" type="number" step="0.01" min="0" value="${antigo ? Number(antigo).toFixed(2) : ""}" placeholder="—"></label>
+              </div>
+              <label class="campo"><span>Descrição</span><textarea data-campo="descricao" rows="2">${escapar(valorEdicao(p, "descricao") || "")}</textarea></label>
+            </div>
+            <span class="edicao-item__marca">Alterado</span>
+          </article>`;
+        }).join("") || `<p class="vazio-curto">Nenhum produto com esse filtro.</p>`}
+      </div>
+      <div class="barra-massa${n ? " ativa" : ""}" id="barra-massa">
+        <span id="massa-contagem">${n ? `${n} ${n === 1 ? "produto alterado" : "produtos alterados"}` : "Nenhuma mudança ainda"}</span>
+        <button type="button" class="link-simples" data-massa-descartar ${n ? "" : "disabled"}>Descartar</button>
+        <button type="button" class="btn" data-massa-salvar ${n ? "" : "disabled"}>Salvar tudo</button>
       </div>`;
+  }
+  function marcarAlterado(id, campo, valor) {
+    const p = S.produtos.find((x) => x.id === id);
+    if (!p) return;
+    const atual = { ...(ui.alterados[id] || {}), [campo]: valor };
+    // tira o campo se voltou ao valor original
+    const original = campo === "preco" || campo === "precoAntigo" ? (p[campo] ? Number(p[campo]).toFixed(2) : "") : p[campo] || "";
+    const novo = campo === "preco" || campo === "precoAntigo" ? (valor === "" ? "" : Number(valor).toFixed(2)) : valor;
+    if (String(novo) === String(original)) delete atual[campo];
+    if (Object.keys(atual).length) ui.alterados[id] = atual; else delete ui.alterados[id];
+    raiz.querySelector(`[data-edicao="${CSS.escape(id)}"]`)?.classList.toggle("alterado", !!ui.alterados[id]);
+    const n = Object.keys(ui.alterados).length;
+    $("#barra-massa", raiz)?.classList.toggle("ativa", n > 0);
+    const cont = $("#massa-contagem", raiz);
+    if (cont) cont.textContent = n ? `${n} ${n === 1 ? "produto alterado" : "produtos alterados"}` : "Nenhuma mudança ainda";
+    raiz.querySelectorAll("[data-massa-descartar], [data-massa-salvar]").forEach((b) => { b.disabled = !n; });
+  }
+  async function salvarEmMassa(botao) {
+    const ids = Object.keys(ui.alterados);
+    for (const id of ids) {
+      const p = S.produtos.find((x) => x.id === id);
+      const m = { ...ui.alterados[id] };
+      if (!p) continue;
+      if ("nome" in m && !m.nome.trim()) { toast(`Dê um nome ao produto (${p.nome})`); return; }
+      if ("preco" in m && !(Number(m.preco) > 0)) { toast(`Informe o preço de ${m.nome || p.nome}`); return; }
+    }
+    botao.disabled = true;
+    botao.textContent = "Salvando…";
+    let ok = 0;
+    for (const id of ids) {
+      const p = S.produtos.find((x) => x.id === id);
+      if (!p) continue;
+      const m = { ...ui.alterados[id] };
+      if ("nome" in m) m.nome = m.nome.trim();
+      if ("descricao" in m) m.descricao = m.descricao.trim();
+      if ("preco" in m) m.preco = centavos(m.preco);
+      if ("precoAntigo" in m) m.precoAntigo = m.precoAntigo ? centavos(m.precoAntigo) : null;
+      try { await Dados.salvarProduto({ ...p, ...m }); ok += 1; delete ui.alterados[id]; }
+      catch { toast(`Não deu para salvar ${p.nome}. Se a foto for muito grande, tente outra.`); }
+    }
+    if (ok) toast(`${ok} ${ok === 1 ? "produto salvo" : "produtos salvos"} e já na loja`);
+    renderAba();
   }
 
   function abrirEditor(id) {
@@ -312,6 +402,7 @@
             <div>
               <label class="btn btn--contorno btn--pequeno"><svg><use href="#i-upload"/></svg>Enviar foto<input type="file" accept="image/*" id="foto-arquivo" hidden></label>
               <p class="nota">JPG ou PNG. A foto é reduzida automaticamente.</p>
+              <input class="edicao-item__link" id="link-foto" value="${p.imagem && !String(p.imagem).startsWith("data:") ? escapar(p.imagem) : ""}" placeholder="ou cole o link da foto" aria-label="Link da foto">
               <input type="hidden" name="imagem" value="${escapar(p.imagem)}">
             </div>
           </div>
@@ -691,6 +782,69 @@
       .filter((p) => !termo || `${p.codigo} ${p.cliente?.nome} ${p.cliente?.telefone} ${p.itens.map((i) => i.nome).join(" ")}`.toLowerCase().includes(termo))
       .sort((a, b) => b.criadoEm - a.criadoEm);
   }
+  /* ---------- carrinhos ---------- */
+  const ABANDONO_MS = 60 * 60 * 1000; // parado há 1 hora = abandonado
+  const STATUS_CARRINHO = { aguardando: "Aguardando", abandonado: "Abandonado", concluido: "Concluído", vazio: "Esvaziado" };
+  function statusCarrinho(c) {
+    if (c.status === "concluido") return "concluido";
+    if (c.status === "vazio") return "vazio";
+    return Date.now() - c.atualizadoEm > ABANDONO_MS ? "abandonado" : "aguardando";
+  }
+  const carrinhosCom = (st) => (S.carrinhos || []).filter((c) => statusCarrinho(c) === st);
+
+  function carrinhos() {
+    const desde = ui.carPeriodo ? inicioDoDia(ui.carPeriodo - 1) : 0;
+    const todos = (S.carrinhos || []).filter((c) => c.criadoEm >= desde).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+    const por = (st) => todos.filter((c) => statusCarrinho(c) === st);
+    const concluidos = por("concluido");
+    const abandonados = por("abandonado");
+    const comItens = todos.filter((c) => c.status !== "vazio");
+    const taxa = comItens.length ? Math.round((concluidos.length / comItens.length) * 100) : 0;
+    const lista = ui.carFiltro === "todos" ? todos : por(ui.carFiltro);
+    const pedidoDe = (codigo) => S.pedidos.find((p) => p.codigo === codigo);
+    const zap = (c) => digitos(c.cliente?.whats || "");
+    const cupom = S.config.cupomInsta;
+    const msgRecuperar = (c) => `Oi, ${(c.cliente?.nome || "").split(" ")[0] || "tudo bem"}! Vi que você deixou ${c.itens.map((i) => i.nome).join(", ")} no carrinho da ${S.config.nome}. Ainda temos em estoque${cupom ? ` e o cupom ${cupom} ainda vale` : ""}. Quer que eu separe para você?`;
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Vendas</p><h1>Carrinhos</h1><p class="painel__sub">Todo carrinho montado na loja: o que virou pedido, o que está sendo montado e o que ficou para trás.</p></div>
+        ${periodos(ui.carPeriodo, "data-car-periodo")}
+      </header>
+      <div class="kpis">
+        <div class="kpi"><span>Carrinhos criados</span><strong>${todos.length}</strong><small>${moeda(comItens.reduce((s, c) => s + c.valor, 0))} em produtos</small></div>
+        <div class="kpi"><span>Concluídos</span><strong>${concluidos.length}</strong><small>${taxa}% viraram pedido</small></div>
+        <div class="kpi"><span>Aguardando</span><strong>${por("aguardando").length}</strong><small>mexidos na última hora</small></div>
+        <div class="kpi"><span>Abandonados</span><strong>${abandonados.length}</strong><small>${moeda(abandonados.reduce((s, c) => s + c.valor, 0))} que ficaram para trás</small></div>
+      </div>
+      <div class="filtros">
+        ${[["todos", "Todos"], ["aguardando", "Aguardando"], ["abandonado", "Abandonados"], ["concluido", "Concluídos"], ["vazio", "Esvaziados"]].map(([k, v]) => `
+          <button type="button" class="filtro${ui.carFiltro === k ? " ativo" : ""}" data-car-filtro="${k}">${v}<b>${k === "todos" ? todos.length : por(k).length}</b></button>`).join("")}
+      </div>
+      ${lista.length ? `
+      <div class="tabela-medidas__rolagem">
+        <table class="tabela-historico tabela-carrinhos">
+          <thead><tr><th>Carrinho</th><th>Cliente</th><th>Itens</th><th>Valor</th><th>Última mudança</th><th>Situação</th><th>Pedido</th><th></th></tr></thead>
+          <tbody>${lista.map((c) => {
+            const st = statusCarrinho(c);
+            const ped = c.pedido && pedidoDe(c.pedido);
+            return `
+            <tr>
+              <td class="tabela-historico__cod">${escapar(c.id)}<small>criado ${dataHora(c.criadoEm)}</small></td>
+              <td>${c.cliente?.nome ? `<strong>${escapar(c.cliente.nome)}</strong><small>${escapar(c.cliente.whats || c.cliente.email || "")}</small>` : `<span class="suave">Visitante</span>`}</td>
+              <td>${c.itens.map((i) => `${i.qtd}× ${escapar(i.nome)}`).join("<br>")}</td>
+              <td class="num">${moeda(c.valor)}</td>
+              <td>${tempo(c.atualizadoEm)}</td>
+              <td><span class="status status--car-${st}">${STATUS_CARRINHO[st]}</span></td>
+              <td>${c.pedido ? `<button type="button" class="link-simples" data-ver-pedido="${escapar(c.pedido)}">${escapar(c.pedido)}</button>${ped ? `<small>${NOMES_STATUS[ped.status]}</small>` : ""}` : "—"}</td>
+              <td>${st === "abandonado" && zap(c) ? `<a class="btn btn--contorno btn--pequeno" href="https://wa.me/${zap(c).length <= 11 ? "55" : ""}${zap(c)}?text=${encodeURIComponent(msgRecuperar(c))}" target="_blank" rel="noopener">Chamar no WhatsApp</a>` : ""}</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+      <p class="nota">Um carrinho parado há mais de 1 hora conta como abandonado. Se o cliente tem conta com WhatsApp, dá para chamar e oferecer o cupom do aviso.${S.modo === "local" ? " No modo de teste só aparecem os carrinhos deste navegador." : ""}</p>`
+      : `<p class="vazio-curto">${todos.length ? "Nenhum carrinho nesta situação." : "Nenhum carrinho no período. Eles aparecem aqui assim que alguém colocar uma peça no carrinho."}</p>`}`;
+  }
+
   /* ---------- cupons de desconto ---------- */
   const TIPOS_CUPOM = { percentual: "% de desconto", valor: "R$ de desconto", frete: "Frete grátis" };
   const vazioCupom = () => ({ codigo: "", tipo: "percentual", valor: 10, minimo: 0, validade: "", limite: 0, umPorCliente: false, categoria: "", ativo: true });
@@ -854,7 +1008,7 @@
       ${lista.length ? `
       <div class="tabela-medidas__rolagem">
         <table class="tabela-historico">
-          <thead><tr><th>Data</th><th>Código</th><th>Cliente</th><th>Itens</th><th>Forma</th><th>Total</th><th>Pago</th><th>Situação</th></tr></thead>
+          <thead><tr><th>Data</th><th>ID do pedido</th><th>Cliente</th><th>Itens</th><th>Forma</th><th>Total</th><th>Pago</th><th>Situação</th></tr></thead>
           <tbody>${lista.map((p) => `
             <tr>
               <td>${dataHora(p.criadoEm)}</td>
@@ -950,6 +1104,14 @@
     if (t.closest("[data-banner-padrao]")) { await Dados.salvarConfig({ bannerImagem: "" }); toast("Foto padrão de volta"); return renderAba(); }
     if (t.closest("[data-medidas-padrao]")) { await Dados.salvarConfig({ medidas: null }); toast("Medidas padrão restauradas"); return renderAba(); }
     if (t.closest("[data-sair]")) { Dados.sair(); location.hash = ""; return; }
+    // carrinhos
+    const carFiltro = t.closest("[data-car-filtro]");
+    if (carFiltro) { ui.carFiltro = carFiltro.dataset.carFiltro; return renderAba(); }
+    const carPer = t.closest("[data-car-periodo]");
+    if (carPer) { ui.carPeriodo = Number(carPer.dataset.carPeriodo); return renderAba(); }
+    const verPedido = t.closest("[data-ver-pedido]");
+    if (verPedido) { ui.aba = "historico"; ui.histBusca = verPedido.dataset.verPedido; ui.histPeriodo = 0; ui.histStatus = "todos"; return render(); }
+
     // cupons
     if (t.closest("[data-gerar-cupom]")) { $('#form-cupom-painel [name="codigo"]', raiz).value = Cupons.gerarCodigo(); return; }
     if (t.closest("[data-cancelar-cupom]")) { ui.cupomEditando = null; return renderAba(); }
@@ -989,6 +1151,16 @@
       await Dados.apagarProduto(excluirOk.dataset.excluirOk);
       ui.excluindo = null; toast("Produto excluído"); return renderAba();
     }
+    const modo = t.closest("[data-prod-modo]");
+    if (modo) {
+      if (modo.dataset.prodModo === "estoque" && Object.keys(ui.alterados).length && !confirm("Você tem mudanças sem salvar. Sair mesmo assim?")) return;
+      if (modo.dataset.prodModo === "estoque") ui.alterados = {};
+      ui.prodModo = modo.dataset.prodModo;
+      return renderAba();
+    }
+    if (t.closest("[data-massa-descartar]")) { ui.alterados = {}; toast("Mudanças descartadas"); return renderAba(); }
+    const salvarMassa = t.closest("[data-massa-salvar]");
+    if (salvarMassa) return salvarEmMassa(salvarMassa);
     const est = t.closest("[data-estoque]");
     if (est) { est.disabled = true; await Dados.ajustarEstoque(est.dataset.id, Number(est.dataset.estoque)); return; }
 
@@ -1062,6 +1234,15 @@
         $("#previa-foto", raiz).innerHTML = `<img src="${url}" alt="">`;
       } catch { toast("Não deu para ler essa imagem"); }
     }
+    if (t.matches("[data-foto-massa]") && t.files[0]) {
+      try {
+        const url = await reduzirFoto(t.files[0]);
+        const item = t.closest("[data-edicao]");
+        item.querySelector(".edicao-item__previa").innerHTML = `<img src="${url}" alt="">`;
+        item.querySelector(".edicao-item__link").value = "";
+        marcarAlterado(t.dataset.fotoMassa, "imagem", url);
+      } catch { toast("Não deu para ler essa imagem"); }
+    }
     if (t.matches("[data-foto-cat]") && t.files[0]) {
       try {
         const url = await reduzirFoto(t.files[0]);
@@ -1073,6 +1254,24 @@
   });
 
   raiz.addEventListener("input", (e) => {
+    const campo = e.target.closest("[data-campo]");
+    const item = campo?.closest("[data-edicao]");
+    if (item) {
+      const valor = campo.value;
+      marcarAlterado(item.dataset.edicao, campo.dataset.campo, valor);
+      if (campo.dataset.campo === "imagem" && /^https?:\/\//.test(valor.trim())) {
+        item.querySelector(".edicao-item__previa").innerHTML = `<img src="${escapar(valor.trim())}" alt="">`;
+      }
+      return;
+    }
+    if (e.target.id === "link-foto") {
+      const url = e.target.value.trim();
+      if (/^https?:\/\//.test(url)) {
+        $("#form-produto [name=imagem]", raiz).value = url;
+        $("#previa-foto", raiz).innerHTML = `<img src="${escapar(url)}" alt="">`;
+      }
+      return;
+    }
     if (e.target.id === "busca-produto") {
       ui.busca = e.target.value;
       const pos = e.target.selectionStart;
@@ -1202,7 +1401,7 @@
       contaAntes = JSON.stringify(S.conta);
       return render();
     }
-    if (ui.editando || abasDeFormulario.includes(ui.aba) || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
+    if (ui.editando || abasDeFormulario.includes(ui.aba) || ui.aba === "produtos" && ui.prodModo === "tudo" || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
       // só atualiza o contador do menu
       const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length;
       const b = raiz.querySelector('[data-aba="pedidos"]');
