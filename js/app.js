@@ -348,7 +348,7 @@
           <p>${escapar(p.descricao)}</p>
           ${typeof MEDIDAS !== "undefined" && MEDIDAS[p.categoria] ? `<a class="detalhe__medidas" href="#medidas" data-medidas="${escapar(p.categoria)}"><svg><use href="#i-regua"/></svg>Guia de medidas: P ao GG em cm</a>` : ""}
           <p class="detalhe__estoque">${q === 0 ? "Esgotado no momento" : q <= 5 ? `Últimas ${q} ${q === 1 ? "peça" : "peças"}` : `${q} peças em estoque`}</p>
-          ${q === 0 ? `<button class="btn btn--bloco" disabled>Esgotado</button>` : `
+          ${q === 0 ? formAviso(p) : `
           <div class="detalhe__acoes">
             <button type="button" class="btn btn--bloco btn--grande" data-comprar="${escapar(p.id)}">Comprar agora <svg><use href="#i-arrow"/></svg></button>
             <button type="button" class="btn btn--bloco btn--contorno" data-add-modal="${escapar(p.id)}"><svg><use href="#i-cart"/></svg>Adicionar ao carrinho</button>
@@ -368,6 +368,50 @@
     $("#detalhe").scrollIntoView?.({ block: "start" });
     modalProduto.scrollTop = 0;
   }
+
+  // Produto esgotado: "Avise-me quando chegar"
+  const CHAVE_AVISOS = "tmz-avisos-meus";
+  function meusAvisos() { try { return JSON.parse(localStorage.getItem(CHAVE_AVISOS)) || {}; } catch { return {}; } }
+  function formAviso(p) {
+    const ja = meusAvisos()[p.id];
+    if (ja) {
+      return `<div class="aviso-chegar aviso-chegar--ok"><svg><use href="#i-check"/></svg><span><strong>Você está na lista de espera.</strong>Avisamos em ${escapar(ja)} assim que chegar.</span></div>`;
+    }
+    return `
+      <form class="aviso-chegar" data-aviso="${escapar(p.id)}" novalidate>
+        <p><strong>Avise-me quando chegar</strong>Deixe seu WhatsApp ou e-mail e você fica sabendo primeiro.</p>
+        <span class="cupom-form__linha">
+          <input name="contato" value="${escapar(S.conta?.whats || S.conta?.email || "")}" placeholder="WhatsApp ou e-mail" autocomplete="tel" aria-label="WhatsApp ou e-mail">
+          <button class="btn btn--pequeno">Me avise</button>
+        </span>
+        <p class="aviso-chegar__erro" role="alert" hidden></p>
+      </form>`;
+  }
+  $("#detalhe").addEventListener("submit", async (e) => {
+    const f = e.target.closest("[data-aviso]");
+    if (!f) return;
+    e.preventDefault();
+    const contato = f.contato.value.trim();
+    const zap = digitos(contato);
+    const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contato);
+    const erroEl = f.querySelector(".aviso-chegar__erro");
+    if (!email && zap.length < 10) { erroEl.textContent = "Digite um WhatsApp com DDD ou um e-mail."; erroEl.hidden = false; return f.contato.focus(); }
+    const p = porId(f.dataset.aviso);
+    const botao = f.querySelector("button");
+    botao.disabled = true;
+    try {
+      await Dados.pedirAviso(p, email ? contato : zap);
+      const meus = meusAvisos();
+      meus[p.id] = email ? contato : `(${zap.slice(0, 2)}) ${zap.slice(2, -4)}-${zap.slice(-4)}`;
+      try { localStorage.setItem(CHAVE_AVISOS, JSON.stringify(meus)); } catch {}
+      f.outerHTML = formAviso(p);
+      toast("Pronto! Você está na lista de espera");
+    } catch {
+      botao.disabled = false;
+      erroEl.textContent = "Não deu para salvar agora. Tente de novo.";
+      erroEl.hidden = false;
+    }
+  });
 
   function irParaCompra(id, modo) {
     const p = porId(id);
@@ -830,6 +874,51 @@
         <a class="link-simples" href="#">Voltar à loja</a>
       </div>`;
     $("#tela-compra").scrollTop = 0;
+    if (pagamentoOnline(p)) cobrarOnline(p);
+  }
+
+  /* ---------- pagamento online (Mercado Pago, pelo servidor) ---------- */
+  const pagamentoOnline = (p) => Supa.ativo() && S.modo === "nuvem" && S.config.pagamentoOnline && (p.tipo !== "compra" || p.pagamento === "Pix");
+  let vigiaPagamento = null;
+  async function cobrarOnline(p) {
+    const cartao = $("#compra-ok .cartao-pix");
+    if (!cartao) return;
+    const valor = p.tipo === "compra" ? p.total : p.sinal;
+    cartao.innerHTML = `<span class="cartao-pix__rotulo">Pix · ${moeda(valor)}</span><div class="pix-carregando"><span></span>Gerando o QR Code…</div>`;
+    let cobranca;
+    try { cobranca = await Supa.funcao("pagamento", { codigo: p.codigo }); }
+    catch (err) {
+      cartao.innerHTML = `
+        <span class="cartao-pix__rotulo">Pix · ${moeda(valor)}</span>
+        <p class="cartao-pix__aviso">Não deu para gerar o Pix agora (${escapar(err.message)}). Fale com a gente no WhatsApp que finalizamos por lá.</p>
+        <a class="btn btn--bloco" href="${escapar(linkWhats(mensagemPedido(p)))}" target="_blank" rel="noopener">Falar no WhatsApp <svg><use href="#i-arrow"/></svg></a>`;
+      return;
+    }
+    $("#compra-ok h1").textContent = "Pague com Pix";
+    cartao.innerHTML = `
+      <span class="cartao-pix__rotulo">Escaneie no app do banco</span>
+      <strong class="cartao-pix__valor">${moeda(cobranca.valor)}</strong>
+      ${cobranca.qrImagem ? `<img class="pix-qr" src="data:image/png;base64,${escapar(cobranca.qrImagem)}" alt="QR Code do Pix" width="220" height="220">` : ""}
+      <span class="cartao-pix__rotulo">Ou copie o código</span>
+      <div class="copiar"><code id="chave-pix">${escapar(cobranca.qrCopiaECola || "")}</code><button type="button" class="btn btn--contorno btn--pequeno" id="copiar-pix"><svg><use href="#i-copiar"/></svg>Copiar</button></div>
+      <p class="pix-status" id="pix-status"><span class="pix-status__ponto"></span>Aguardando o pagamento. Esta tela atualiza sozinha.</p>`;
+    clearInterval(vigiaPagamento);
+    const conferir = async () => {
+      if (!$("#pix-status")) { clearInterval(vigiaPagamento); return; }
+      try {
+        const r = await Supa.rpc("status_pagamento", { codigo: p.codigo });
+        if (r?.status === "approved") {
+          clearInterval(vigiaPagamento);
+          $("#compra-ok h1").textContent = p.tipo === "compra" ? "Pagamento aprovado!" : "Reserva confirmada!";
+          cartao.innerHTML = `
+            <div class="pix-aprovado"><svg><use href="#i-check"/></svg></div>
+            <strong class="cartao-pix__valor">${moeda(r.valorPago || cobranca.valor)} pagos</strong>
+            <p class="cartao-pix__aviso">${p.tipo === "compra" ? `Já estamos separando seu pedido. ${p.receber === "entrega" ? "Avisamos quando sair para entrega." : "Avisamos quando estiver pronto para retirar."}` : "Suas peças estão separadas. É só retirar na loja com o código."}</p>
+            <a class="btn btn--bloco btn--contorno" href="${escapar(linkWhats(`Oi! Paguei o pedido ${p.codigo} pelo site.`))}" target="_blank" rel="noopener">Falar com a loja</a>`;
+        }
+      } catch {}
+    };
+    vigiaPagamento = setInterval(conferir, 5000);
   }
 
   document.addEventListener("click", async (e) => {

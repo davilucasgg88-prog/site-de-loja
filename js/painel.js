@@ -14,6 +14,7 @@
     ["pedidos", "Pedidos e reservas", "i-relogio"],
     ["historico", "Histórico de compras", "i-lista"],
     ["carrinhos", "Carrinhos", "i-cart"],
+    ["espera", "Lista de espera", "i-relogio"],
     ["clientes", "Clientes", "i-usuario"],
     ["visitas", "Visitas", "i-olho"],
     ["produtos", "Produtos e preços", "i-tag"],
@@ -48,6 +49,7 @@
               <button type="button" class="${ui.aba === id ? "ativo" : ""}" data-aba="${id}">
                 <svg><use href="#${icone}"/></svg><span>${nome}</span>
                 ${id === "pedidos" && aguardando ? `<b class="contagem">${aguardando}</b>` : ""}
+                ${id === "espera" && prontosParaAvisar() ? `<b class="contagem">${prontosParaAvisar()}</b>` : ""}
               </button>`).join("")}
           </nav>
           <div class="painel__pe">
@@ -57,7 +59,7 @@
           </div>
         </aside>
         <main class="painel__area" id="painel-area">
-          ${S.modo === "local" ? `<p class="faixa-aviso">Modo de teste: as mudanças ficam salvas só neste navegador. Para valer para todos os clientes, o site precisa de um servidor (veja o README).</p>` : ""}
+          ${S.modo === "local" ? `<p class="faixa-aviso">Modo de teste: as mudanças ficam salvas só neste navegador. Para valer para todos os clientes, ligue o servidor (passo a passo em COLOCAR-NO-AR.md).</p>` : ""}
           <div id="painel-aba"></div>
         </main>
       </div>
@@ -73,7 +75,7 @@
   function renderAba() {
     const alvo = $("#painel-aba", raiz);
     if (!alvo) return;
-    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, carrinhos, clientes, cupons, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
+    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, carrinhos, espera, clientes, cupons, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
     if (ui.aba === "destaque") atualizarPrevia();
     if (ui.aba === "clientes") carregarClientes();
   }
@@ -91,6 +93,7 @@
       <header class="painel__cabeca">
         <div><p class="rotulo">Hoje</p><h1>Resumo da loja</h1></div>
       </header>
+      ${checklist()}
       <div class="kpis kpis--3">
         <button type="button" class="kpi" data-ir="pedidos" data-filtro="aguardando">
           <span>Aguardando pagamento</span><strong>${aguardando.length}</strong>
@@ -187,6 +190,9 @@
         <header class="pedido__topo">
           <div><span class="pedido__codigo">${escapar(p.codigo)}</span><span class="pedido__data">${tempo(p.criadoEm)}</span></div>
           <span class="etiqueta">${escapar(nomeTipo(p))}</span>
+          ${S.pagamentos?.[p.codigo]?.status === "approved" && S.pagamentos[p.codigo].verificado
+            ? `<span class="etiqueta etiqueta--ok" title="Pagamento de ${moeda(S.pagamentos[p.codigo].valorPago)} conferido direto no Mercado Pago">Pix verificado</span>`
+            : p.pago && p.pagamentoVerificado ? `<span class="etiqueta etiqueta--alerta" title="O pedido diz que foi pago online, mas o servidor não tem esse pagamento">Pagamento não encontrado</span>` : ""}
           <span class="status status--${p.status}">${NOMES_STATUS[p.status]}</span>
         </header>
         <div class="pedido__cliente">
@@ -274,7 +280,7 @@
           <div class="tp-linha${estoque(p) === 0 ? " tp-linha--zerada" : ""}" role="row">
             <div class="tp-produto">
               <span class="tp-foto">${p.imagem ? `<img src="${escapar(p.imagem)}" alt="">` : `<svg><use href="#i-${iconeCat(p.categoria)}"/></svg>`}</span>
-              <span><strong>${escapar(p.nome)}</strong><small>${escapar(categoria(p.categoria).nome)}</small></span>
+              <span><strong>${escapar(p.nome)}</strong><small>${escapar(categoria(p.categoria).nome)}${esperando(p.id).length ? ` · <button type="button" class="link-simples espera-selo" data-ir="espera">${esperando(p.id).length} na espera</button>` : ""}</small></span>
             </div>
             <div class="tp-preco">
               <label class="preco-rapido"><span>R$</span><input type="number" step="0.01" min="0" value="${Number(p.preco).toFixed(2)}" data-preco="${escapar(p.id)}" aria-label="Preço de ${escapar(p.nome)}"></label>
@@ -668,6 +674,11 @@
           </div>
         </section>
         <section class="bloco">
+          <h2>Pagamento online (Mercado Pago)</h2>
+          <label class="aceite"><input type="checkbox" name="pagamentoOnline" ${c.pagamentoOnline ? "checked" : ""} ${Supa.ativo() ? "" : "disabled"}><span>Cobrar o Pix pelo Mercado Pago, com QR Code e confirmação automática</span></label>
+          <p class="nota">${Supa.ativo() ? "Precisa das funções do servidor publicadas e do token do Mercado Pago (veja SUPABASE.md). Desligado, o cliente paga pela chave Pix acima e você confirma aqui no painel." : "Disponível depois de ligar o servidor (Supabase). Veja o passo a passo em SUPABASE.md."}</p>
+        </section>
+        <section class="bloco">
           <h2>Regras de reserva</h2>
           <div class="campos-2">${campo("reservaPercentual", "Reserva com retirada: % pago agora", "number", 'min="1" max="99"')}${campo("reservaFixa", "Reserva fixa: valor pago agora (R$)", "number", 'step="0.01" min="1"')}</div>
           <div class="campos-2">${campo("estornoJanelaMin", "Prazo para devolução total (minutos)", "number", 'min="0"')}${campo("estornoDepoisPerc", "Depois do prazo, devolve (% do sinal)", "number", 'min="0" max="100"')}</div>
@@ -807,6 +818,97 @@
       .filter((p) => !termo || `${p.codigo} ${p.cliente?.nome} ${p.cliente?.telefone} ${p.itens.map((i) => i.nome).join(" ")}`.toLowerCase().includes(termo))
       .sort((a, b) => b.criadoEm - a.criadoEm);
   }
+  /* ---------- lista de espera (avise-me quando chegar) ---------- */
+  const prontosParaAvisar = () => (S.avisos || []).filter((a) => !a.avisadoEm && estoque(S.produtos.find((p) => p.id === a.produtoId) || {}) > 0).length;
+  const esperando = (id) => (S.avisos || []).filter((a) => a.produtoId === String(id) && !a.avisadoEm);
+  function linkAviso(a, p) {
+    const msg = `Oi${a.nome ? ", " + a.nome.split(" ")[0] : ""}! Chegou o ${p?.nome || a.produto} que você pediu para avisar na ${S.config.nome}. Ainda temos ${estoque(p || {})} ${estoque(p || {}) === 1 ? "peça" : "peças"}: quer que eu separe uma para você?`;
+    if (a.contato.includes("@")) return `mailto:${a.contato}?subject=${encodeURIComponent(`Chegou: ${p?.nome || a.produto}`)}&body=${encodeURIComponent(msg)}`;
+    const d = digitos(a.contato);
+    return `https://wa.me/${d.length <= 11 ? "55" : ""}${d}?text=${encodeURIComponent(msg)}`;
+  }
+  function espera() {
+    const pendentes = (S.avisos || []).filter((a) => !a.avisadoEm);
+    const grupos = [...new Set(pendentes.map((a) => a.produtoId))].map((id) => {
+      const p = S.produtos.find((x) => x.id === id);
+      return { id, p, nome: p?.nome || pendentes.find((a) => a.produtoId === id).produto, pessoas: esperando(id) };
+    }).sort((a, b) => (estoque(b.p || {}) > 0) - (estoque(a.p || {}) > 0) || b.pessoas.length - a.pessoas.length);
+    const prontos = grupos.filter((g) => g.p && estoque(g.p) > 0);
+    const avisados = (S.avisos || []).filter((a) => a.avisadoEm).length;
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Vendas</p><h1>Lista de espera</h1><p class="painel__sub">Quem pediu "Avise-me quando chegar" num produto esgotado. Mostra o que repor primeiro e quem avisar quando chegar.</p></div>
+      </header>
+      <div class="kpis">
+        <div class="kpi"><span>Pessoas esperando</span><strong>${pendentes.length}</strong><small>${grupos.length} ${grupos.length === 1 ? "produto" : "produtos"}</small></div>
+        <div class="kpi"><span>Prontos para avisar</span><strong>${prontos.reduce((s, g) => s + g.pessoas.length, 0)}</strong><small>já voltaram ao estoque</small></div>
+        <div class="kpi"><span>Mais procurado</span><strong class="kpi__texto">${grupos[0] ? escapar(grupos[0].nome) : "—"}</strong><small>${grupos[0] ? `${grupos[0].pessoas.length} esperando` : "ninguém esperando"}</small></div>
+        <div class="kpi"><span>Já avisados</span><strong>${avisados}</strong><small>desde o começo</small></div>
+      </div>
+      ${grupos.length ? `<div class="espera-lista">${grupos.map((g) => {
+        const q = estoque(g.p || {});
+        const aberto = ui.esperaAberto === g.id;
+        return `
+        <article class="espera-item${q > 0 ? " espera-item--pronto" : ""}">
+          <div class="espera-item__topo">
+            <span class="tp-foto">${g.p?.imagem ? `<img src="${escapar(g.p.imagem)}" alt="">` : `<svg><use href="#i-tag"/></svg>`}</span>
+            <div class="espera-item__info">
+              <strong>${escapar(g.nome)}</strong>
+              <small>${q > 0 ? `<b class="espera-item__ok">Voltou ao estoque · ${q} ${q === 1 ? "peça" : "peças"}</b>` : "Ainda esgotado"} · ${g.pessoas.length} ${g.pessoas.length === 1 ? "pessoa esperando" : "pessoas esperando"}</small>
+            </div>
+            ${q > 0
+              ? `<button type="button" class="btn btn--pequeno" data-abrir-espera="${escapar(g.id)}">${aberto ? "Fechar" : `Avisar ${g.pessoas.length}`}</button>`
+              : `<button type="button" class="btn btn--contorno btn--pequeno" data-repor="${escapar(g.id)}">Repor estoque</button>`}
+          </div>
+          ${aberto ? `
+          <ul class="espera-contatos">
+            ${g.pessoas.map((a) => `<li><span>${escapar(a.nome || "Cliente")}<small>${escapar(a.contato.includes("@") ? a.contato : digitos(a.contato).replace(/^(\d{2})(\d+)(\d{4})$/, "($1) $2-$3"))} · pediu ${dataHora(a.criadoEm)}</small></span><a class="btn btn--contorno btn--pequeno" href="${escapar(linkAviso(a, g.p))}" target="_blank" rel="noopener">${a.contato.includes("@") ? "Mandar e-mail" : "Chamar no WhatsApp"}</a></li>`).join("")}
+          </ul>
+          <footer class="espera-item__pe"><span class="nota">Mandou para todos? Marque para limpar a lista.</span><button type="button" class="btn btn--pequeno" data-avisados="${escapar(g.id)}"><svg><use href="#i-check"/></svg>Marcar como avisados</button></footer>` : ""}
+        </article>`;
+      }).join("")}</div>` : `<p class="vazio-curto">Ninguém na lista de espera. Quando um produto esgotar, o cliente vê o botão "Avise-me quando chegar" no lugar de "Comprar".</p>`}`;
+  }
+
+  /* ---------- checklist para abrir a loja ---------- */
+  function checklist() {
+    const c = S.config;
+    const zap = digitos(c.whatsapp).replace(/^55/, "");
+    const ilustracoes = S.produtos.filter((p) => !p.imagem || /img\/produtos\/|img\/deal-|img\/cat-/.test(p.imagem)).length;
+    const exemplos = typeof COMENTARIOS !== "undefined" && COMENTARIOS.some((x) => x.exemplo);
+    const host = location.hostname;
+    const itens = [
+      { ok: zap.length >= 10 && !/^0+$/.test(zap), titulo: "WhatsApp da loja", dica: "Ainda está o número de exemplo.", aba: "contato" },
+      { ok: !!c.pixChave, titulo: "Chave Pix", dica: "Sem ela o cliente precisa pedir a chave no WhatsApp.", aba: "config" },
+      { ok: !!(c.email && c.endereco), titulo: "E-mail e endereço", dica: "Aparecem no rodapé e nas páginas legais.", aba: "contato" },
+      { ok: !!(c.cnpj && c.razaoSocial), titulo: "Razão social e CNPJ", dica: "Exigidos para loja online (Decreto 7.962/2013).", aba: "contato" },
+      { ok: ilustracoes === 0, titulo: "Fotos reais dos produtos", dica: `${ilustracoes} ${ilustracoes === 1 ? "produto ainda usa" : "produtos ainda usam"} ilustração ou foto de exemplo.`, aba: "produtos" },
+      { ok: !exemplos, titulo: "Avaliações reais", dica: "Troque os comentários de exemplo em js/produtos.js.", link: "README.md" },
+      { ok: limpo(ACESSO.emailAdmin) !== "admin@tmzstore.com.br", titulo: "Seu e-mail de dono", dica: "Ainda é o login provisório.", link: "COLOCAR-NO-AR.md" },
+      { ok: Supa.ativo(), titulo: "Servidor (Supabase)", dica: "Sem ele, cada aparelho tem sua própria cópia da loja.", link: "COLOCAR-NO-AR.md" },
+      { ok: Supa.ativo() && !!c.pagamentoOnline, titulo: "Pix automático (Mercado Pago)", dica: "Opcional: hoje você confirma o Pix à mão.", aba: "config", opcional: true },
+      { ok: !/localhost|github\.io|claude|netlify|vercel|127\.0\.0\.1/.test(host) && host !== "", titulo: "Domínio próprio", dica: "Ex.: tmzstore.com.br, cerca de R$ 40/ano.", link: "COLOCAR-NO-AR.md", opcional: true },
+    ];
+    const prontos = itens.filter((i) => i.ok).length;
+    if (prontos === itens.length || ui.checklistFechado) return "";
+    return `
+      <section class="bloco checklist">
+        <header class="bloco__topo">
+          <div><h2>Para abrir a loja</h2><p class="nota">${prontos} de ${itens.length} prontos</p></div>
+          <button type="button" class="link-simples" data-fechar-checklist>Esconder</button>
+        </header>
+        <div class="checklist__barra"><b style="width:${Math.round((prontos / itens.length) * 100)}%"></b></div>
+        <ul class="checklist__lista">
+          ${itens.map((i) => `
+            <li class="${i.ok ? "feito" : ""}">
+              <span class="checklist__marca">${i.ok ? `<svg><use href="#i-check"/></svg>` : ""}</span>
+              <span class="checklist__texto"><strong>${i.titulo}${i.opcional ? " <em>opcional</em>" : ""}</strong>${i.ok ? "" : `<small>${i.dica}</small>`}</span>
+              ${i.ok ? "" : i.aba ? `<button type="button" class="btn btn--contorno btn--pequeno" data-ir="${i.aba}">Resolver</button>` : `<span class="checklist__guia">Veja ${i.link}</span>`}
+            </li>`).join("")}
+        </ul>
+      </section>`;
+  }
+  const limpo = (t) => String(t || "").trim().toLowerCase();
+
   /* ---------- carrinhos ---------- */
   const ABANDONO_MS = 60 * 60 * 1000; // parado há 1 hora = abandonado
   const STATUS_CARRINHO = { aguardando: "Aguardando", abandonado: "Abandonado", concluido: "Concluído", vazio: "Esvaziado" };
@@ -1141,6 +1243,13 @@
     if (carFiltro) { ui.carFiltro = carFiltro.dataset.carFiltro; return renderAba(); }
     const carPer = t.closest("[data-car-periodo]");
     if (carPer) { ui.carPeriodo = Number(carPer.dataset.carPeriodo); return renderAba(); }
+    const abrirEspera = t.closest("[data-abrir-espera]");
+    if (abrirEspera) { ui.esperaAberto = ui.esperaAberto === abrirEspera.dataset.abrirEspera ? null : abrirEspera.dataset.abrirEspera; return renderAba(); }
+    const avisados = t.closest("[data-avisados]");
+    if (avisados) { await Dados.marcarAvisados(avisados.dataset.avisados); ui.esperaAberto = null; toast("Lista de espera atualizada"); return renderAba(); }
+    const repor = t.closest("[data-repor]");
+    if (repor) { ui.aba = "produtos"; ui.prodModo = "estoque"; ui.busca = (S.produtos.find((x) => x.id === repor.dataset.repor) || {}).nome || ""; return render(); }
+    if (t.closest("[data-fechar-checklist]")) { ui.checklistFechado = true; return renderAba(); }
     const verPedido = t.closest("[data-ver-pedido]");
     if (verPedido) { ui.aba = "historico"; ui.histBusca = verPedido.dataset.verPedido; ui.histPeriodo = 0; ui.histStatus = "todos"; return render(); }
 
@@ -1394,6 +1503,7 @@
       }
       if (f.id === "form-config") {
         const d = Object.fromEntries(new FormData(f));
+        d.pagamentoOnline = !!d.pagamentoOnline;
         d.freteTabela = {};
         Object.keys(Frete.NOMES_FAIXA).forEach((k) => {
           d.freteTabela[k] = { valor: Math.max(0, Number(d[`ft_${k}_valor`]) || 0), prazo: Math.max(1, parseInt(d[`ft_${k}_prazo`], 10) || 1) };

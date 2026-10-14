@@ -1,6 +1,9 @@
 # TMZ STORE
 
-TMZ, a loja que veste o povo. Loja online em HTML, CSS e JavaScript puro, sem dependências e sem build.
+TMZ, a loja que veste o povo. Loja online em HTML, CSS e JavaScript puro, sem build.
+
+**Para colocar no ar:** siga o [COLOCAR-NO-AR.md](COLOCAR-NO-AR.md) (Supabase, Mercado Pago, publicação
+e domínio). Antes de divulgar, faça o [ROTEIRO-DE-TESTES.md](ROTEIRO-DE-TESTES.md) com pessoas reais.
 
 ## O que tem
 
@@ -27,6 +30,17 @@ compra mínima, validade, limite de usos, 1 uso por cliente e categoria. O aviso
 um cupom com o botão "Usar cupom". No painel (aba Cupons): criar, editar, ligar/desligar, excluir,
 copiar o link e ver usos, vendas e desconto dado por cupom. As regras ficam em `js/cupons.js`.
 Sem servidor, o limite total de usos é conferido com os pedidos que o navegador enxerga.
+
+**Frete pelo CEP:** o cliente digita o CEP no carrinho ou na compra; o ViaCEP preenche rua, bairro e
+cidade, e o frete e o prazo saem pela distância da loja (mesma cidade, mesmo estado, mesma região ou
+resto do Brasil). Tabela, cidade da loja e frete grátis em Painel → Configurações (`js/frete.js`).
+
+**Avise-me quando chegar:** produto esgotado mostra um campo para o cliente deixar WhatsApp ou e-mail.
+Em Painel → Lista de espera o dono vê o que mais procuram e, quando repõe, avisa cada um com um clique.
+
+**Páginas legais** (`#privacidade`, `#trocas`, `#termos`, `js/legal.js`): Política de Privacidade (LGPD),
+Trocas e Devoluções (CDC, com os 7 dias de arrependimento) e Termos de Uso, preenchidas com razão
+social, CNPJ, contato e regras de reserva da loja. Vale revisar com um advogado.
 
 **Carrinho** (`#carrinho`): tela cheia com quantidades, barra de frete grátis e resumo.
 
@@ -60,6 +74,7 @@ vê "Sem acesso". Depois de 5 erros seguidos, a tela espera 1 minuto.
   Não é proteção de verdade.
 
 **Painel do lojista** (botão "Painel" no topo ou "Área do lojista" no rodapé):
+- Resumo com a lista "Para abrir a loja" (o que falta configurar) e Lista de espera ("Avise-me quando chegar")
 - Carrinhos: todo carrinho montado na loja, com ID (CRT-…), cliente, itens, valor, última mudança e
   situação: aguardando, abandonado (parado há 1 hora), concluído (com o ID do pedido, que abre no
   histórico) ou esvaziado. Mostra taxa de conversão, valor abandonado e botão para chamar no WhatsApp
@@ -84,23 +99,20 @@ vê "Sem acesso". Depois de 5 erros seguidos, a tela espera 1 minuto.
 
 ## Onde ficam os dados
 
-`js/dados.js` tem dois modos:
+`js/dados.js` tem três modos, escolhidos sozinhos:
 
-- **Nuvem** — quando o site roda como artifact do Claude, usa o banco compartilhado do artifact.
-  O que o dono muda no painel aparece para todos; cada cliente só vê as próprias reservas.
-  O painel abre só para quem administra o artifact.
-- **Local** — em qualquer outra hospedagem (GitHub Pages, Netlify…) guarda tudo no navegador.
-  Bom para testar o fluxo inteiro. O painel abre com o login acima.
+- **Servidor (Supabase)**, quando `ACESSO.supabaseUrl` e `supabaseChave` estão preenchidos em
+  `js/produtos.js`: produtos, pedidos, clientes, carrinhos e visitas ficam no banco, iguais em todos os
+  aparelhos. Login de verdade e regras de acesso no servidor (`supabase/schema.sql`). Cada visitante
+  ganha uma sessão anônima para o carrinho e os pedidos; ao criar conta, eles passam para a conta.
+  Conexão em `js/supabase.js`.
+- **Nuvem do Claude**, quando o site roda como artifact: usa o banco compartilhado do artifact.
+- **Local**, em qualquer outra hospedagem sem Supabase: guarda tudo no navegador. Bom para testar.
 
-> **Para a loja no ar com clientes reais** é preciso um servidor: no modo local, cada navegador
-> tem sua própria cópia dos dados, então o que o dono muda não chega aos clientes e as reservas
-> não chegam ao dono. A troca é só em `js/dados.js`: as funções `salvarProduto`, `criarPedido`,
-> `atualizarPedido` etc. passam a gravar num backend (o mesmo Supabase do login, com regras que só deixam
-> o e-mail do dono alterar produtos e ver pedidos).
-
-**Pagamento:** o site não cobra sozinho. O cliente paga o sinal por Pix e manda o comprovante
-pelo WhatsApp; o dono confirma no painel. Para cobrança automática, integre um gateway
-(Mercado Pago, Pagar.me, etc.) no mesmo ponto em que o pedido é criado.
+**Pagamento:** sem o Mercado Pago, o cliente paga pela chave Pix e manda o comprovante no WhatsApp;
+o dono confirma no painel. Com o Supabase e o Mercado Pago (Painel → Configurações → Pagamento online),
+o cliente vê o QR Code do Pix, o servidor recalcula o valor (`supabase/functions/pagamento`) e, quando o
+Pix cai, o webhook (`supabase/functions/mercadopago-webhook`) confirma o pedido e baixa o estoque.
 
 ## Valores iniciais
 
@@ -115,10 +127,14 @@ As cores dos dois temas ficam no topo de `css/style.css` (`:root` é o claro, `h
 banner, fotos e cards de categoria ficam escuros nos dois (classe `ilha-escura`). As telas novas estão em `css/telas.css`.
 As fontes (Anton nos títulos e Inter no texto) estão em `fonts/`.
 
-## Rodar
+## Rodar e testar
 
 ```bash
-python3 -m http.server 8000
+python3 -m http.server 8000     # abre em http://localhost:8000
+npm install && npx playwright install chromium
+npm test                         # 11 testes no navegador, inclusive com um Supabase falso
 ```
 
-Publica direto no GitHub Pages: *Settings → Pages → Deploy from branch*.
+Os testes rodam no GitHub a cada push (`.github/workflows/testes.yml`). A publicação no GitHub Pages
+(`.github/workflows/publicar.yml`) só acontece se eles passarem. O site é instalável como app
+(`manifest.webmanifest`, `sw.js`) e tem prévia para WhatsApp e redes (`img/icones/og.png`).

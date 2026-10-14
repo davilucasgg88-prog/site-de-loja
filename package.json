@@ -1,0 +1,12 @@
+{
+  "name": "tmz-store",
+  "private": true,
+  "description": "TMZ STORE: loja online em HTML, CSS e JavaScript",
+  "type": "module",
+  "scripts": {
+    "test": "node testes/loja.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

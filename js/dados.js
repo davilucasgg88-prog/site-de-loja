@@ -16,6 +16,7 @@ const Dados = (() => {
     produtos: PRODUTOS.map((p) => ({ ...p, id: String(p.id) })),
     pedidos: [],
     carrinhos: [],
+    avisos: [],
   });
 
   const estado = {
@@ -24,6 +25,7 @@ const Dados = (() => {
     uid: "local",
     ...padrao(),
     meusPedidos: [],
+    pagamentos: {}, // { "TMZ-AB12C": { status: "approved", valorPago, ... } } (só o dono enxerga)
     visitas: {}, // { "2026-10-10": { pessoas, vistas } } — só o dono enxerga
   };
 
@@ -51,13 +53,14 @@ const Dados = (() => {
       if (Array.isArray(salvo.produtos)) estado.produtos = salvo.produtos;
       if (Array.isArray(salvo.pedidos)) estado.pedidos = salvo.pedidos;
       if (Array.isArray(salvo.carrinhos)) estado.carrinhos = salvo.carrinhos;
+      if (Array.isArray(salvo.avisos)) estado.avisos = salvo.avisos;
     } catch {}
   }
   function gravarLocal() {
     try {
       localStorage.setItem(CHAVE_LOCAL, JSON.stringify({
         config: estado.config, categorias: estado.categorias, produtos: estado.produtos, pedidos: estado.pedidos,
-        carrinhos: estado.carrinhos,
+        carrinhos: estado.carrinhos, avisos: estado.avisos,
       }));
     } catch {}
   }
@@ -65,6 +68,7 @@ const Dados = (() => {
 
   /* ---------- modo nuvem (artifact) ---------- */
   async function conectar() {
+    if (Supa.ativo()) return conectarSupabase();
     if (!window.claude?.use) return;
     const [banco, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
     if (!banco) return;
@@ -74,9 +78,92 @@ const Dados = (() => {
     estado.admin = podeEditar && !!estado.conta?.admin;
     estado.uid = user ? await user.id() : null;
     await retomarSessaoNuvem();
+    assinar();
+  }
+
+  /* ---------- modo servidor (Supabase) ---------- */
+  // Cada visitante tem uma sessão: a da conta (se entrou) ou uma anônima. As regras do banco
+  // usam o id dessa sessão para deixar cada um gravar só o que é seu.
+  async function conectarSupabase() {
+    let anon = null;
+    try { anon = await Supa.sessaoAnonima(); } catch { anon = null; }
+    const conta = lerSessao();
+    const logado = conta?.tipo === "servidor" && conta.token ? conta : null;
+    if (!logado && !anon) return; // sem sessão (anônimo desligado no Supabase): fica no modo local
+    Supa.usarToken(tokenDaVez);
+    if (db) db.fechar?.();
+    db = Supa.banco;
+    estado.modo = "nuvem";
+    estado.uid = logado ? logado.uid : anon.uid;
+    podeEditar = !!logado && limpar(logado.email) === emailDono();
+    estado.admin = podeEditar && !!estado.conta?.admin;
+    ouvindoAdmin = false;
+    meusCarrinhosNuvem = null;
+    assinar();
+    if (estado.admin) semear().catch(() => {});
+  }
+
+  // Token usado nas leituras e gravações: o da conta (renovado quando vence) ou o anônimo
+  let renovando = null;
+  async function tokenDaVez() {
+    const s = lerSessao();
+    if (s?.tipo === "servidor" && s.token) {
+      if (Date.now() < s.expira - 60000) return s.token;
+      renovando = renovando || supabase("token?grant_type=refresh_token", { refresh_token: s.renovar })
+        .then(({ ok, dados }) => { if (ok) { const nova = sessaoSupabase(dados); gravarSessao(nova, s.lembrar); return nova.token; } throw new Error(); })
+        .finally(() => { renovando = null; });
+      try { return await renovando; } catch { apagarSessao(); aplicarSessao(null); }
+    }
+    return (await Supa.sessaoAnonima()).token;
+  }
+
+  // Na primeira vez que o dono entra, grava no servidor o catálogo, as categorias e a configuração
+  // (o pagamento online confere preços e cupons por eles)
+  async function semear() {
+    const [config, cats, prods] = await Promise.all([db.doc("loja/config").get(), db.doc("loja/categorias").get(), db.collection("produtos").get()]);
+    if (!config.exists) { const { nome, moeda, idioma, ...resto } = estado.config; await db.doc("loja/config").set(resto); }
+    if (!cats.exists) await db.doc("loja/categorias").set({ lista: estado.categorias });
+    if (prods.empty) { produtosNaNuvem = false; await garantirCatalogo(); }
+  }
+
+  // Trocou de conta (entrou, saiu ou criou conta): reconecta com a sessão nova
+  async function reconectar() {
+    if (!Supa.ativo()) return;
+    await conectarSupabase();
+    avisar();
+  }
+
+  // Leva os pedidos e carrinhos feitos antes de entrar (sessão anônima) para a conta
+  async function migrarAnonimo(sessao) {
+    let anon;
+    try { anon = await Supa.sessaoAnonima(); } catch { return; }
+    if (!anon?.uid || anon.uid === sessao.uid) return;
+    for (const colecao of ["reservas", "carrinhos"]) {
+      try {
+        const deles = await Supa.pedir(`/rest/v1/docs?colecao=eq.${colecao}&id=eq.${anon.uid}&select=dados`, { token: anon.token });
+        const listaAnon = deles[0]?.dados?.lista || [];
+        if (!listaAnon.length) continue;
+        const meus = await Supa.pedir(`/rest/v1/docs?colecao=eq.${colecao}&id=eq.${sessao.uid}&select=dados`, { token: sessao.token });
+        const lista = meus[0]?.dados?.lista || [];
+        const chave = (x) => x.codigo || x.id;
+        const juntos = [...lista, ...listaAnon.filter((x) => !lista.some((y) => chave(y) === chave(x)))];
+        await Supa.pedir("/rest/v1/docs?on_conflict=colecao,id", {
+          metodo: "POST", token: sessao.token, corpo: { colecao, id: sessao.uid, dados: { lista: juntos } },
+          cabecalhos: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        });
+        await Supa.pedir("/rest/v1/docs?on_conflict=colecao,id", {
+          metodo: "POST", token: anon.token, corpo: { colecao, id: anon.uid, dados: { lista: [] } },
+          cabecalhos: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        });
+      } catch {}
+    }
+  }
+
+  function assinar() {
     estado.pedidos = [];
     estado.meusPedidos = [];
     estado.carrinhos = [];
+    estado.avisos = [];
     estado.visitas = {};
     estado.config = padrao().config;
     avisar();
@@ -98,6 +185,7 @@ const Dados = (() => {
       avisar();
     }, () => {});
     if (estado.admin) ouvirAdminNuvem();
+    if (estado.modo === "nuvem" && !podeEditar && estado.uid) registrarVisitaNuvem();
     if (estado.uid) {
       db.doc("reservas/" + estado.uid).onSnapshot((s) => {
         estado.meusPedidos = s.exists ? (s.data().lista || []).map((p) => ({ ...p, dono: estado.uid })) : [];
@@ -112,6 +200,17 @@ const Dados = (() => {
     ouvindoAdmin = true;
     db.collection("reservas").onSnapshot((s) => {
       estado.pedidos = s.docs.flatMap((d) => (d.data().lista || []).map((p) => ({ ...p, dono: d.id })));
+      avisar();
+    }, () => {});
+    // Pagamentos confirmados pelo Mercado Pago: só o servidor grava, então é o que vale como "verificado"
+    if (Supa.ativo()) {
+      db.collection("pagamentos").onSnapshot((s) => {
+        estado.pagamentos = Object.fromEntries(s.docs.map((d) => [d.id, d.data()]));
+        avisar();
+      }, () => {});
+    }
+    db.collection("avisos").onSnapshot((s) => {
+      estado.avisos = s.docs.flatMap((d) => (d.data().lista || []).map((a) => ({ ...a, dono: d.id })));
       avisar();
     }, () => {});
     db.collection("carrinhos").onSnapshot((s) => {
@@ -259,7 +358,7 @@ const Dados = (() => {
 
   function aplicarSessao(s) {
     estado.conta = s ? { nome: s.nome || "", email: s.email, whats: s.whats || "", admin: !!s.admin } : null;
-    estado.admin = !!s?.admin && (estado.modo === "local" || podeEditar);
+    estado.admin = !!s?.admin && (Supa.ativo() ? podeEditar : estado.modo === "local" || podeEditar);
     if (estado.admin && estado.modo === "nuvem") ouvirAdminNuvem();
     avisar();
   }
@@ -274,7 +373,7 @@ const Dados = (() => {
     return { ok: r.ok, dados };
   }
   const sessaoSupabase = (d, extra) => ({
-    tipo: "servidor", email: limpar(d.user?.email), nome: d.user?.user_metadata?.nome || "",
+    tipo: "servidor", uid: d.user?.id, email: limpar(d.user?.email), nome: d.user?.user_metadata?.nome || "",
     whats: d.user?.user_metadata?.whats || "", admin: limpar(d.user?.email) === emailDono(),
     token: d.access_token, renovar: d.refresh_token, expira: Date.now() + d.expires_in * 1000, ...extra,
   });
@@ -336,6 +435,25 @@ const Dados = (() => {
     } catch {}
   }
 
+  async function concluirServidor(sessao, lembrar, perfil) {
+    tentativas = 0;
+    if (perfil) sessao = { ...sessao, nome: sessao.nome || perfil.nome, whats: sessao.whats || perfil.whats };
+    gravarSessao(sessao, lembrar);
+    await migrarAnonimo(sessao);
+    if (perfil) {
+      try {
+        await Supa.pedir("/rest/v1/docs?on_conflict=colecao,id", {
+          metodo: "POST", token: sessao.token, corpo: { colecao: "contas", id: sessao.uid, dados: perfil },
+          cabecalhos: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        });
+      } catch {}
+    }
+    aplicarSessao(sessao);
+    await reconectar();
+    aplicarSessao(sessao);
+    return { ok: true };
+  }
+
   function concluir(sessao, lembrar) {
     tentativas = 0;
     gravarSessao(sessao, lembrar);
@@ -358,7 +476,7 @@ const Dados = (() => {
         if (/confirm/i.test(r.dados.msg || r.dados.error_description || "")) return { ok: false, erro: "Confirme seu e-mail pelo link que enviamos e tente de novo." };
         return falhou("E-mail ou senha incorretos.");
       }
-      return concluir(sessaoSupabase(r.dados), lembrar);
+      return concluirServidor(sessaoSupabase(r.dados), lembrar);
     }
     if (email === emailDono()) {
       if (String(senha) !== String(estado.config.pinPainel)) return falhou("E-mail ou senha incorretos.");
@@ -392,7 +510,7 @@ const Dados = (() => {
         return { ok: false, erro: /registered|exists/i.test(msg) ? "Este e-mail já tem conta. Use Entrar." : "Não deu para criar a conta. Tente de novo." };
       }
       if (!r.dados.access_token) return { ok: true, confirmar: true, msg: "Conta criada! Enviamos um link para o seu e-mail. Confirme e depois entre." };
-      return concluir(sessaoSupabase(r.dados), true);
+      return concluirServidor(sessaoSupabase(r.dados), true, { nome, email, whats, criadoEm: Date.now() });
     }
     const sal = crypto.getRandomValues(new Uint32Array(4)).join("-");
     const nova = { nome, email, whats, sal, hash: await resumo(sal, senha), criadoEm: Date.now() };
@@ -420,6 +538,7 @@ const Dados = (() => {
     apagarSessao();
     if (naNuvem()) gravarContaNuvem({ sessao: null }).catch(() => {});
     aplicarSessao(null);
+    if (s?.tipo === "servidor") reconectar().catch(() => {});
   }
 
   // Lista de clientes para o painel (sem as senhas)
@@ -430,7 +549,11 @@ const Dados = (() => {
       return snap.docs.map((d) => d.data()).filter((c) => c.hash).map(tirar);
     }
     if (estado.login.tipo === "teste") return Object.entries(contasLocais()).map(([email, c]) => tirar({ email, ...c }));
-    return null; // no Supabase a lista fica em Authentication → Users
+    if (Supa.ativo() && db) {
+      const snap = await db.collection("contas").get();
+      return snap.docs.map((d) => d.data()).filter((c) => c.email).map(tirar);
+    }
+    return null;
   }
 
   async function recuperarSenha(email) {
@@ -524,6 +647,41 @@ const Dados = (() => {
     guardarCarrinhoAtual(null);
   }
 
+  /* ---------- avise-me quando chegar ---------- */
+  // Cliente deixa o contato num produto esgotado; o dono vê a lista de espera e avisa quando repõe.
+  async function pedirAviso(produto, contato) {
+    const aviso = {
+      id: novoId("av"), produtoId: String(produto.id), produto: produto.nome, contato: String(contato).trim(),
+      nome: estado.conta?.nome || "", criadoEm: Date.now(), avisadoEm: null,
+    };
+    if (estado.modo === "nuvem") {
+      if (!estado.uid) throw new Error("sem-identidade");
+      const ref = db.doc("avisos/" + estado.uid);
+      const snap = await ref.get();
+      const lista = (snap.exists ? snap.data().lista || [] : []).filter((a) => !(a.produtoId === aviso.produtoId && !a.avisadoEm));
+      await ref.set({ lista: [...lista, aviso].slice(-50) });
+    } else {
+      estado.avisos = [...estado.avisos.filter((a) => !(a.produtoId === aviso.produtoId && a.contato === aviso.contato && !a.avisadoEm)), { ...aviso, dono: "local" }];
+      gravarLocal(); avisar();
+    }
+    return aviso;
+  }
+  // Dono marca como avisados todos que esperavam o produto
+  async function marcarAvisados(produtoId) {
+    const agora = Date.now();
+    const marcar = (a) => (a.produtoId === String(produtoId) && !a.avisadoEm ? { ...a, avisadoEm: agora } : a);
+    if (estado.modo === "nuvem") {
+      const donos = [...new Set(estado.avisos.filter((a) => a.produtoId === String(produtoId) && !a.avisadoEm).map((a) => a.dono))];
+      for (const dono of donos) {
+        const lista = estado.avisos.filter((a) => a.dono === dono).map(({ dono: _, ...a }) => marcar(a));
+        await db.doc("avisos/" + dono).set({ lista });
+      }
+    } else {
+      estado.avisos = estado.avisos.map(marcar);
+      gravarLocal(); avisar();
+    }
+  }
+
   /* ---------- visitas diárias ---------- */
   const hoje = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso do visitante
   function podar(dias) {
@@ -576,16 +734,13 @@ const Dados = (() => {
   }
   registrarVisitaLocal();
 
-  conectar().then(() => {
-    if (estado.modo !== "nuvem") return;
-    if (estado.admin) ouvirAdminNuvem(); else registrarVisitaNuvem();
-  }).catch(() => {});
+  conectar().catch(() => {});
 
   return {
     estado,
     ouvir(fn) { ouvintes.add(fn); fn(estado); return () => ouvintes.delete(fn); },
     reembolso,
     salvarProduto, apagarProduto, ajustarEstoque, salvarCategorias, salvarConfig,
-    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, registrarCarrinho, concluirCarrinho, novoId,
+    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, registrarCarrinho, concluirCarrinho, pedirAviso, marcarAvisados, novoId,
   };
 })();

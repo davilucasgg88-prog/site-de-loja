@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TMZ STORE</title>
   <meta name="description" content="TMZ, a loja que veste o povo. Peças peruanas de primeira linha: Lacoste, Nike, Tommy Hilfiger e mais.">
+  <meta name="theme-color" content="#0a0a0b">
+  <link rel="icon" href="img/icones/icone.svg" type="image/svg+xml">
+  <link rel="icon" href="img/icones/icone-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="img/icones/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <!-- Prévia ao compartilhar no WhatsApp, Instagram e Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TMZ STORE">
+  <meta property="og:title" content="TMZ STORE · A loja que veste o povo">
+  <meta property="og:description" content="Peças peruanas de primeira linha com envio para todo o Brasil. Reserve pagando só uma parte.">
+  <meta property="og:image" content="img/icones/og.png">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
   <script>try { if (localStorage.getItem("tmz-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) {}</script>
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
@@ -481,6 +494,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/produtos.js"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/dados.js"></script>
   <script src="js/frete.js"></script>
   <script src="js/cupons.js"></script>
@@ -489,5 +503,11 @@
   <script src="js/conta.js"></script>
   <script src="js/legal.js"></script>
   <script src="js/painel.js"></script>
+  <script>
+    // App instalável e funcionando sem internet (só quando o site está publicado em https)
+    if ("serviceWorker" in navigator && location.protocol === "https:" && !window.claude) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    }
+  </script>
 </body>
 </html>
