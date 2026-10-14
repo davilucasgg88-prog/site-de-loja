@@ -677,3 +677,42 @@ button.kpi:hover { border-color: rgb(var(--c) / 0.25); }
 /* topo: bolinha no ícone quando o cliente está logado */
 #botao-entrar { position: relative; }
 #botao-entrar.logado::after { content: ""; position: absolute; right: 9px; bottom: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--texto); box-shadow: 0 0 0 2px var(--fundo); }
+
+/* cupons: finalização */
+.cupom-caixa { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--linha); }
+.cupom-form .campo > span:first-child { font-size: 13px; }
+.cupom-form__linha { display: flex; gap: 8px; }
+.cupom-form__linha input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .06em; }
+.cupom-form__erro { margin-top: 8px; font-size: 13px; color: var(--perigo, #c2410c); }
+.cupom-aplicado {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px;
+  border: 1.5px dashed var(--texto); background: var(--superficie-2);
+}
+.cupom-aplicado > svg { width: 22px; height: 22px; flex-shrink: 0; }
+.cupom-aplicado div { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.cupom-aplicado strong { letter-spacing: .08em; }
+.cupom-aplicado span { font-size: 12.5px; color: var(--texto-suave); }
+.resumo__desconto dd { font-weight: 600; }
+.resumo__linhas s { color: var(--texto-suave); margin-right: 4px; font-weight: 400; }
+
+/* cupons: aviso do Instagram */
+.insta__cupom {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 16px;
+  padding: 12px 14px; border-radius: 12px; border: 1.5px dashed currentColor;
+}
+.insta__cupom div { display: grid; gap: 2px; }
+.insta__cupom span { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.insta__cupom code { font-family: var(--fonte-display); font-size: 24px; letter-spacing: .06em; line-height: 1.1; }
+.insta__cupom small { font-size: 12.5px; opacity: .75; }
+
+/* cupons: painel */
+.cupom-editor h2, .bloco > h2 { font-size: 17px; }
+.cupom-editor__check { align-self: end; min-height: 44px; display: flex; align-items: center; }
+.campo em { font-style: normal; font-weight: 400; opacity: .6; font-size: .9em; }
+.tabela-cupons td { vertical-align: middle; }
+.cupom-acoes { display: flex; justify-content: flex-end; gap: 4px; }
+.cupom-situacao { color: var(--perigo, #c2410c); font-weight: 600; }
+svg.inline { width: 14px; height: 14px; vertical-align: -2px; }
+.insta__cupom div { text-align: left; min-width: 0; }
+.insta__cupom span { white-space: nowrap; }
+.insta__cupom .btn { white-space: nowrap; flex-shrink: 0; }

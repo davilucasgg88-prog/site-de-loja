@@ -21,6 +21,13 @@ e calçados. A tela completa tem também calças e bonés, tabela de todos os ta
 ("Descubra seu tamanho") que recomenda o tamanho pela medida do corpo. Os valores iniciais estão em
 `MEDIDAS` (`js/produtos.js`) e o dono ajusta em Painel → Medidas. A tela do produto tem link para o guia.
 
+**Cupons de desconto:** na finalização o cliente digita o cupom (ou chega por um link
+`?cupom=CODIGO`, que já aplica sozinho). Tipos: % de desconto, R$ de desconto ou frete grátis, com
+compra mínima, validade, limite de usos, 1 uso por cliente e categoria. O aviso do Instagram mostra
+um cupom com o botão "Usar cupom". No painel (aba Cupons): criar, editar, ligar/desligar, excluir,
+copiar o link e ver usos, vendas e desconto dado por cupom. As regras ficam em `js/cupons.js`.
+Sem servidor, o limite total de usos é conferido com os pedidos que o navegador enxerga.
+
 **Carrinho** (`#carrinho`): tela cheia com quantidades, barra de frete grátis e resumo.
 
 **Compra e reserva** (`#compra`), três formas:

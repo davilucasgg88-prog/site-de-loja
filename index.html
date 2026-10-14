@@ -60,6 +60,7 @@
       <symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M3.5 20.5l1.3-4.4A8.5 8.5 0 1 1 8 19.3z"/><path d="M9 8.3c.2-.5.6-.5.9-.5l.6.1 1 2.2-.6.9c.5 1 1.4 1.9 2.4 2.4l.9-.6 2.2 1-.1.7c-.3.7-1.1 1.1-1.9 1-2.6-.4-5.1-2.9-5.5-5.5 0-.6.3-1.3.1-1.7z"/></symbol>
       <symbol id="i-email" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></symbol>
       <symbol id="i-usuario" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></symbol>
+      <symbol id="i-cupom" viewBox="0 0 24 24"><path d="M3.5 8.5V6.5a1.5 1.5 0 0 1 1.5-1.5h14a1.5 1.5 0 0 1 1.5 1.5v2a3.5 3.5 0 0 0 0 7v2a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5v-2a3.5 3.5 0 0 0 0-7z"/><path d="M9.5 14.5l5-5"/><circle cx="9.7" cy="9.7" r=".9"/><circle cx="14.3" cy="14.3" r=".9"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
     </defs>
   </svg>
@@ -349,6 +350,7 @@
             <h2 class="resumo__titulo">Seu pedido</h2>
             <ul class="mini" id="compra-itens"></ul>
             <dl class="resumo__linhas" id="compra-totais"></dl>
+            <div class="cupom-caixa" id="cupom-caixa"></div>
           </aside>
         </div>
       </div>
@@ -428,6 +430,10 @@
     </div>
     <h2 id="insta-titulo">Siga a TMZ no Instagram</h2>
     <p class="insta__texto">Quem segue a gente concorre a <strong>sorteios</strong>, ganha <strong>cupons de desconto</strong> e fica sabendo primeiro do <strong>frete grátis</strong>.</p>
+    <div class="insta__cupom" id="insta-cupom" hidden>
+      <div><span>Cupom de boas-vindas</span><code></code><small></small></div>
+      <button type="button" class="btn btn--contorno btn--pequeno">Usar cupom</button>
+    </div>
     <a class="btn btn--bloco insta__btn" href="https://www.instagram.com/tmz_storee/" target="_blank" rel="noopener">Acesse</a>
   </aside>
   <button class="insta-bolha" id="insta-bolha" aria-label="Abrir aviso do Instagram" hidden>
@@ -438,6 +444,7 @@
 
   <script src="js/produtos.js"></script>
   <script src="js/dados.js"></script>
+  <script src="js/cupons.js"></script>
   <script src="js/app.js"></script>
   <script src="js/medidas.js"></script>
   <script src="js/conta.js"></script>

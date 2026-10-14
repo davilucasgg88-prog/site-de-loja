@@ -30,6 +30,12 @@ const LOJA = {
   reservaFixa: 50,         // reserva pagando R$ 50 e o resto depois
   estornoJanelaMin: 60,    // cancelando dentro desse tempo, devolve 100% do sinal
   estornoDepoisPerc: 50,   // depois disso, devolve essa % do sinal
+  // Cupons de desconto (o dono cria e edita em Painel → Cupons)
+  cupons: [
+    { codigo: "BEMVINDO10", tipo: "percentual", valor: 10, minimo: 0, validade: "", limite: 0, umPorCliente: true, categoria: "", ativo: true, criadoEm: 0 },
+    { codigo: "FRETEFREE", tipo: "frete", valor: 0, minimo: 150, validade: "", limite: 0, umPorCliente: false, categoria: "", ativo: true, criadoEm: 0 },
+  ],
+  cupomInsta: "BEMVINDO10", // cupom mostrado no aviso do Instagram ("" = nenhum)
   // Senha do login de teste, usada só quando o Supabase (ACESSO) não está configurado
   pinPainel: "1234",
 };

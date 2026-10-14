@@ -11,7 +11,18 @@
   const digitos = (t) => String(t || "").replace(/\D/g, "");
   const CHAVE_CARRINHO = "carrinho-loja";
 
-  const estado = { filtro: "todos", busca: "", carrinho: lerCarrinho(), modo: "compra", ultimoPedido: null };
+  const estado = { filtro: "todos", busca: "", carrinho: lerCarrinho(), modo: "compra", ultimoPedido: null, cupom: lerCupom() };
+
+  // Cupom escolhido: vem do link (?cupom=CODIGO) ou do campo na finalização
+  function lerCupom() {
+    const doLink = Cupons.limpar(new URLSearchParams(location.search).get("cupom"));
+    if (doLink) { try { sessionStorage.setItem("tmz-cupom", doLink); } catch {} return doLink; }
+    try { return sessionStorage.getItem("tmz-cupom") || ""; } catch { return ""; }
+  }
+  function guardarCupom(codigo) {
+    estado.cupom = codigo;
+    try { codigo ? sessionStorage.setItem("tmz-cupom", codigo) : sessionStorage.removeItem("tmz-cupom"); } catch {}
+  }
 
   function lerCarrinho() {
     try { return JSON.parse(localStorage.getItem(CHAVE_CARRINHO)) || {}; } catch { return {}; }
@@ -58,6 +69,13 @@
     ].filter(([url]) => url);
     $("#rodape-redes").innerHTML = redes.map(([url, nome]) => `<li><a href="${escapar(url)}" ${url.startsWith("mailto:") ? "" : 'target="_blank" rel="noopener"'}>${escapar(nome)}</a></li>`).join("");
     $("#cta-final-img").src = c.bannerImagem || "img/banner.jpg";
+    const cupomInsta = c.cupomInsta && Cupons.achar(c.cupomInsta);
+    const caixaInsta = $("#insta-cupom");
+    caixaInsta.hidden = !(cupomInsta?.ativo && !(cupomInsta.validade && new Date().toLocaleDateString("sv-SE") > cupomInsta.validade));
+    if (!caixaInsta.hidden) {
+      caixaInsta.querySelector("code").textContent = cupomInsta.codigo;
+      caixaInsta.querySelector("small").textContent = `${Cupons.descrever(cupomInsta)}${Number(cupomInsta.minimo) > 0 ? ` acima de ${moeda(cupomInsta.minimo)}` : ""}`;
+    }
     $("#rodape-endereco").hidden = !c.endereco;
     $("#rodape-endereco").textContent = c.endereco || "";
     $("#rodape-horario").hidden = !c.horario;
@@ -473,9 +491,18 @@
     ].filter((m) => !m.oculto);
   }
 
+  // Aplica o cupom (se houver) sobre os totais
+  function comCupom(t) {
+    if (!estado.cupom) return { ...t, desconto: 0, cupom: null, cupomErro: "" };
+    const av = Cupons.avaliar(estado.cupom, t, (id) => categoria(id).nome);
+    if (!av.ok) return { ...t, desconto: 0, cupom: null, cupomErro: av.erro };
+    const frete = av.freteGratis ? 0 : t.frete;
+    return { ...t, desconto: av.desconto, frete, freteEconomizado: centavos(t.frete - frete), cupom: av.cupom, cupomErro: "", total: centavos(t.subtotal - av.desconto + frete) };
+  }
+
   function calcular() {
     const receber = estado.modo === "reserva30" ? "retirada" : form.receber.value;
-    const t = totais(receber);
+    const t = comCupom(totais(receber));
     const c = S.config;
     let sinal = t.total;
     if (estado.modo === "reserva30") sinal = centavos(t.total * c.reservaPercentual / 100);
@@ -506,7 +533,7 @@
     $("#compra-titulo").textContent = reserva ? "Reservar suas peças" : "Finalizar compra";
     $("#modos").innerHTML = modosDisponiveis(totais().total).map((m) => {
       const ativo = m.id === estado.modo;
-      const agora = m.id === "compra" ? calcular().total : m.id === "reserva30" ? centavos(totais("retirada").total * c.reservaPercentual / 100) : Number(c.reservaFixa);
+      const agora = m.id === "compra" ? calcular().total : m.id === "reserva30" ? centavos(comCupom(totais("retirada")).total * c.reservaPercentual / 100) : Number(c.reservaFixa);
       return `
         <label class="modo${ativo ? " modo--ativo" : ""}">
           <input type="radio" name="modo" value="${m.id}" ${ativo ? "checked" : ""}>
@@ -544,14 +571,56 @@
       <li><span class="mini__img">${img(p)}<b>${qtd}</b></span><span class="mini__nome">${escapar(p.nome)}</span><span>${moeda(p.preco * qtd)}</span></li>`).join("");
     $("#compra-totais").innerHTML = `
       <div><dt>Subtotal</dt><dd>${moeda(calc.subtotal)}</dd></div>
-      <div><dt>Frete</dt><dd>${calc.receber === "retirada" ? "Retirada na loja" : calc.frete ? moeda(calc.frete) : "Grátis"}</dd></div>
+      ${calc.desconto ? `<div class="resumo__desconto"><dt>Cupom ${escapar(calc.cupom.codigo)}</dt><dd>− ${moeda(calc.desconto)}</dd></div>` : ""}
+      <div><dt>Frete</dt><dd>${calc.receber === "retirada" ? "Retirada na loja" : calc.frete ? moeda(calc.frete) : calc.cupom?.tipo === "frete" && calc.freteEconomizado ? `<s>${moeda(calc.freteEconomizado)}</s> Grátis` : "Grátis"}</dd></div>
       <div class="resumo__total"><dt>Total</dt><dd>${moeda(calc.total)}</dd></div>
       ${reserva ? `
       <div class="resumo__agora"><dt>Pagar agora</dt><dd>${moeda(calc.sinal)}</dd></div>
       <div><dt>${estado.modo === "reserva30" ? "Pagar na retirada" : "Pagar depois"}</dt><dd>${moeda(calc.restante)}</dd></div>` : ""}`;
+    renderCupom(calc);
     $("#confirmar-compra").textContent = reserva ? `Reservar e pagar ${moeda(calc.sinal)}` : "Confirmar pedido";
     $("#erro-compra").hidden = true;
   }
+
+  function renderCupom(calc) {
+    const caixa = $("#cupom-caixa");
+    if (calc.cupom) {
+      caixa.innerHTML = `
+        <div class="cupom-aplicado">
+          <svg><use href="#i-cupom"/></svg>
+          <div><strong>${escapar(calc.cupom.codigo)}</strong><span>${escapar(Cupons.descrever(calc.cupom))}${calc.desconto ? ` · você economiza ${moeda(calc.desconto)}` : calc.freteEconomizado ? ` · você economiza ${moeda(calc.freteEconomizado)}` : calc.receber === "retirada" ? " · vale na entrega" : ""}</span></div>
+          <button type="button" class="link-simples" data-tirar-cupom>Remover</button>
+        </div>`;
+      return;
+    }
+    const aberto = caixa.querySelector("form");
+    const digitado = aberto ? aberto.cupom.value : estado.cupom;
+    caixa.innerHTML = `
+      <form class="cupom-form" id="form-cupom" novalidate>
+        <label class="campo"><span>Cupom de desconto</span>
+          <span class="cupom-form__linha">
+            <input name="cupom" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Digite o código" value="${escapar(digitado)}">
+            <button class="btn btn--contorno btn--pequeno">Aplicar</button>
+          </span>
+        </label>
+        ${calc.cupomErro ? `<p class="cupom-form__erro" role="alert">${escapar(calc.cupomErro)}</p>` : ""}
+      </form>`;
+  }
+  $("#cupom-caixa").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const codigo = Cupons.limpar(e.target.cupom.value);
+    if (!codigo) return e.target.cupom.focus();
+    guardarCupom(codigo);
+    renderCompra();
+    const calc = calcular();
+    if (calc.cupom) toast(`Cupom ${codigo} aplicado`);
+    else $("#cupom-caixa input")?.select();
+  });
+  $("#cupom-caixa").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-tirar-cupom]")) return;
+    guardarCupom("");
+    renderCompra();
+  });
 
   function duracao(min) {
     min = Number(min) || 0;
@@ -605,6 +674,7 @@
         tipo: estado.modo,
         itens: calc.itens.map(({ p, qtd }) => ({ id: p.id, nome: p.nome, preco: p.preco, qtd })),
         subtotal: calc.subtotal, frete: calc.frete, total: calc.total, sinal: calc.sinal, restante: calc.restante,
+        cupom: calc.cupom ? { codigo: calc.cupom.codigo, desconto: calc.desconto, freteGratis: calc.cupom.tipo === "frete", freteEconomizado: calc.freteEconomizado || 0 } : null,
         receber: calc.receber,
         pagamento: estado.modo === "compra" ? form.pagamento.value : "Pix",
         cliente: {
@@ -614,6 +684,7 @@
         regra: { janelaMin: S.config.estornoJanelaMin, percDepois: S.config.estornoDepoisPerc },
       });
       estado.ultimoPedido = pedido;
+      if (pedido.cupom) guardarCupom("");
       estado.carrinho = {};
       gravarCarrinho();
       renderCarrinho();
@@ -635,6 +706,7 @@
       "",
       ...p.itens.map((i) => `• ${i.qtd}x ${i.nome} — ${moeda(i.preco * i.qtd)}`),
       "",
+      p.cupom ? `Cupom ${p.cupom.codigo}: ${p.cupom.desconto ? "− " + moeda(p.cupom.desconto) : "frete grátis"}` : "",
       `Total: ${moeda(p.total)}`,
       p.tipo !== "compra" ? `Sinal pago agora: ${moeda(p.sinal)}\nRestante: ${moeda(p.restante)}` : `Pagamento: ${p.pagamento}`,
       p.receber === "entrega" ? `Entrega: ${p.cliente.endereco} — CEP ${p.cliente.cep}` : "Retirada na loja",
@@ -939,6 +1011,12 @@
     try { sessionStorage.setItem(CHAVE_INSTA, aberto ? "0" : "1"); } catch {}
   }
   $("#insta-fechar").addEventListener("click", () => mostrarInsta(false));
+  $("#insta-cupom button").addEventListener("click", async () => {
+    const codigo = $("#insta-cupom code").textContent;
+    guardarCupom(codigo);
+    try { await navigator.clipboard.writeText(codigo); } catch {}
+    toast(`Cupom ${codigo} guardado: ele entra sozinho na finalização`);
+  });
   bolha.addEventListener("click", () => mostrarInsta(true));
   let minimizado = false;
   try { minimizado = sessionStorage.getItem(CHAVE_INSTA) === "1"; } catch {}

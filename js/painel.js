@@ -15,6 +15,7 @@
     ["clientes", "Clientes", "i-usuario"],
     ["visitas", "Visitas", "i-olho"],
     ["produtos", "Produtos e preços", "i-tag"],
+    ["cupons", "Cupons", "i-cupom"],
     ["categorias", "Categorias", "i-sacola"],
     ["destaque", "Destaque e textos", "i-editar"],
     ["medidas", "Medidas", "i-regua"],
@@ -70,13 +71,13 @@
   function renderAba() {
     const alvo = $("#painel-aba", raiz);
     if (!alvo) return;
-    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, clientes, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
+    alvo.innerHTML = ({ resumo, faturamento, pedidos, historico, clientes, cupons, visitas, produtos, categorias, destaque, config, medidas, contato })[ui.aba]();
     if (ui.aba === "destaque") atualizarPrevia();
     if (ui.aba === "clientes") carregarClientes();
   }
 
   // Abas com formulário não são redesenhadas quando os dados mudam, para não apagar o que está sendo digitado
-  const abasDeFormulario = ["clientes", "categorias", "destaque", "config", "medidas", "contato"];
+  const abasDeFormulario = ["clientes", "cupons", "categorias", "destaque", "config", "medidas", "contato"];
 
   /* ---------- resumo ---------- */
   function resumo() {
@@ -190,6 +191,7 @@
         <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${i.qtd}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
         <dl class="pedido__valores">
           <div><dt>Total</dt><dd>${moeda(p.total)}</dd></div>
+          ${p.cupom ? `<div><dt>Cupom</dt><dd>${escapar(p.cupom.codigo)}${p.cupom.desconto ? ` · −${moeda(p.cupom.desconto)}` : " · frete grátis"}</dd></div>` : ""}
           ${reserva ? `<div><dt>Sinal</dt><dd>${moeda(p.sinal)}${p.pago ? " · pago" : ""}</dd></div><div><dt>Restante</dt><dd>${moeda(p.restante)}</dd></div>` : `<div><dt>Pagamento</dt><dd>${escapar(p.pagamento)}</dd></div>`}
           ${p.reembolso != null && ["cancelado", "estornado"].includes(p.status) ? `<div><dt>Devolver</dt><dd>${moeda(p.reembolso)}</dd></div>` : ""}
         </dl>
@@ -689,6 +691,110 @@
       .filter((p) => !termo || `${p.codigo} ${p.cliente?.nome} ${p.cliente?.telefone} ${p.itens.map((i) => i.nome).join(" ")}`.toLowerCase().includes(termo))
       .sort((a, b) => b.criadoEm - a.criadoEm);
   }
+  /* ---------- cupons de desconto ---------- */
+  const TIPOS_CUPOM = { percentual: "% de desconto", valor: "R$ de desconto", frete: "Frete grátis" };
+  const vazioCupom = () => ({ codigo: "", tipo: "percentual", valor: 10, minimo: 0, validade: "", limite: 0, umPorCliente: false, categoria: "", ativo: true });
+
+  function cupons() {
+    const lista = [...Cupons.lista()].sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+    const nums = Object.fromEntries(lista.map((c) => [c.codigo, Cupons.numeros(c.codigo)]));
+    const soma = (k) => Object.values(nums).reduce((s, n) => s + n[k], 0);
+    const usos = soma("usos");
+    const validos = S.pedidos.filter((p) => !["cancelado", "estornado"].includes(p.status)).length;
+    const hoje = new Date().toLocaleDateString("sv-SE");
+    const vencido = (c) => c.validade && hoje > c.validade;
+    const ativos = lista.filter((c) => c.ativo && !vencido(c)).length;
+    const edit = ui.cupomEditando ? Cupons.achar(ui.cupomEditando) || vazioCupom() : vazioCupom();
+    const linkCupom = (c) => `${location.origin}${location.pathname}?cupom=${encodeURIComponent(c)}`;
+    const nomeCat = (id) => categoria(id).nome;
+    return `
+      <header class="painel__cabeca">
+        <div><p class="rotulo">Vendas</p><h1>Cupons de desconto</h1><p class="painel__sub">Crie cupons para o Instagram, primeira compra, datas especiais ou clientes fiéis.</p></div>
+      </header>
+      <div class="kpis">
+        <div class="kpi"><span>Cupons ativos</span><strong>${ativos}</strong><small>${lista.length} no total</small></div>
+        <div class="kpi"><span>Pedidos com cupom</span><strong>${usos}</strong><small>${validos ? Math.round((usos / validos) * 100) : 0}% dos pedidos</small></div>
+        <div class="kpi"><span>Vendas com cupom</span><strong>${moeda(soma("vendas"))}</strong><small>pagamentos confirmados</small></div>
+        <div class="kpi"><span>Desconto dado</span><strong>${moeda(soma("desconto"))}</strong><small>inclui frete grátis</small></div>
+      </div>
+
+      <form id="form-cupom-painel" class="bloco cupom-editor" novalidate>
+        <h2>${ui.cupomEditando ? `Editar cupom ${escapar(edit.codigo)}` : "Novo cupom"}</h2>
+        <div class="campos-3">
+          <label class="campo"><span>Código</span>
+            <span class="cupom-form__linha">
+              <input name="codigo" value="${escapar(edit.codigo)}" placeholder="EX.: VERAO15" autocapitalize="characters" spellcheck="false" required ${ui.cupomEditando ? "readonly" : ""}>
+              ${ui.cupomEditando ? "" : `<button type="button" class="btn btn--contorno btn--pequeno" data-gerar-cupom>Gerar</button>`}
+            </span>
+          </label>
+          <label class="campo"><span>Tipo</span>
+            <select name="tipo">${Object.entries(TIPOS_CUPOM).map(([k, v]) => `<option value="${k}" ${edit.tipo === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+          </label>
+          <label class="campo" data-campo-valor ${edit.tipo === "frete" ? "hidden" : ""}><span>${edit.tipo === "valor" ? "Desconto (R$)" : "Desconto (%)"}</span>
+            <input name="valor" type="number" min="1" ${edit.tipo === "percentual" ? 'max="90"' : ""} step="${edit.tipo === "valor" ? "0.01" : "1"}" value="${escapar(edit.valor)}">
+          </label>
+        </div>
+        <div class="campos-3">
+          <label class="campo"><span>Compra mínima (R$) <em>opcional</em></span><input name="minimo" type="number" min="0" step="0.01" value="${Number(edit.minimo) || ""}" placeholder="Sem mínimo"></label>
+          <label class="campo"><span>Vale até <em>opcional</em></span><input name="validade" type="date" value="${escapar(edit.validade)}"></label>
+          <label class="campo"><span>Limite de usos <em>opcional</em></span><input name="limite" type="number" min="0" step="1" value="${Number(edit.limite) || ""}" placeholder="Sem limite"></label>
+        </div>
+        <div class="campos-3">
+          <label class="campo"><span>Vale para</span>
+            <select name="categoria"><option value="">Toda a loja</option>${S.categorias.map((c) => `<option value="${escapar(c.id)}" ${edit.categoria === c.id ? "selected" : ""}>Só ${escapar(c.nome)}</option>`).join("")}</select>
+          </label>
+          <label class="aceite cupom-editor__check"><input type="checkbox" name="umPorCliente" ${edit.umPorCliente ? "checked" : ""}><span>Só 1 uso por cliente</span></label>
+        </div>
+        <div class="linha-botoes">
+          <button class="btn">${ui.cupomEditando ? "Salvar cupom" : "Criar cupom"}</button>
+          ${ui.cupomEditando ? `<button type="button" class="link-simples" data-cancelar-cupom>Cancelar</button>` : ""}
+        </div>
+      </form>
+
+      <section class="bloco">
+        <h2>Seus cupons</h2>
+        ${lista.length ? `
+        <div class="tabela-medidas__rolagem">
+          <table class="tabela-historico tabela-cupons">
+            <thead><tr><th>Cupom</th><th>Regras</th><th>Usos</th><th>Vendas</th><th>Desconto dado</th><th>Ativo</th><th></th></tr></thead>
+            <tbody>${lista.map((c) => {
+              const n = nums[c.codigo];
+              const situacao = vencido(c) ? "Vencido" : Number(c.limite) > 0 && n.usos >= Number(c.limite) ? "Esgotado" : "";
+              return `
+              <tr>
+                <td class="tabela-historico__cod"><strong>${escapar(c.codigo)}</strong><small>${escapar(Cupons.descrever(c))}${situacao ? ` · <b class="cupom-situacao">${situacao}</b>` : ""}</small></td>
+                <td>${escapar(Cupons.regras(c, nomeCat).join(" · ") || "Sem regras")}</td>
+                <td class="num">${n.usos}${Number(c.limite) > 0 ? ` / ${c.limite}` : ""}</td>
+                <td class="num">${moeda(n.vendas)}</td>
+                <td class="num">${moeda(n.desconto)}</td>
+                <td><label class="interruptor" title="Ligar ou desligar"><input type="checkbox" data-cupom-ativo="${escapar(c.codigo)}" ${c.ativo ? "checked" : ""}><span></span><b class="sr">Ativo</b></label></td>
+                <td class="cupom-acoes">
+                  <button type="button" class="icone-acao" data-copiar-link="${escapar(linkCupom(c.codigo))}" title="Copiar link com o cupom" aria-label="Copiar link do cupom ${escapar(c.codigo)}"><svg><use href="#i-link"/></svg></button>
+                  <button type="button" class="icone-acao" data-editar-cupom="${escapar(c.codigo)}" aria-label="Editar ${escapar(c.codigo)}"><svg><use href="#i-editar"/></svg></button>
+                  ${ui.excluindoCupom === c.codigo
+                    ? `<button type="button" class="btn btn--perigo btn--pequeno" data-excluir-cupom-ok="${escapar(c.codigo)}">Excluir?</button>`
+                    : `<button type="button" class="icone-acao" data-excluir-cupom="${escapar(c.codigo)}" aria-label="Excluir ${escapar(c.codigo)}"><svg><use href="#i-lixo"/></svg></button>`}
+                </td>
+              </tr>`;
+            }).join("")}</tbody>
+          </table>
+        </div>
+        <p class="nota">O link (<svg class="inline"><use href="#i-link"/></svg>) já abre a loja com o cupom aplicado. Bom para a bio do Instagram, stories e WhatsApp.</p>` : `<p class="vazio-curto">Nenhum cupom ainda. Crie o primeiro acima.</p>`}
+      </section>
+
+      <section class="bloco">
+        <h2>Cupom no aviso do Instagram</h2>
+        <p class="nota">Aparece no aviso que abre quando alguém entra na loja, com o botão "Usar cupom".</p>
+        <label class="campo campo--curto"><span class="sr">Cupom do aviso</span>
+          <select id="cupom-insta"><option value="">Nenhum</option>${lista.map((c) => `<option value="${escapar(c.codigo)}" ${S.config.cupomInsta === c.codigo ? "selected" : ""}>${escapar(c.codigo)} · ${escapar(Cupons.descrever(c))}</option>`).join("")}</select>
+        </label>
+      </section>`;
+  }
+
+  async function salvarCupons(lista) {
+    await Dados.salvarConfig({ cupons: lista });
+  }
+
   /* ---------- clientes cadastrados ---------- */
   function clientes() {
     return `
@@ -844,6 +950,28 @@
     if (t.closest("[data-banner-padrao]")) { await Dados.salvarConfig({ bannerImagem: "" }); toast("Foto padrão de volta"); return renderAba(); }
     if (t.closest("[data-medidas-padrao]")) { await Dados.salvarConfig({ medidas: null }); toast("Medidas padrão restauradas"); return renderAba(); }
     if (t.closest("[data-sair]")) { Dados.sair(); location.hash = ""; return; }
+    // cupons
+    if (t.closest("[data-gerar-cupom]")) { $('#form-cupom-painel [name="codigo"]', raiz).value = Cupons.gerarCodigo(); return; }
+    if (t.closest("[data-cancelar-cupom]")) { ui.cupomEditando = null; return renderAba(); }
+    const editarCupom = t.closest("[data-editar-cupom]");
+    if (editarCupom) { ui.cupomEditando = editarCupom.dataset.editarCupom; renderAba(); $("#form-cupom-painel", raiz).scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    const exCupom = t.closest("[data-excluir-cupom]");
+    if (exCupom) { ui.excluindoCupom = exCupom.dataset.excluirCupom; return renderAba(); }
+    const exCupomOk = t.closest("[data-excluir-cupom-ok]");
+    if (exCupomOk) {
+      const codigo = exCupomOk.dataset.excluirCupomOk;
+      await salvarCupons(Cupons.lista().filter((c) => c.codigo !== codigo));
+      if (S.config.cupomInsta === codigo) await Dados.salvarConfig({ cupomInsta: "" });
+      ui.excluindoCupom = null;
+      toast(`Cupom ${codigo} excluído`);
+      return renderAba();
+    }
+    const copiarLink = t.closest("[data-copiar-link]");
+    if (copiarLink) {
+      try { await navigator.clipboard.writeText(copiarLink.dataset.copiarLink); toast("Link copiado"); }
+      catch { prompt("Copie o link:", copiarLink.dataset.copiarLink); }
+      return;
+    }
     const filtro = t.closest("[data-filtro-pedido]");
     if (filtro) { ui.filtro = filtro.dataset.filtroPedido; ui.cancelando = null; renderAba(); return; }
     const acao = t.closest("[data-acao]");
@@ -892,6 +1020,21 @@
       if (p) { await Dados.salvarProduto({ ...p, oferta: t.checked }); toast(t.checked ? "Produto em Ofertas do dia" : "Produto saiu das ofertas"); }
     }
     if (t.id === "filtro-categoria") { ui.catFiltro = t.value; renderAba(); }
+    if (t.matches("[data-cupom-ativo]")) {
+      const codigo = t.dataset.cupomAtivo;
+      await salvarCupons(Cupons.lista().map((c) => (c.codigo === codigo ? { ...c, ativo: t.checked } : c)));
+      toast(t.checked ? `Cupom ${codigo} ligado` : `Cupom ${codigo} desligado`);
+      return renderAba();
+    }
+    if (t.id === "cupom-insta") { await Dados.salvarConfig({ cupomInsta: t.value }); toast(t.value ? `Aviso do Instagram mostra ${t.value}` : "Aviso sem cupom"); }
+    if (t.closest("#form-cupom-painel") && t.name === "tipo") {
+      const caixa = $("[data-campo-valor]", raiz);
+      caixa.hidden = t.value === "frete";
+      caixa.querySelector("span").textContent = t.value === "valor" ? "Desconto (R$)" : "Desconto (%)";
+      const v = caixa.querySelector("input");
+      v.step = t.value === "valor" ? "0.01" : "1";
+      t.value === "percentual" ? v.max = "90" : v.removeAttribute("max");
+    }
     if (t.id === "so-ofertas") { ui.soOfertas = t.checked; renderAba(); }
     if (t.id === "hist-periodo") { ui.histPeriodo = Number(t.value); renderAba(); }
     if (t.id === "hist-status") { ui.histStatus = t.value; renderAba(); }
@@ -953,6 +1096,26 @@
     e.preventDefault();
     const f = e.target;
     const botao = f.querySelector("button:not([type=button])");
+    if (f.id === "form-cupom-painel") {
+      const d = Object.fromEntries(new FormData(f));
+      const codigo = Cupons.limpar(d.codigo);
+      if (codigo.length < 3) { toast("O código precisa de pelo menos 3 letras ou números"); return f.codigo.focus(); }
+      const editando = ui.cupomEditando;
+      if (!editando && Cupons.achar(codigo)) { toast(`Já existe o cupom ${codigo}`); return f.codigo.select(); }
+      const valor = d.tipo === "frete" ? 0 : Number(d.valor) || 0;
+      if (d.tipo !== "frete" && !(valor > 0)) { toast("Digite o valor do desconto"); return f.valor.focus(); }
+      if (d.tipo === "percentual" && valor > 90) { toast("O desconto máximo é 90%"); return f.valor.focus(); }
+      const antigo = editando ? Cupons.achar(editando) : null;
+      const cupom = {
+        codigo, tipo: d.tipo, valor, minimo: Math.max(0, Number(d.minimo) || 0), validade: d.validade || "",
+        limite: Math.max(0, parseInt(d.limite, 10) || 0), umPorCliente: !!d.umPorCliente, categoria: d.categoria || "",
+        ativo: antigo ? antigo.ativo : true, criadoEm: antigo?.criadoEm || Date.now(),
+      };
+      await salvarCupons(editando ? Cupons.lista().map((c) => (c.codigo === editando ? cupom : c)) : [cupom, ...Cupons.lista()]);
+      ui.cupomEditando = null;
+      toast(editando ? `Cupom ${codigo} salvo` : `Cupom ${codigo} criado`);
+      return renderAba();
+    }
     if (f.matches("[data-entrada]")) {
       const n = parseInt(f.querySelector("input").value, 10);
       if (!(n > 0)) return f.querySelector("input").focus();
