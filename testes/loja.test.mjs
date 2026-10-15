@@ -277,6 +277,114 @@ teste("acompanhar pedido: dono avança as etapas e o cliente vê pelo código", 
   await fechar(p);
 });
 
+teste("painel altera a loja inteira: textos, produtos, categorias, contato, frete, reserva, medidas e cupons", async () => {
+  const p = await abrir();
+  await entrarComoDono(p);
+  await ir(p, "painel");
+  const aba = async (id) => { await p.click(`[data-aba="${id}"]`); await p.waitForTimeout(200); };
+  const salvar = async (form) => { await p.click(`#${form} button.btn:not([type=button])`); await p.waitForTimeout(350); };
+  const preencher = (form, campo, valor) => p.fill(`#${form} [name="${campo}"]`, valor);
+  const loja = async () => { await ir(p, ""); await p.waitForTimeout(250); };
+  const voltar = async () => { await ir(p, "painel"); };
+  const erros = [];
+  const checa = (ok, nome) => { if (!ok) erros.push(nome); };
+
+  // Destaque e textos
+  await aba("destaque");
+  await preencher("form-destaque", "linha1", "Novo título");
+  await preencher("form-destaque", "sub", "Coleção de verão");
+  await preencher("form-destaque", "bannerTitulo", "Queima total");
+  await p.fill('#form-destaque [name="avisos"]', "Aviso de teste do painel");
+  await p.selectOption('#form-destaque [name="produtoDestaque"]', "6");
+  await salvar("form-destaque");
+  await loja();
+  checa((await texto(p, "#hero-titulo")).includes("Novo título"), "título do topo");
+  checa((await texto(p, "#hero-sub")) === "Coleção de verão", "subtítulo");
+  checa((await texto(p, "#banner-titulo")) === "Queima total", "banner");
+  checa((await texto(p, "#faixa")).includes("Aviso de teste do painel"), "faixa de avisos");
+  checa((await texto(p, "#produto-destaque")).includes("Polo Piquet Grafite"), "produto em destaque");
+
+  // Produto: nome, preço, preço antigo, estoque, oferta, descrição
+  await voltar(); await aba("produtos");
+  await p.click('[data-editar="9"]');
+  await p.fill('#form-produto [name="nome"]', "Chinelo Editado");
+  await p.fill('#form-produto [name="preco"]', "44.40");
+  await p.fill('#form-produto [name="precoAntigo"]', "60");
+  await p.fill('#form-produto [name="estoque"]', "3");
+  await p.fill('#form-produto [name="descricao"]', "Descrição nova do chinelo");
+  await p.click('#form-produto [type="submit"]');
+  await p.waitForTimeout(400);
+  await loja();
+  const grade = await texto(p, "#grade");
+  checa(grade.includes("Chinelo Editado") && grade.includes("44,40"), "nome e preço do produto");
+  checa(grade.includes("-26%"), "desconto pelo preço antigo");
+  await p.evaluate(() => document.querySelector('#grade [data-ver="9"]').click());
+  await p.waitForTimeout(300);
+  const modal = await texto(p, "#detalhe");
+  checa(modal.includes("Descrição nova do chinelo") && modal.includes("Últimas 3"), "descrição e estoque");
+  await p.keyboard.press("Escape");
+
+  // Categoria: renomear
+  await voltar(); await aba("categorias");
+  await p.fill('#lista-categorias li[data-cat-id="bones"] [data-nome-cat]', "Bonés e Toucas");
+  await salvar("form-categorias");
+  await loja();
+  checa((await texto(p, "#circulos")).includes("Bonés e Toucas"), "nome da categoria");
+
+  // Contato e links
+  await voltar(); await aba("contato");
+  await preencher("form-contato", "whatsapp", "5521988887777");
+  await preencher("form-contato", "endereco", "Rua Nova, 50, Centro");
+  await preencher("form-contato", "tiktok", "https://www.tiktok.com/@tmz");
+  await preencher("form-contato", "cnpj", "12.345.678/0001-90");
+  await preencher("form-contato", "razaoSocial", "TMZ Comércio LTDA");
+  await salvar("form-contato");
+  await loja();
+  checa((await p.getAttribute("#link-whats", "href")).includes("5521988887777"), "WhatsApp");
+  checa((await texto(p, "#rodape-endereco")) === "Rua Nova, 50, Centro", "endereço");
+  checa((await texto(p, "#rodape-redes")).includes("TikTok"), "rede social");
+  checa((await texto(p, "#rodape-cnpj")).includes("12.345.678/0001-90"), "CNPJ no rodapé");
+
+  // Configurações: Pix, frete, reserva
+  await voltar(); await aba("config");
+  await preencher("form-config", "pixChave", "pix@teste.com");
+  await preencher("form-config", "reservaPercentual", "40");
+  await p.selectOption('#form-config [name="freteModo"]', "fixo");
+  await preencher("form-config", "frete", "15");
+  await preencher("form-config", "freteGratisAcima", "500");
+  await salvar("form-config");
+  await adicionar(p, 7);
+  await ir(p, "carrinho");
+  checa((await texto(p, "#frete")) === "R$ 15,00", "frete fixo");
+  checa((await texto(p, "#frete-msg")).includes("410,10"), "frete grátis acima de");
+  await p.click('#resumo [data-modo="reserva30"]');
+  await p.waitForTimeout(300);
+  checa((await texto(p, "#modos")).includes("Reserva 40%"), "porcentagem da reserva");
+
+  // Medidas
+  await voltar(); await aba("medidas");
+  await p.fill('#form-medidas input[data-cat="camisetas"][data-tam="M"][data-campo="largura"]', "60");
+  await salvar("form-medidas");
+  await ir(p, "medidas");
+  checa((await texto(p, "#medidas-conteudo")).includes("60"), "medidas em cm");
+
+  // Cupom novo
+  await voltar(); await aba("cupons");
+  await p.fill('#form-cupom-painel [name="codigo"]', "TESTE20");
+  await p.selectOption('#form-cupom-painel [name="tipo"]', "valor");
+  await p.fill('#form-cupom-painel [name="valor"]', "20");
+  await p.click("#form-cupom-painel button:not([type=button])");
+  await p.waitForTimeout(300);
+  await ir(p, "compra");
+  await p.fill("#cupom-caixa input", "teste20");
+  await p.click("#cupom-caixa button");
+  await p.waitForTimeout(300);
+  checa((await texto(p, "#compra-totais")).includes("− R$ 20,00"), "cupom criado no painel");
+
+  confere(!erros.length, "não refletiu na loja: " + erros.join(", "));
+  await fechar(p);
+});
+
 teste("páginas de privacidade, trocas e termos", async () => {
   const p = await abrir({ hash: "trocas" });
   confere((await texto(p, "#doc-conteudo")).includes("7 dias"), "trocas sem o prazo de arrependimento");
@@ -344,19 +452,52 @@ teste("servidor: Pix online, aprovação automática e baixa no estoque", async 
   await fechar(dono);
 });
 
+teste("servidor: o que o dono muda aparece no aparelho do cliente sem recarregar", async () => {
+  await fetch(`http://localhost:${PORTA_SUPA}/auth/v1/signup`, { method: "POST", body: JSON.stringify({ email: "admin@tmzstore.com.br", password: "SenhaForte9" }) });
+  const cli = await abrir({ supabase: true });
+  await cli.waitForTimeout(1000);
+  const dono = await abrir({ supabase: true });
+  await ir(dono, "entrar");
+  await dono.fill("#tela-entrar [name=email]", "admin@tmzstore.com.br");
+  await dono.fill("#tela-entrar [name=senha]", "SenhaForte9");
+  await dono.click("#tela-entrar .login__entrar");
+  await dono.waitForTimeout(1500);
+  await dono.click('[data-aba="destaque"]');
+  await dono.fill('#form-destaque [name="linha1"]', "Mudou no outro celular");
+  await dono.click("#form-destaque button.btn:not([type=button])");
+  await dono.waitForTimeout(400);
+  await dono.click('[data-aba="produtos"]');
+  await dono.click('[data-prod-modo="tudo"]');
+  await dono.fill('.edicao-item:nth-child(2) [data-campo="nome"]', "Camiseta Remota");
+  await dono.fill('.edicao-item:nth-child(2) [data-campo="preco"]', "88.80");
+  await dono.click("[data-massa-salvar]");
+  await dono.waitForTimeout(600);
+  // o cliente não recarrega: a loja atualiza sozinha em até 20 segundos
+  let ok = false;
+  for (let i = 0; i < 25 && !ok; i++) {
+    await cli.waitForTimeout(1000);
+    ok = (await texto(cli, "#hero-titulo")).includes("Mudou no outro celular") && (await texto(cli, "#grade")).includes("Camiseta Remota") && (await texto(cli, "#grade")).includes("88,80");
+  }
+  confere(ok, "a mudança do dono não chegou ao cliente");
+  await fechar(dono);
+  await fechar(cli);
+});
+
 /* ---------- roda ---------- */
 let falhas = 0;
-for (const t of testes) {
+const so = process.env.SO; // rodar só os testes com esse trecho no nome: SO=cupom npm test
+for (const t of testes.filter((x) => !so || x.nome.includes(so))) {
   const inicio = Date.now();
   try {
     await t.fn();
     console.log(`  ✓ ${t.nome} (${((Date.now() - inicio) / 1000).toFixed(1)}s)`);
   } catch (e) {
     falhas += 1;
-    console.log(`  ✗ ${t.nome}\n      ${e.message}`);
+    console.log(`  ✗ ${t.nome}\n      ${e.message.split("\n").slice(0, 3).join("\n      ")}`);
   }
 }
-console.log(`\n${testes.length - falhas} de ${testes.length} testes passaram`);
+const rodados = testes.filter((x) => !so || x.nome.includes(so)).length;
+console.log(`\n${rodados - falhas} de ${rodados} testes passaram`);
 await navegador.close();
 site.close();
 supa.close();
