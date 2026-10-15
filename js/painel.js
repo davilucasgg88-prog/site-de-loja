@@ -348,7 +348,10 @@
     return `
       <header class="painel__cabeca">
         <div><p class="rotulo">Catálogo</p><h1>Produtos e estoque</h1><p class="painel__sub">${S.produtos.length} produtos · ${total} peças em estoque</p></div>
-        <button type="button" class="btn" data-novo-produto><svg><use href="#i-mais"/></svg>Novo produto</button>
+        <div class="linha-botoes">
+          <label class="btn btn--contorno" title="Escolha várias fotos: cada uma vira um produto em rascunho"><svg><use href="#i-upload"/></svg>Várias fotos<input type="file" accept="image/*" multiple data-fotos-lote hidden></label>
+          <button type="button" class="btn" data-novo-produto><svg><use href="#i-mais"/></svg>Novo produto</button>
+        </div>
       </header>
       <div class="barra-ferramentas">
         <label class="campo campo--busca"><span class="sr">Buscar produto</span><input type="search" id="busca-produto" placeholder="Buscar produto" value="${escapar(ui.busca)}"></label>
@@ -369,7 +372,7 @@
           <div class="tp-linha${estoque(p) === 0 ? " tp-linha--zerada" : ""}" role="row">
             <div class="tp-produto">
               <span class="tp-foto">${p.imagem ? `<img src="${escapar(p.imagem)}" alt="">` : `<svg><use href="#i-${iconeCat(p.categoria)}"/></svg>`}</span>
-              <span><strong>${escapar(p.nome)}</strong><small>${escapar(categoria(p.categoria).nome)}${esperando(p.id).length ? ` · <button type="button" class="link-simples espera-selo" data-ir="espera">${esperando(p.id).length} na espera</button>` : ""}</small></span>
+              <span><strong>${escapar(p.nome)}${p.rascunho ? ` <em class="tag-rascunho">rascunho</em>` : ""}</strong><small>${escapar(categoria(p.categoria).nome)}${esperando(p.id).length ? ` · <button type="button" class="link-simples espera-selo" data-ir="espera">${esperando(p.id).length} na espera</button>` : ""}</small></span>
             </div>
             <div class="tp-preco">
               <label class="preco-rapido"><span>R$</span><input type="number" step="0.01" min="0" value="${Number(p.preco).toFixed(2)}" data-preco="${escapar(p.id)}" aria-label="Preço de ${escapar(p.nome)}"></label>
@@ -401,15 +404,19 @@
   // Todos os produtos numa lista editável: nome, descrição, foto, categoria e preços. Salva tudo de uma vez.
   const valorEdicao = (p, campo) => (ui.alterados[p.id] && campo in ui.alterados[p.id] ? ui.alterados[p.id][campo] : p[campo]);
   function edicaoEmMassa(lista) {
+    lista = [...lista].sort((a, b) => (b.rascunho ? 1 : 0) - (a.rascunho ? 1 : 0));
+    const rascunhos = lista.filter((p) => p.rascunho).length;
     const n = Object.keys(ui.alterados).length;
     return `
       <p class="nota nota--topo">Edite à vontade: as mudanças ficam marcadas e só vão para a loja quando você clicar em <strong>Salvar tudo</strong>.</p>
+      ${rascunhos ? `<p class="faixa-aviso">${rascunhos} ${rascunhos === 1 ? "produto novo está" : "produtos novos estão"} em rascunho, no topo da lista. Dê nome, categoria e preço: ao salvar com preço, ele entra na loja.</p>` : ""}
       <div class="edicao-lista">
         ${lista.map((p) => {
           const img = valorEdicao(p, "imagem");
           const antigo = valorEdicao(p, "precoAntigo");
           return `
-          <article class="edicao-item${ui.alterados[p.id] ? " alterado" : ""}" data-edicao="${escapar(p.id)}">
+          <article class="edicao-item${ui.alterados[p.id] ? " alterado" : ""}${p.rascunho ? " edicao-item--rascunho" : ""}" data-edicao="${escapar(p.id)}">
+            ${p.rascunho ? `<span class="edicao-item__rascunho">Rascunho · fora da loja</span>` : ""}
             <div class="edicao-item__foto">
               <span class="edicao-item__previa">${img ? `<img src="${escapar(img)}" alt="">` : `<svg><use href="#i-${iconeCat(p.categoria)}"/></svg>`}</span>
               <label class="btn btn--contorno btn--pequeno"><svg><use href="#i-upload"/></svg>Trocar foto<input type="file" accept="image/*" data-foto-massa="${escapar(p.id)}" hidden></label>
@@ -419,7 +426,7 @@
               <div class="campos-edicao">
                 <label class="campo campo--largo"><span>Nome</span><input data-campo="nome" value="${escapar(valorEdicao(p, "nome"))}"></label>
                 <label class="campo"><span>Categoria</span><select data-campo="categoria">${S.categorias.map((c) => `<option value="${escapar(c.id)}" ${valorEdicao(p, "categoria") === c.id ? "selected" : ""}>${escapar(c.nome)}</option>`).join("")}</select></label>
-                <label class="campo"><span>Preço (R$)</span><input data-campo="preco" type="number" step="0.01" min="0" value="${Number(valorEdicao(p, "preco")).toFixed(2)}"></label>
+                <label class="campo"><span>Preço (R$)</span><input data-campo="preco" type="number" step="0.01" min="0" value="${Number(valorEdicao(p, "preco")) ? Number(valorEdicao(p, "preco")).toFixed(2) : ""}" placeholder="0,00"></label>
                 <label class="campo"><span>Preço antigo <em>opcional</em></span><input data-campo="precoAntigo" type="number" step="0.01" min="0" value="${antigo ? Number(antigo).toFixed(2) : ""}" placeholder="—"></label>
               </div>
               <label class="campo"><span>Descrição</span><textarea data-campo="descricao" rows="2">${escapar(valorEdicao(p, "descricao") || "")}</textarea></label>
@@ -470,7 +477,9 @@
       if ("descricao" in m) m.descricao = m.descricao.trim();
       if ("preco" in m) m.preco = centavos(m.preco);
       if ("precoAntigo" in m) m.precoAntigo = m.precoAntigo ? centavos(m.precoAntigo) : null;
-      try { await Dados.salvarProduto({ ...p, ...m }); ok += 1; delete ui.alterados[id]; }
+      const final = { ...p, ...m };
+      if (p.rascunho) final.rascunho = !(Number(final.preco) > 0); // com preço, sai do rascunho e entra na loja
+      try { await Dados.salvarProduto(final); ok += 1; delete ui.alterados[id]; }
       catch { toast(`Não deu para salvar ${p.nome}. Se a foto for muito grande, tente outra.`); }
     }
     if (ok) toast(`${ok} ${ok === 1 ? "produto salvo" : "produtos salvos"} e já na loja`);
@@ -568,6 +577,7 @@
       precoAntigo: f.precoAntigo ? centavos(f.precoAntigo) : null,
       estoque: Math.max(0, parseInt(f.estoque, 10) || 0),
       descricao: f.descricao.trim(), imagem: f.imagem, oferta: form.oferta.checked,
+      rascunho: false, // salvo pelo editor sempre tem preço, então vai para a loja
       detalhes: (f.detalhes || "").split("\n").map((l) => l.trim()).filter(Boolean),
     };
     const botao = form.querySelector("[type=submit]");
@@ -1481,6 +1491,29 @@
         $("#form-produto [name=imagem]", raiz).value = url;
         $("#previa-foto", raiz).innerHTML = `<img src="${url}" alt="">`;
       } catch { toast("Não deu para ler essa imagem"); }
+    }
+    if (t.matches("[data-fotos-lote]") && t.files.length) {
+      const arquivos = [...t.files].slice(0, 40);
+      toast(`Preparando ${arquivos.length} ${arquivos.length === 1 ? "foto" : "fotos"}…`);
+      const nomeDoArquivo = (n) => {
+        const limpo = n.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+        return /^(img|dsc|photo|foto|screenshot|whatsapp|captura|\d)/i.test(limpo) || !limpo ? "" : limpo.charAt(0).toUpperCase() + limpo.slice(1);
+      };
+      let criados = 0;
+      for (const [i, arq] of arquivos.entries()) {
+        try {
+          const imagem = await reduzirFoto(arq);
+          await Dados.salvarProduto({
+            nome: nomeDoArquivo(arq.name) || `Produto novo ${i + 1}`, categoria: ui.catFiltro || S.categorias[0]?.id || "",
+            preco: 0, precoAntigo: null, estoque: 1, descricao: "", imagem, oferta: false, detalhes: [], rascunho: true,
+          });
+          criados += 1;
+        } catch {}
+      }
+      t.value = "";
+      ui.prodModo = "tudo";
+      toast(`${criados} ${criados === 1 ? "produto criado" : "produtos criados"} em rascunho. Complete nome e preço.`);
+      return renderAba();
     }
     if (t.matches("[data-foto-massa]") && t.files[0]) {
       try {

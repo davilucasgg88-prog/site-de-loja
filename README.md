@@ -96,6 +96,8 @@ vê "Sem acesso". Depois de 5 erros seguidos, a tela espera 1 minuto.
 - Contato e links: WhatsApp, e-mail, endereço, horário, Instagram, TikTok, Facebook e um link extra
 - Pedidos e reservas: confirmar sinal recebido (baixa o estoque), marcar retirado/enviado,
   cancelar com o valor de devolução já calculado, registrar devolução feita, voltar peças ao estoque
+- Produtos e preços, botão "Várias fotos": escolha até 40 fotos de uma vez (ex.: as do Instagram salvas
+  no celular); cada uma vira um produto em rascunho, fora da loja até ganhar preço
 - Produtos e preços, modo "Editar todos os produtos": nome, descrição, foto (envio ou link), categoria,
   preço e preço antigo de todos os produtos numa lista só; as mudanças ficam marcadas e vão para a loja
   no "Salvar tudo"

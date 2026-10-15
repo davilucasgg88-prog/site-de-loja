@@ -38,10 +38,12 @@
   }
 
   /* ---------- consultas ---------- */
-  const porId = (id) => S.produtos.find((p) => p.id === String(id));
+  // Rascunhos (produtos ainda sem preço, criados no painel) não aparecem na loja
+  const vitrine = () => S.produtos.filter((p) => !p.rascunho);
+  const porId = (id) => vitrine().find((p) => p.id === String(id));
   const categoria = (id) => S.categorias.find((c) => c.id === id) || { id, nome: id || "Outros" };
   const iconeCat = (id) => (document.getElementById("i-" + id) ? id : "tag");
-  const imagemCat = (c) => c.imagem || S.produtos.find((p) => p.categoria === c.id && p.imagem)?.imagem || "";
+  const imagemCat = (c) => c.imagem || vitrine().find((p) => p.categoria === c.id && p.imagem)?.imagem || "";
   const desconto = (p) => (p.precoAntigo > p.preco ? Math.round((1 - p.preco / p.precoAntigo) * 100) : 0);
   const estoque = (p) => Math.max(0, Number(p?.estoque) || 0);
   const img = (p) => (p.imagem ? `<img src="${escapar(p.imagem)}" alt="${escapar(p.nome)}" loading="lazy">` : `<svg class="sem-foto"><use href="#i-${iconeCat(p.categoria)}"/></svg>`);
@@ -101,12 +103,12 @@
 
   /* ---------- categorias ---------- */
   function renderCategorias() {
-    const comProdutos = S.categorias.filter((c) => S.produtos.some((p) => p.categoria === c.id));
-    const temOferta = S.produtos.some((p) => p.oferta);
+    const comProdutos = S.categorias.filter((c) => vitrine().some((p) => p.categoria === c.id));
+    const temOferta = vitrine().some((p) => p.oferta);
     $("#filtros-catalogo").innerHTML = [["todos", "Todos"], ...(temOferta ? [["ofertas", "Ofertas"]] : []), ...comProdutos.map((c) => [c.id, c.nome])]
       .map(([id, nome]) => `<button type="button" class="filtro-chip" role="tab" data-filtro="${escapar(id)}">${escapar(nome)}</button>`).join("");
     $("#circulos").innerHTML = S.categorias.filter((c) => imagemCat(c)).map((c) => {
-      const qtd = S.produtos.filter((p) => p.categoria === c.id).length;
+      const qtd = vitrine().filter((p) => p.categoria === c.id).length;
       return `
       <button class="circulo" data-cat="${escapar(c.id)}">
         <span class="circulo__anel ilha-escura">
@@ -161,7 +163,7 @@
   /* ---------- vitrine: miniaturas do topo, destaques e produto em destaque ---------- */
   const comFoto = (p) => p.imagem && estoque(p) > 0;
   function ofertasPrimeiro() {
-    return [...S.produtos].sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0));
+    return [...vitrine()].sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0));
   }
 
   function renderMiniaturas() {
@@ -228,10 +230,10 @@
   /* ---------- produtos ---------- */
   function lista() {
     const termo = estado.busca.trim().toLowerCase();
-    if (termo) return S.produtos.filter((p) => `${p.nome} ${categoria(p.categoria).nome} ${p.descricao}`.toLowerCase().includes(termo));
-    if (estado.filtro === "ofertas") return S.produtos.filter((p) => p.oferta);
-    if (estado.filtro === "todos") return S.produtos;
-    return S.produtos.filter((p) => p.categoria === estado.filtro);
+    if (termo) return vitrine().filter((p) => `${p.nome} ${categoria(p.categoria).nome} ${p.descricao}`.toLowerCase().includes(termo));
+    if (estado.filtro === "ofertas") return vitrine().filter((p) => p.oferta);
+    if (estado.filtro === "todos") return vitrine();
+    return vitrine().filter((p) => p.categoria === estado.filtro);
   }
 
   function precos(p) {
@@ -303,15 +305,15 @@
     const escolhidos = [];
     // um de cada categoria combinada primeiro, para variar o look
     for (const c of prioridade) {
-      const opcoes = S.produtos.filter((p) => p.categoria === c && livre(p)).sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0));
+      const opcoes = vitrine().filter((p) => p.categoria === c && livre(p)).sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0));
       if (opcoes[0]) escolhidos.push(opcoes[0]);
       if (escolhidos.length >= limite) return escolhidos;
     }
     for (const c of prioridade) {
-      S.produtos.filter((p) => p.categoria === c && livre(p) && !escolhidos.includes(p)).forEach((p) => escolhidos.length < limite && escolhidos.push(p));
+      vitrine().filter((p) => p.categoria === c && livre(p) && !escolhidos.includes(p)).forEach((p) => escolhidos.length < limite && escolhidos.push(p));
     }
     // completa com ofertas de outras categorias
-    S.produtos.filter((p) => livre(p) && !escolhidos.includes(p) && !catsBase.has(p.categoria))
+    vitrine().filter((p) => livre(p) && !escolhidos.includes(p) && !catsBase.has(p.categoria))
       .sort((a, b) => (b.oferta ? 1 : 0) - (a.oferta ? 1 : 0))
       .forEach((p) => escolhidos.length < limite && escolhidos.push(p));
     return escolhidos;
@@ -1135,7 +1137,7 @@
   /* ---------- "O que você procura?" ---------- */
   const modalProcura = $("#modal-procura");
   function estoqueCategoria(id) {
-    const itens = S.produtos.filter((p) => p.categoria === id);
+    const itens = vitrine().filter((p) => p.categoria === id);
     return { itens: itens.length, estoque: itens.reduce((s, p) => s + estoque(p), 0) };
   }
   function abrirProcura() {

@@ -208,6 +208,30 @@ teste("dono edita produtos em massa e a loja mostra na hora", async () => {
   await fechar(p);
 });
 
+teste("várias fotos de uma vez viram rascunhos e entram na loja ao ganhar preço", async () => {
+  const p = await abrir();
+  await entrarComoDono(p);
+  await ir(p, "painel");
+  await p.click('[data-aba="produtos"]');
+  await p.setInputFiles("[data-fotos-lote]", [join(RAIZ, "img/camiseta-lacoste.jpg"), join(RAIZ, "img/oculos-juliet.jpg")]);
+  await p.waitForTimeout(1500);
+  const rascunhos = await p.evaluate(() => Dados.estado.produtos.filter((x) => x.rascunho).map((x) => x.nome));
+  confere(rascunhos.length === 2, "não criou os 2 rascunhos: " + rascunhos.join());
+  await ir(p, "");
+  confere(!(await texto(p, "#grade")).includes("Camiseta lacoste"), "rascunho apareceu na loja");
+  await ir(p, "painel");
+  await p.click('[data-aba="produtos"]');
+  await p.fill('.edicao-item--rascunho:nth-child(1) [data-campo="nome"]', "Camiseta Nova do Insta");
+  await p.fill('.edicao-item--rascunho:nth-child(1) [data-campo="preco"]', "129.90");
+  await p.click("[data-massa-salvar]");
+  await p.waitForTimeout(500);
+  await ir(p, "");
+  const grade = await texto(p, "#grade");
+  confere(grade.includes("Camiseta Nova do Insta") && grade.includes("129,90"), "produto com preço não entrou na loja");
+  confere(await p.evaluate(() => Dados.estado.produtos.filter((x) => x.rascunho).length === 1), "o outro deveria seguir em rascunho");
+  await fechar(p);
+});
+
 teste("avise-me quando chegar: cliente entra na lista e o dono avisa", async () => {
   const p = await abrir();
   await p.evaluate(() => Dados.ajustarEstoque("10", -Dados.estado.produtos.find((x) => x.id === "10").estoque));
