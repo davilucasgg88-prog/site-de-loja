@@ -125,7 +125,7 @@
           <header class="bloco__topo"><h2>Últimos pedidos</h2><button type="button" class="link-simples" data-ir="pedidos" data-filtro="todos">Ver todos</button></header>
           ${recentes.length ? `<ul class="lista-curta">${recentes.map((p) => `
             <li><span class="lista-curta__cod">${escapar(p.codigo)}</span><span>${escapar(p.cliente?.nome || "")}</span>
-            <span class="status status--${p.status}">${NOMES_STATUS[p.status]}</span><b>${moeda(p.total)}</b></li>`).join("")}</ul>`
+            <span class="status status--${escapar(p.status)}">${NOMES_STATUS[p.status]}</span><b>${moeda(p.total)}</b></li>`).join("")}</ul>`
             : `<p class="vazio-curto">Nenhum pedido ainda. Eles aparecem aqui assim que alguém comprar ou reservar.</p>`}
         </section>
         <section class="bloco">
@@ -262,14 +262,14 @@
           ${S.pagamentos?.[p.codigo]?.status === "approved" && S.pagamentos[p.codigo].verificado
             ? `<span class="etiqueta etiqueta--ok" title="Pagamento de ${moeda(S.pagamentos[p.codigo].valorPago)} conferido direto no Mercado Pago">Pix verificado</span>`
             : p.pago && p.pagamentoVerificado ? `<span class="etiqueta etiqueta--alerta" title="O pedido diz que foi pago online, mas o servidor não tem esse pagamento">Pagamento não encontrado</span>` : ""}
-          <span class="status status--${p.status}">${NOMES_STATUS[p.status]}</span>
+          <span class="status status--${escapar(p.status)}">${NOMES_STATUS[p.status]}</span>
         </header>
         <div class="pedido__cliente">
           <strong>${escapar(p.cliente?.nome)}</strong>
           ${zap ? `<a href="https://wa.me/55${zap.replace(/^55/, "")}?text=${encodeURIComponent(`Oi, ${p.cliente.nome.split(" ")[0]}! Sobre o pedido ${p.codigo} na ${S.config.nome}:`)}" target="_blank" rel="noopener">${escapar(p.cliente.telefone)}</a>` : ""}
           <span>${p.receber === "entrega" ? `Entrega · ${escapar(p.cliente?.endereco)} · CEP ${escapar(p.cliente?.cep)}` : "Retirada na loja"}</span>
         </div>
-        <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${i.qtd}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
+        <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${Number(i.qtd) || 0}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
         <dl class="pedido__valores">
           <div><dt>Total</dt><dd>${moeda(p.total)}</dd></div>
           ${p.cupom ? `<div><dt>Cupom</dt><dd>${escapar(p.cupom.codigo)}${p.cupom.desconto ? ` · −${moeda(p.cupom.desconto)}` : " · frete grátis"}</dd></div>` : ""}
@@ -285,20 +285,42 @@
       </article>`;
   }
 
+  // Devolve ao estoque o que saiu na confirmação (pedidos antigos, sem o registro, devolvem a quantidade)
+  async function devolverAoEstoque(p) {
+    const baixas = p.baixas && typeof p.baixas === "object" ? p.baixas : null;
+    for (const i of p.itens) {
+      const qtd = baixas ? Math.max(0, Number(baixas[i.id]) || 0) : i.qtd;
+      if (qtd) await Dados.ajustarEstoque(i.id, qtd);
+      if (baixas) baixas[i.id] = 0; // itens repetidos devolvem uma vez só
+    }
+  }
+
   async function acaoPedido(acao, chave, botao) {
     if (acao === "cancelar-nao") { ui.cancelando = null; return renderAba(); }
     if (acao === "cancelar") { ui.cancelando = chave; return renderAba(); }
     if (acao === "enviar") { ui.enviando = chave; return renderAba(); }
     if (acao === "enviar-nao") { ui.enviando = null; return renderAba(); }
     const [dono, codigo] = chave.split("|");
-    const p = S.pedidos.find((x) => x.dono === dono && x.codigo === codigo);
-    if (!p) return;
     botao && (botao.disabled = true);
+    // relê o pedido: outro aparelho ou o pagamento automático podem ter mudado ele agora há pouco
+    const p = await Dados.lerPedido(dono, codigo) || S.pedidos.find((x) => x.dono === dono && x.codigo === codigo);
+    if (!p) { toast("Pedido não encontrado"); return renderAba(); }
+    const pode = {
+      confirmar: p.status === "aguardando", separar: p.status === "confirmado" && !p.etapa,
+      pronto: p.status === "confirmado" && p.etapa === "separando" && p.receber === "retirada",
+      "enviar-ok": p.status === "confirmado" && p.etapa === "separando" && p.receber === "entrega",
+      concluir: p.status === "confirmado", "cancelar-ok": ["aguardando", "confirmado"].includes(p.status),
+      estornar: p.status === "cancelado", repor: p.estoqueBaixado && ["cancelado", "estornado"].includes(p.status),
+    };
+    if (acao in pode && !pode[acao]) { toast("Este pedido já mudou. A tela foi atualizada."); ui.cancelando = null; ui.enviando = null; return renderAba(); }
     try {
       if (acao === "confirmar") {
-        for (const i of p.itens) await Dados.ajustarEstoque(i.id, -i.qtd);
-        await Dados.atualizarPedido(dono, codigo, { status: "confirmado", pago: true, estoqueBaixado: true, confirmadoEm: Date.now() });
-        toast("Pagamento confirmado e estoque atualizado");
+        // guarda quanto saiu de cada produto, para devolver exatamente isso se cancelar
+        const baixas = {};
+        for (const i of p.itens) baixas[i.id] = (baixas[i.id] || 0) - (await Dados.ajustarEstoque(i.id, -i.qtd));
+        await Dados.atualizarPedido(dono, codigo, { status: "confirmado", pago: true, estoqueBaixado: true, baixas, confirmadoEm: Date.now() });
+        const faltou = p.itens.some((i) => (baixas[i.id] || 0) < i.qtd);
+        toast(faltou ? "Confirmado, mas faltou estoque de alguma peça. Confira." : "Pagamento confirmado e estoque atualizado");
       }
       if (acao === "separar") {
         await Dados.atualizarPedido(dono, codigo, { etapa: "separando", separandoEm: Date.now() });
@@ -322,7 +344,7 @@
       if (acao === "cancelar-ok") {
         const valor = centavos(Math.max(0, Number($("#valor-devolver", raiz)?.value) || 0));
         const repor = p.estoqueBaixado && $("#voltar-estoque", raiz)?.checked;
-        if (repor) for (const i of p.itens) await Dados.ajustarEstoque(i.id, i.qtd);
+        if (repor) await devolverAoEstoque(p);
         await Dados.atualizarPedido(dono, codigo, { status: valor > 0 ? "cancelado" : "estornado", canceladoEm: Date.now(), canceladoPor: "loja", reembolso: valor, estoqueBaixado: p.estoqueBaixado && !repor });
         ui.cancelando = null;
         toast(valor > 0 ? `Cancelado. Devolva ${moeda(valor)} ao cliente.` : "Pedido cancelado");
@@ -332,7 +354,7 @@
         toast("Devolução registrada");
       }
       if (acao === "repor") {
-        for (const i of p.itens) await Dados.ajustarEstoque(i.id, i.qtd);
+        await devolverAoEstoque(p);
         await Dados.atualizarPedido(dono, codigo, { estoqueBaixado: false });
         toast("Peças devolvidas ao estoque");
       }
@@ -864,8 +886,9 @@
     const lanc = lancamentos();
     const noPeriodo = lanc.filter((x) => x.em >= desde);
     const total = centavos(noPeriodo.reduce((s, x) => s + x.valor, 0));
-    const pagos = S.pedidos.filter((p) => p.pago && (p.confirmadoEm || p.criadoEm) >= desde);
-    const ticket = pagos.length ? total / pagos.length : 0;
+    // pedidos pagos e não cancelados no período; ticket médio = valor desses pedidos ÷ quantidade
+    const pagos = S.pedidos.filter((p) => p.pago && !["cancelado", "estornado"].includes(p.status) && (p.confirmadoEm || p.criadoEm) >= desde);
+    const ticket = pagos.length ? pagos.reduce((s, p) => s + p.total, 0) / pagos.length : 0;
     const porDia = {};
     lanc.forEach((x) => { const k = chaveDia(x.em); porDia[k] = (porDia[k] || 0) + x.valor; });
     const aReceber = S.pedidos.filter((p) => p.status === "aguardando").reduce((s, p) => s + p.sinal, 0) + S.pedidos.filter((p) => p.status === "confirmado").reduce((s, p) => s + (p.restante || 0), 0);
@@ -1057,7 +1080,7 @@
             <tr>
               <td class="tabela-historico__cod">${escapar(c.id)}<small>criado ${dataHora(c.criadoEm)}</small></td>
               <td>${c.cliente?.nome ? `<strong>${escapar(c.cliente.nome)}</strong><small>${escapar(c.cliente.whats || c.cliente.email || "")}</small>` : `<span class="suave">Visitante</span>`}</td>
-              <td>${c.itens.map((i) => `${i.qtd}× ${escapar(i.nome)}`).join("<br>")}</td>
+              <td>${c.itens.map((i) => `${Number(i.qtd) || 0}× ${escapar(i.nome)}`).join("<br>")}</td>
               <td class="num">${moeda(c.valor)}</td>
               <td>${tempo(c.atualizadoEm)}</td>
               <td><span class="status status--car-${st}">${STATUS_CARRINHO[st]}</span></td>
@@ -1216,7 +1239,8 @@
 
   function historico() {
     const lista = filtrarHistorico();
-    const soma = lista.filter((p) => p.pago).reduce((s, p) => s + (p.tipo === "compra" ? p.total : p.sinal), 0);
+    // mesma conta da coluna "Pago": compra = total; reserva = sinal (+ restante quando retirado)
+    const soma = lista.filter((p) => p.pago).reduce((s, p) => s + (p.tipo === "compra" ? p.total : p.sinal + (p.status === "retirado" ? p.restante : 0)), 0);
     return `
       <header class="painel__cabeca">
         <div><p class="rotulo">Registro</p><h1>Histórico de compras</h1><p class="painel__sub">${lista.length} ${lista.length === 1 ? "pedido" : "pedidos"} · ${moeda(soma)} já pagos</p></div>
@@ -1240,11 +1264,11 @@
               <td>${dataHora(p.criadoEm)}</td>
               <td class="tabela-historico__cod">${escapar(p.codigo)}</td>
               <td><strong>${escapar(p.cliente?.nome)}</strong><small>${escapar(p.cliente?.telefone || "")}</small></td>
-              <td>${p.itens.map((i) => `${i.qtd}× ${escapar(i.nome)}`).join("<br>")}</td>
+              <td>${p.itens.map((i) => `${Number(i.qtd) || 0}× ${escapar(i.nome)}`).join("<br>")}</td>
               <td>${escapar(nomeTipo(p))}<small>${p.receber === "entrega" ? "Entrega" : "Retirada"}</small></td>
               <td class="num">${moeda(p.total)}</td>
               <td class="num">${p.pago ? moeda(p.tipo === "compra" ? p.total : p.sinal + (p.status === "retirado" ? p.restante : 0)) : "—"}</td>
-              <td><span class="status status--${p.status}">${NOMES_STATUS[p.status]}</span></td>
+              <td><span class="status status--${escapar(p.status)}">${NOMES_STATUS[p.status]}</span></td>
             </tr>`).join("")}
           </tbody>
         </table>
@@ -1252,7 +1276,12 @@
   }
   async function exportarCSV() {
     const lista = filtrarHistorico();
-    const campo = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    // aspas escapadas e texto que começa com = + - @ vira texto (não vira fórmula no Excel)
+    const campo = (v) => {
+      let t = String(v ?? "");
+      if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t;
+      return `"${t.replace(/"/g, '""')}"`;
+    };
     const linhas = [["Data", "Código", "Cliente", "Telefone", "E-mail", "Itens", "Forma", "Receber", "Endereço", "Total", "Sinal", "Restante", "Pago", "Situação", "Devolução"]]
       .concat(lista.map((p) => [dataHora(p.criadoEm), p.codigo, p.cliente?.nome, p.cliente?.telefone, p.cliente?.email, p.itens.map((i) => `${i.qtd}x ${i.nome}`).join("; "), nomeTipo(p), p.receber, `${p.cliente?.endereco || ""} ${p.cliente?.cep || ""}`.trim(), p.total, p.sinal, p.restante, p.pago ? "sim" : "não", NOMES_STATUS[p.status], p.reembolso ?? ""]));
     const texto = "\ufeff" + linhas.map((l) => l.map(campo).join(";")).join("\r\n");
@@ -1328,9 +1357,9 @@
   raiz.addEventListener("click", async (e) => {
     const t = e.target;
     const aba = t.closest("[data-aba]");
-    if (aba) { ui.aba = aba.dataset.aba; ui.cancelando = null; ui.excluindo = null; render(); $("#painel").scrollTop = 0; return; }
+    if (aba) { ui.aba = aba.dataset.aba; limparEdicoes(); render(); $("#painel").scrollTop = 0; return; }
     const ir = t.closest("[data-ir]");
-    if (ir) { ui.aba = ir.dataset.ir; if (ir.dataset.filtro) ui.filtro = ir.dataset.filtro; render(); return; }
+    if (ir) { ui.aba = ir.dataset.ir; limparEdicoes(); if (ir.dataset.filtro) ui.filtro = ir.dataset.filtro; render(); return; }
     const per = t.closest("[data-periodo]");
     if (per) { ui.periodo = Number(per.dataset.periodo); return renderAba(); }
     if (t.closest("[data-exportar]")) return exportarCSV();
@@ -1379,6 +1408,7 @@
       await salvarCupons(Cupons.lista().filter((c) => c.codigo !== codigo));
       if (S.config.cupomInsta === codigo) await Dados.salvarConfig({ cupomInsta: "" });
       ui.excluindoCupom = null;
+      if (ui.cupomEditando === codigo) ui.cupomEditando = null;
       toast(`Cupom ${codigo} excluído`);
       return renderAba();
     }
@@ -1674,7 +1704,13 @@
   raiz.addEventListener("pointerleave", () => raiz.querySelectorAll(".grafico__dica").forEach((d) => { d.hidden = true; }), true);
 
   /* ---------- quando abrir e quando os dados mudarem ---------- */
+  // trocar de aba ou sair do painel fecha o que estava aberto (formulário de envio, cancelamento, editor)
+  function limparEdicoes() {
+    ui.cancelando = null; ui.excluindo = null; ui.enviando = null; ui.excluindoCupom = null;
+    if (ui.editando) fecharEditor();
+  }
   window.addEventListener("tmz:rota", (e) => {
+    if (e.detail !== "painel") limparEdicoes();
     ui.aberto = e.detail === "painel";
     if (ui.aberto) render();
   });
@@ -1691,7 +1727,7 @@
       contaAntes = JSON.stringify(S.conta);
       return render();
     }
-    if (ui.editando || ui.enviando || abasDeFormulario.includes(ui.aba) || ui.aba === "produtos" && ui.prodModo === "tudo" || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
+    if (ui.editando || ui.enviando || ui.cancelando || abasDeFormulario.includes(ui.aba) || ui.aba === "produtos" && ui.prodModo === "tudo" || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
       // só atualiza o contador do menu
       const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length;
       const b = raiz.querySelector('[data-aba="pedidos"]');

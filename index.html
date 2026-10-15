@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Segurança: só roda script desta loja (bloqueia código injetado). Se mudar os scripts escritos
+       direto nesta página, atualize os hashes (sha256) aqui; o teste da CSP mostra o valor novo. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-6S6RXnR+FlS2+X/tUHtAj/1vWLWXmOkMZMBrZs1JonA=' 'sha256-I7y341s/3Ic8QonQoslRM5/AsLb+WDNYiVzq7HpJeko='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://*.supabase.co https://viacep.com.br; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>TMZ STORE</title>
   <meta name="description" content="TMZ, a loja que veste o povo. Peças peruanas de primeira linha: Lacoste, Nike, Tommy Hilfiger e mais.">
   <meta name="theme-color" content="#0a0a0b">

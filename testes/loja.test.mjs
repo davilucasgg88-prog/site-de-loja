@@ -34,7 +34,8 @@ const navegador = await chromium.launch(process.env.CHROMIUM ? { executablePath:
 
 const VIACEP = { "20040020": { uf: "RJ", localidade: "Rio de Janeiro", logradouro: "Avenida Rio Branco", bairro: "Centro" }, "01001000": { uf: "SP", localidade: "São Paulo", logradouro: "Praça da Sé", bairro: "Sé" } };
 async function abrir({ largura = 1280, altura = 900, supabase = false, hash = "" } = {}) {
-  const ctx = await navegador.newContext({ viewport: { width: largura, height: altura } });
+  // o Supabase falso roda em localhost, que a política de segurança (CSP) da página não libera
+  const ctx = await navegador.newContext({ viewport: { width: largura, height: altura }, bypassCSP: supabase });
   await ctx.route("https://viacep.com.br/**", (r) => {
     const cep = r.request().url().match(/ws\/(\d+)/)[1];
     r.fulfill({ contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(VIACEP[cep] ? { cep, ...VIACEP[cep] } : { erro: true }) });
@@ -67,6 +68,25 @@ const entrarComoDono = async (p) => {
 };
 
 /* ---------- loja ---------- */
+teste("política de segurança (CSP) confere com os scripts da página", async () => {
+  const { createHash } = await import("node:crypto");
+  const html = await readFile(join(RAIZ, "index.html"), "utf8");
+  const csp = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1] || "";
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  for (const js of inline) {
+    const h = "'sha256-" + createHash("sha256").update(js).digest("base64") + "'";
+    confere(csp.includes(h), "um script dentro do index.html mudou: atualize o hash na CSP para " + h);
+  }
+  const p = await abrir();
+  const violacoes = await p.evaluate(() => new Promise((ok) => {
+    const lista = [];
+    document.addEventListener("securitypolicyviolation", (e) => lista.push(e.violatedDirective + " " + e.blockedURI));
+    setTimeout(() => ok(lista), 800);
+  }));
+  confere(!violacoes.length, "a CSP bloqueou algo da própria loja: " + violacoes.join(", "));
+  await fechar(p);
+});
+
 teste("a página inicial abre com produtos, categorias e sem erros", async () => {
   const p = await abrir();
   confere((await p.locator("#grade .card, #grade article").count()) >= 6, "catálogo vazio");
@@ -135,7 +155,7 @@ teste("compra completa registra o pedido com código e endereço do CEP", async 
   await p.fill("#c-endereco", "Praça da Sé, 10, Sé, São Paulo - SP");
   await p.click("#confirmar-compra");
   await p.waitForTimeout(600);
-  confere(/TMZ-[A-Z0-9]{5}/.test(await texto(p, "#compra-ok")), "pedido sem código");
+  confere(/TMZ-[A-Z0-9]{5,10}/.test(await texto(p, "#compra-ok")), "pedido sem código");
   const pedido = await p.evaluate(() => Dados.estado.pedidos.at(-1));
   confere(pedido.frete === 12 && pedido.prazoEntrega === 2, "frete da mesma cidade errado");
   await fechar(p);
@@ -266,7 +286,7 @@ teste("acompanhar pedido: dono avança as etapas e o cliente vê pelo código", 
   await p.fill("#c-endereco", "Avenida Rio Branco, 1, Centro, Rio de Janeiro - RJ");
   await p.click("#confirmar-compra");
   await p.waitForTimeout(500);
-  const codigo = (await texto(p, ".concluido__codigo")).match(/TMZ-[A-Z0-9]{5}/)[0];
+  const codigo = (await texto(p, ".concluido__codigo")).match(/TMZ-[A-Z0-9]{5,10}/)[0];
   await entrarComoDono(p);
   await ir(p, "painel");
   await p.click('[data-aba="pedidos"]');
@@ -409,6 +429,90 @@ teste("painel altera a loja inteira: textos, produtos, categorias, contato, fret
   await fechar(p);
 });
 
+teste("pedido malicioso não executa código nem quebra o painel", async () => {
+  const p = await abrir();
+  const xss = '"><img src=x onerror="window.__xss=1">';
+  await p.evaluate((xss) => {
+    const d = JSON.parse(localStorage.getItem("tmz-dados-v1") || "{}");
+    d.pedidos = [
+      { codigo: "TMZ-XSS" + xss, status: xss, etapa: xss, tipo: xss, receber: "entrega", criadoEm: Date.now(), itens: [{ id: "1", nome: xss, preco: "1", qtd: "1" + xss }],
+        cliente: { nome: xss, telefone: xss, endereco: xss, cep: xss }, cupom: { codigo: xss }, rastreio: { transportadora: xss, codigo: xss }, dono: "local", historico: xss },
+      { codigo: "TMZ-QUEBRADO", itens: "x", cliente: null, criadoEm: "ontem", dono: "local" },
+    ];
+    d.carrinhos = [{ id: xss, itens: [{ nome: xss, qtd: xss }], cliente: { nome: xss, whats: xss }, status: xss, criadoEm: Date.now(), atualizadoEm: Date.now() - 5e6 }];
+    d.avisos = [{ id: "a", produtoId: "1", produto: xss, contato: xss, nome: xss, criadoEm: Date.now() }];
+    localStorage.setItem("tmz-dados-v1", JSON.stringify(d));
+    sessionStorage.setItem("tmz-sessao", JSON.stringify({ tipo: "teste", email: "admin@tmzstore.com.br", admin: true }));
+  }, xss);
+  await p.goto(BASE + "#painel");
+  await p.reload();
+  await p.waitForTimeout(600);
+  const abas = await p.$$eval("[data-aba]", (els) => els.map((e) => e.dataset.aba));
+  for (const aba of abas) { await p.click(`[data-aba="${aba}"]`); await p.waitForTimeout(120); }
+  await p.click('[data-aba="pedidos"]');
+  await p.click('[data-ped-vista="lista"]');
+  await p.click('[data-filtro-pedido="todos"]');
+  await p.waitForTimeout(200);
+  await ir(p, "reservas");
+  await ir(p, "acompanhar");
+  await p.waitForTimeout(300);
+  confere(!(await p.evaluate(() => window.__xss)), "código malicioso executou");
+  await fechar(p);
+});
+
+teste("correções da revisão: CEP, erros visíveis, frete grátis, medidas e estoque", async () => {
+  const p = await abrir();
+  await adicionar(p, 1);
+  // CEP do frete e da compra ficam iguais
+  await ir(p, "compra");
+  await p.type("#c-cep", "01001000");
+  await p.waitForTimeout(500);
+  await ir(p, "carrinho");
+  await p.fill("#cep-carrinho input", "");
+  await p.type("#cep-carrinho input", "20040020");
+  await p.waitForTimeout(500);
+  await ir(p, "compra");
+  confere((await p.inputValue("#c-cep")) === "20040-020", "CEP da compra não acompanhou o do frete");
+  // erro ao registrar aparece para o cliente
+  await p.evaluate(() => { Dados.criarPedido = async () => { throw new Error("Este cupom esgotou."); }; });
+  await p.fill("#c-nome", "Erro Visível");
+  await p.fill("#c-telefone", "11999990000");
+  await p.fill("#c-endereco", "Avenida Rio Branco, 1, Centro, Rio de Janeiro - RJ");
+  await p.click("#confirmar-compra");
+  await p.waitForTimeout(300);
+  confere(await p.isVisible("#erro-compra") && (await texto(p, "#erro-compra")).includes("esgotou"), "erro do pedido não apareceu");
+  // frete grátis desligado não mostra a barra
+  await p.evaluate(() => Dados.salvarConfig({ freteGratisAcima: 0 }));
+  await ir(p, "carrinho");
+  confere(!(await p.isVisible("#frete-barra")), "barra de frete grátis com frete grátis desligado");
+  // calculadora de medidas não apaga o que foi digitado
+  await ir(p, "medidas");
+  await p.fill("#calc-medida", "98");
+  await p.evaluate(() => Dados.salvarConfig({ freteGratisAcima: 1 }));
+  await p.waitForTimeout(200);
+  confere((await p.inputValue("#calc-medida")) === "98", "medida digitada sumiu");
+  // estoque não aparece do nada ao cancelar
+  await p.evaluate(async () => {
+    await Dados.ajustarEstoque("6", 1 - Dados.estado.produtos.find((x) => x.id === "6").estoque);
+    Dados.estado.pedidos.push({ codigo: "TMZ-ESTOQUE1", dono: "local", tipo: "compra", status: "aguardando", receber: "retirada", itens: [{ id: "6", nome: "Polo", preco: 1, qtd: 3 }], total: 3, sinal: 3, restante: 0, criadoEm: Date.now(), cliente: { nome: "Teste", telefone: "11999990000" }, historico: [] });
+    sessionStorage.setItem("tmz-sessao", JSON.stringify({ tipo: "teste", email: "admin@tmzstore.com.br", admin: true }));
+  });
+  await entrarComoDono(p);
+  await ir(p, "painel");
+  await p.click('[data-aba="pedidos"]');
+  await p.click('[data-ped-vista="lista"]');
+  await p.click('[data-filtro-pedido="todos"]');
+  const chave = await p.getAttribute('[data-acao="confirmar"][data-chave$="TMZ-ESTOQUE1"]', "data-chave");
+  await p.click(`[data-acao="confirmar"][data-chave="${chave}"]`);
+  await p.waitForTimeout(300);
+  await p.click(`[data-acao="cancelar"][data-chave="${chave}"]`);
+  await p.click(`[data-acao="cancelar-ok"][data-chave="${chave}"]`);
+  await p.waitForTimeout(300);
+  const est = await p.evaluate(() => Dados.estado.produtos.find((x) => x.id === "6").estoque);
+  confere(est === 1, "estoque deveria voltar a 1, ficou " + est);
+  await fechar(p);
+});
+
 teste("páginas de privacidade, trocas e termos", async () => {
   const p = await abrir({ hash: "trocas" });
   confere((await texto(p, "#doc-conteudo")).includes("7 dias"), "trocas sem o prazo de arrependimento");
@@ -449,7 +553,15 @@ teste("servidor: Pix online, aprovação automática e baixa no estoque", async 
   await cli.click("#confirmar-compra");
   await cli.waitForTimeout(1500);
   confere(await cli.isVisible(".pix-qr"), "QR Code do Pix não apareceu");
-  const codigo = (await texto(cli, ".concluido__codigo")).match(/TMZ-[A-Z0-9]{5}/)[0];
+  const codigo = (await texto(cli, ".concluido__codigo")).match(/TMZ-[A-Z0-9]{5,10}/)[0];
+  // fraude: o cliente tenta marcar o próprio pedido como pago ou trocar o valor
+  const fraude = await cli.evaluate(async (codigo) => {
+    try { await Supa.banco.doc("pedidos/" + codigo).set({ codigo, status: "confirmado", pago: true, total: 1 }); return "gravou"; }
+    catch (e) { return e.status; }
+  }, codigo);
+  confere(fraude === 403, "cliente conseguiu alterar o próprio pedido: " + fraude);
+  const pedidoServidor = (await (await fetch(`http://localhost:${PORTA_SUPA}/teste/docs`)).json())["pedidos/" + codigo];
+  confere(pedidoServidor.total === 114.8 && pedidoServidor.dono, "pedido gravado pelo servidor com valor errado");
   await fetch(`http://localhost:${PORTA_SUPA}/teste/aprovar?codigo=${codigo}`);
   await cli.waitForTimeout(5800);
   confere((await texto(cli, "#compra-ok h1")) === "Pagamento aprovado!", "cliente não viu a aprovação");

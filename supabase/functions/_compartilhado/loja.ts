@@ -75,6 +75,7 @@ export async function recalcular(pedido: any, config: Config, produtos: Map<stri
 
   // frete
   let frete = 0;
+  let prazo: number | null = null;
   const limite = Number(config.freteGratisAcima) || 0;
   if (pedido.receber === "entrega" && subtotal > 0 && !(limite > 0 && subtotal >= limite)) {
     if (config.freteModo === "regiao") {
@@ -84,13 +85,16 @@ export async function recalcular(pedido: any, config: Config, produtos: Map<stri
       if (dest.uf === config.lojaUF) faixa = dest.cidade && semAcento(dest.cidade) === semAcento(config.lojaCidade) ? "cidade" : "estado";
       else if (regiaoDe(dest.uf) && regiaoDe(dest.uf) === regiaoDe(config.lojaUF)) faixa = "regiao";
       frete = Number(tabela[faixa].valor) || 0;
+      prazo = Number(tabela[faixa].prazo) || null;
     } else {
       frete = Number(config.frete) || 0;
     }
   }
 
-  // cupom
+  const freteSemCupom = frete;
+  // cupom (validade, mínimo, categoria; limite de usos e 1 por cliente são conferidos na função pedido)
   let desconto = 0;
+  let cupomAplicado: Record<string, unknown> | null = null;
   const codigo = pedido.cupom?.codigo;
   if (codigo) {
     // deno-lint-ignore no-explicit-any
@@ -102,25 +106,37 @@ export async function recalcular(pedido: any, config: Config, produtos: Map<stri
       if (c.tipo === "percentual") desconto = centavos(base * Math.min(100, Number(c.valor) || 0) / 100);
       if (c.tipo === "valor") desconto = Math.min(base, Number(c.valor) || 0);
       if (c.tipo === "frete") frete = 0;
+      cupomAplicado = c;
     }
   }
 
   const total = centavos(subtotal - desconto + frete);
+  const num = (v: unknown, padrao: number) => (Number.isFinite(Number(v)) && v !== "" && v != null ? Number(v) : padrao);
   let cobrar = total;
-  if (pedido.tipo === "reserva30") cobrar = centavos(total * (Number(config.reservaPercentual) || 30) / 100);
-  if (pedido.tipo === "reserva50") cobrar = Math.min(Number(config.reservaFixa) || 50, total);
-  return { itens, subtotal, frete, desconto, total, cobrar };
+  if (pedido.tipo === "reserva30") cobrar = centavos(total * num(config.reservaPercentual, 30) / 100);
+  if (pedido.tipo === "reserva50") cobrar = Math.min(num(config.reservaFixa, 50), total);
+  return { itens, subtotal, frete, freteSemCupom, prazo, desconto, cupom: cupomAplicado, total, cobrar };
 }
 
-// Acha o pedido pelo código dentro de reservas/<cliente>
+// Pedido pelo código (coleção pedidos, gravada só pelo servidor)
 export async function acharPedido(db: SupabaseClient, codigo: string) {
-  const { data, error } = await db.from("docs").select("id,dados")
-    .eq("colecao", "reservas").contains("dados", { lista: [{ codigo }] }).limit(1);
+  const { data, error } = await db.from("docs").select("dados").eq("colecao", "pedidos").eq("id", codigo).maybeSingle();
   if (error) throw error;
-  const doc = data?.[0];
-  // deno-lint-ignore no-explicit-any
-  const pedido = doc?.dados?.lista?.find((p: any) => p.codigo === codigo);
-  return doc && pedido ? { dono: doc.id as string, lista: doc.dados.lista, pedido } : null;
+  return data?.dados || null;
+}
+
+// Código do pedido: TMZ- + 8 caracteres aleatórios do gerador criptográfico (~1 trilhão de combinações)
+export function novoCodigo() {
+  const letras = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return "TMZ-" + [...bytes].map((b) => letras[b % 32]).join("");
+}
+
+// Quem chama: confere o token no Supabase
+export async function usuario(db: SupabaseClient, req: Request) {
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  const { data } = await db.auth.getUser(token);
+  return data?.user || null;
 }
 
 export async function lerLoja(db: SupabaseClient) {

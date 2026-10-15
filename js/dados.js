@@ -25,6 +25,7 @@ const Dados = (() => {
     uid: "local",
     ...padrao(),
     meusPedidos: [],
+    produtosProntos: true, // false enquanto o catálogo do servidor ainda não chegou
     pagamentos: {}, // { "TMZ-AB12C": { status: "approved", valorPago, ... } } (só o dono enxerga)
     visitas: {}, // { "2026-10-10": { pessoas, vistas } } — só o dono enxerga
   };
@@ -42,6 +43,63 @@ const Dados = (() => {
     ouvintes.forEach((fn) => fn(estado));
   }
 
+  /* ---------- limpeza do que vem dos clientes ---------- */
+  // Pedidos, carrinhos e avisos são gravados pelo navegador do cliente (nos modos sem servidor) e
+  // podem chegar malformados ou maliciosos: aqui cada campo volta ao tipo e aos valores esperados.
+  const STATUS_PEDIDO = ["aguardando", "confirmado", "retirado", "cancelado", "estornado"];
+  const numero = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const quando = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : undefined);
+  const txt = (v, max = 200) => (v == null ? "" : String(v).slice(0, max));
+  const limparItens = (itens) => (Array.isArray(itens) ? itens.slice(0, 50) : []).map((i) => ({
+    id: txt(i?.id, 60), nome: txt(i?.nome, 120), preco: numero(i?.preco), qtd: Math.max(0, Math.floor(numero(i?.qtd))),
+  }));
+  function limparPedido(p, dono) {
+    if (!p || typeof p !== "object") return null;
+    const c = p.cliente && typeof p.cliente === "object" ? p.cliente : {};
+    return {
+      ...p,
+      dono: txt(dono ?? p.dono, 80), codigo: txt(p.codigo, 20),
+      tipo: ["compra", "reserva30", "reserva50"].includes(p.tipo) ? p.tipo : "compra",
+      status: STATUS_PEDIDO.includes(p.status) ? p.status : "aguardando",
+      etapa: ["separando", "enviado", "pronto"].includes(p.etapa) ? p.etapa : undefined,
+      receber: p.receber === "retirada" ? "retirada" : "entrega",
+      itens: limparItens(p.itens),
+      subtotal: numero(p.subtotal), frete: numero(p.frete), total: numero(p.total), sinal: numero(p.sinal),
+      restante: numero(p.restante), cobrar: numero(p.cobrar ?? p.sinal),
+      reembolso: p.reembolso == null ? undefined : numero(p.reembolso),
+      prazoEntrega: p.prazoEntrega == null ? null : numero(p.prazoEntrega),
+      pago: p.pago === true, estoqueBaixado: p.estoqueBaixado === true, pagamentoVerificado: p.pagamentoVerificado === true,
+      pagamento: txt(p.pagamento, 40),
+      cliente: { nome: txt(c.nome, 80), telefone: txt(c.telefone, 20), email: txt(c.email, 120), cep: txt(c.cep, 9), endereco: txt(c.endereco, 200) },
+      cupom: p.cupom && typeof p.cupom === "object" ? { codigo: txt(p.cupom.codigo, 30), desconto: numero(p.cupom.desconto), freteGratis: p.cupom.freteGratis === true, freteEconomizado: numero(p.cupom.freteEconomizado) } : null,
+      rastreio: p.rastreio && typeof p.rastreio === "object" ? { transportadora: txt(p.rastreio.transportadora, 20), codigo: txt(p.rastreio.codigo, 40) } : undefined,
+      regra: p.regra && typeof p.regra === "object" ? { janelaMin: numero(p.regra.janelaMin), percDepois: numero(p.regra.percDepois) } : undefined,
+      criadoEm: numero(p.criadoEm), confirmadoEm: quando(p.confirmadoEm), separandoEm: quando(p.separandoEm), enviadoEm: quando(p.enviadoEm),
+      prontoEm: quando(p.prontoEm), concluidoEm: quando(p.concluidoEm), canceladoEm: quando(p.canceladoEm), estornadoEm: quando(p.estornadoEm),
+      canceladoPor: ["cliente", "loja"].includes(p.canceladoPor) ? p.canceladoPor : undefined,
+      baixas: p.baixas && typeof p.baixas === "object" ? Object.fromEntries(Object.entries(p.baixas).slice(0, 50).map(([k, v]) => [txt(k, 60), numero(v)])) : undefined,
+      historico: (Array.isArray(p.historico) ? p.historico.slice(0, 30) : []).map((h) => ({ em: numero(h?.em), status: txt(h?.status, 20) })),
+    };
+  }
+  function limparCarrinho(c, dono) {
+    if (!c || typeof c !== "object") return null;
+    const cl = c.cliente && typeof c.cliente === "object" ? c.cliente : null;
+    return {
+      dono: txt(dono ?? c.dono, 80), id: txt(c.id, 20), criadoEm: numero(c.criadoEm), atualizadoEm: numero(c.atualizadoEm),
+      itens: limparItens(c.itens), valor: numero(c.valor), status: ["aberto", "concluido", "vazio"].includes(c.status) ? c.status : "aberto",
+      pedido: c.pedido ? txt(c.pedido, 20) : undefined,
+      cliente: cl ? { nome: txt(cl.nome, 80), email: txt(cl.email, 120), whats: txt(cl.whats, 20) } : null,
+    };
+  }
+  function limparAviso(a, dono) {
+    if (!a || typeof a !== "object") return null;
+    return {
+      dono: txt(dono ?? a.dono, 80), id: txt(a.id, 40), produtoId: txt(a.produtoId, 60), produto: txt(a.produto, 120),
+      contato: txt(a.contato, 120), nome: txt(a.nome, 80), criadoEm: numero(a.criadoEm), avisadoEm: quando(a.avisadoEm) || null,
+    };
+  }
+  const limparLista = (lista, fn, dono) => (Array.isArray(lista) ? lista : []).map((x) => fn(x, dono)).filter(Boolean);
+
   /* ---------- modo local ---------- */
   function lerLocal() {
     try {
@@ -51,18 +109,19 @@ const Dados = (() => {
       estado.config = { ...base.config, ...(salvo.config || {}) };
       if (Array.isArray(salvo.categorias)) estado.categorias = salvo.categorias;
       if (Array.isArray(salvo.produtos)) estado.produtos = salvo.produtos;
-      if (Array.isArray(salvo.pedidos)) estado.pedidos = salvo.pedidos;
-      if (Array.isArray(salvo.carrinhos)) estado.carrinhos = salvo.carrinhos;
-      if (Array.isArray(salvo.avisos)) estado.avisos = salvo.avisos;
+      if (Array.isArray(salvo.pedidos)) estado.pedidos = limparLista(salvo.pedidos, limparPedido);
+      if (Array.isArray(salvo.carrinhos)) estado.carrinhos = limparLista(salvo.carrinhos, limparCarrinho);
+      if (Array.isArray(salvo.avisos)) estado.avisos = limparLista(salvo.avisos, limparAviso);
     } catch {}
   }
   function gravarLocal() {
     try {
+      gravarLocal.cheio = false;
       localStorage.setItem(CHAVE_LOCAL, JSON.stringify({
         config: estado.config, categorias: estado.categorias, produtos: estado.produtos, pedidos: estado.pedidos,
         carrinhos: estado.carrinhos, avisos: estado.avisos,
       }));
-    } catch {}
+    } catch { gravarLocal.cheio = true; } // navegador sem espaço (fotos grandes demais)
   }
   lerLocal();
 
@@ -112,7 +171,7 @@ const Dados = (() => {
       renovando = renovando || supabase("token?grant_type=refresh_token", { refresh_token: s.renovar })
         .then(({ ok, dados }) => { if (ok) { const nova = sessaoSupabase(dados); gravarSessao(nova, s.lembrar); return nova.token; } throw new Error(); })
         .finally(() => { renovando = null; });
-      try { return await renovando; } catch { apagarSessao(); aplicarSessao(null); }
+      try { return await renovando; } catch { apagarSessao(); aplicarSessao(null); setTimeout(() => reconectar().catch(() => {}), 0); }
     }
     return (await Supa.sessaoAnonima()).token;
   }
@@ -121,9 +180,10 @@ const Dados = (() => {
   // (o pagamento online confere preços e cupons por eles)
   async function semear() {
     const [config, cats, prods] = await Promise.all([db.doc("loja/config").get(), db.doc("loja/categorias").get(), db.collection("produtos").get()]);
-    if (!config.exists) { const { nome, moeda, idioma, ...resto } = estado.config; await db.doc("loja/config").set(resto); }
+    if (!config.exists) { const { nome, moeda, idioma, pinPainel, ...resto } = estado.config; await db.doc("loja/config").set(resto); }
     if (!cats.exists) await db.doc("loja/categorias").set({ lista: estado.categorias });
-    if (prods.empty) { produtosNaNuvem = false; await garantirCatalogo(); }
+    const publicado = config.exists && config.data().catalogoPublicado;
+    if (prods.empty && !publicado) { produtosNaNuvem = false; estado.produtosProntos = true; await garantirCatalogo(); }
   }
 
   // Trocou de conta (entrou, saiu ou criou conta): reconecta com a sessão nova
@@ -138,7 +198,8 @@ const Dados = (() => {
     let anon;
     try { anon = await Supa.sessaoAnonima(); } catch { return; }
     if (!anon?.uid || anon.uid === sessao.uid) return;
-    for (const colecao of ["reservas", "carrinhos"]) {
+    try { await Supa.pedir("/functions/v1/migrar", { metodo: "POST", token: sessao.token, corpo: { tokenAnonimo: anon.token } }); } catch {}
+    for (const colecao of ["carrinhos"]) {
       try {
         const deles = await Supa.pedir(`/rest/v1/docs?colecao=eq.${colecao}&id=eq.${anon.uid}&select=dados`, { token: anon.token });
         const listaAnon = deles[0]?.dados?.lista || [];
@@ -160,6 +221,7 @@ const Dados = (() => {
   }
 
   function assinar() {
+    estado.produtosProntos = false; // o carrinho só descarta itens depois que o catálogo do servidor chegar
     estado.pedidos = [];
     estado.meusPedidos = [];
     estado.carrinhos = [];
@@ -178,17 +240,27 @@ const Dados = (() => {
       avisar();
     }, () => {});
     db.collection("produtos").onSnapshot((s) => {
+      estado.produtosProntos = true;
       produtosNaNuvem = !s.empty;
       estado.produtos = produtosNaNuvem
         ? s.docs.map((d) => ({ ...d.data(), id: d.id })).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
-        : padrao().produtos;
+        : estado.config.catalogoPublicado ? [] : padrao().produtos;
       avisar();
     }, () => {});
     if (estado.admin) ouvirAdminNuvem();
     if (estado.modo === "nuvem" && !podeEditar && estado.uid) registrarVisitaNuvem();
-    if (estado.uid) {
+    if (Supa.ativo()) {
+      // Pedidos ficam em pedidos/<código>, gravados só pelo servidor. As regras do banco entregam ao
+      // cliente só os dele; ao dono, todos.
+      db.collection("pedidos").onSnapshot((s) => {
+        const todos = s.docs.map((d) => limparPedido({ ...d.data(), codigo: d.id })).filter(Boolean);
+        estado.meusPedidos = todos.filter((p) => p.dono === estado.uid);
+        if (estado.admin) estado.pedidos = todos;
+        avisar();
+      }, () => {});
+    } else if (estado.uid) {
       db.doc("reservas/" + estado.uid).onSnapshot((s) => {
-        estado.meusPedidos = s.exists ? (s.data().lista || []).map((p) => ({ ...p, dono: estado.uid })) : [];
+        estado.meusPedidos = s.exists ? limparLista(s.data().lista, limparPedido, estado.uid) : [];
         avisar();
       }, () => {});
     }
@@ -198,10 +270,12 @@ const Dados = (() => {
   function ouvirAdminNuvem() {
     if (ouvindoAdmin || !db) return;
     ouvindoAdmin = true;
-    db.collection("reservas").onSnapshot((s) => {
-      estado.pedidos = s.docs.flatMap((d) => (d.data().lista || []).map((p) => ({ ...p, dono: d.id })));
-      avisar();
-    }, () => {});
+    if (!Supa.ativo()) {
+      db.collection("reservas").onSnapshot((s) => {
+        estado.pedidos = s.docs.flatMap((d) => limparLista(d.data().lista, limparPedido, d.id));
+        avisar();
+      }, () => {});
+    }
     // Pagamentos confirmados pelo Mercado Pago: só o servidor grava, então é o que vale como "verificado"
     if (Supa.ativo()) {
       db.collection("pagamentos").onSnapshot((s) => {
@@ -210,40 +284,44 @@ const Dados = (() => {
       }, () => {});
     }
     db.collection("avisos").onSnapshot((s) => {
-      estado.avisos = s.docs.flatMap((d) => (d.data().lista || []).map((a) => ({ ...a, dono: d.id })));
+      estado.avisos = s.docs.flatMap((d) => limparLista(d.data().lista, limparAviso, d.id));
       avisar();
     }, () => {});
     db.collection("carrinhos").onSnapshot((s) => {
-      estado.carrinhos = s.docs.flatMap((d) => (d.data().lista || []).map((c) => ({ ...c, dono: d.id })));
+      estado.carrinhos = s.docs.flatMap((d) => limparLista(d.data().lista, limparCarrinho, d.id));
       avisar();
     }, () => {});
     ouvirVisitasNuvem();
   }
 
   // Na primeira edição do dono, grava o catálogo inicial inteiro na nuvem
+  // Só uma vez na vida da loja (marcado em config.catalogoPublicado): se o dono apagar todos os
+  // produtos depois, o catálogo de exemplo não volta.
   async function garantirCatalogo() {
-    if (!produtosNaNuvem) {
-      for (const [i, p] of estado.produtos.entries()) await db.doc("produtos/" + p.id).set({ ...p, ordem: p.ordem ?? i });
-      produtosNaNuvem = true;
-    }
+    if (produtosNaNuvem || estado.config.catalogoPublicado || !estado.produtosProntos) return;
+    for (const [i, p] of estado.produtos.entries()) await db.doc("produtos/" + p.id).set({ ...p, ordem: p.ordem ?? i });
+    produtosNaNuvem = true;
+    await salvarConfig({ catalogoPublicado: true });
   }
 
   /* ---------- utilidades ---------- */
   const novoId = (prefixo) => prefixo + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
   function codigoPedido() {
+    // 8 caracteres do gerador criptográfico: impossível de adivinhar
     const letras = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c = "";
-    for (let i = 0; i < 5; i++) c += letras[Math.floor(Math.random() * letras.length)];
-    return "TMZ-" + c;
+    return "TMZ-" + [...crypto.getRandomValues(new Uint8Array(8))].map((b) => letras[b % 32]).join("");
   }
+
 
   // Regra de cancelamento das reservas
   function reembolso(pedido, agora = Date.now()) {
     const cfg = estado.config;
     const pago = pedido.pago ? pedido.sinal : 0;
-    const limite = pedido.criadoEm + cfg.estornoJanelaMin * 60000;
+    const janela = pedido.regra?.janelaMin ?? cfg.estornoJanelaMin;
+    const perc = pedido.regra?.percDepois ?? cfg.estornoDepoisPerc;
+    const limite = pedido.criadoEm + janela * 60000;
     const dentro = agora <= limite;
-    const valor = dentro ? pago : Math.round(pago * cfg.estornoDepoisPerc) / 100;
+    const valor = dentro ? pago : Math.round(pago * perc) / 100;
     return { pago, dentro, limite, valor };
   }
 
@@ -256,8 +334,15 @@ const Dados = (() => {
       await db.doc("produtos/" + produto.id).set(produto);
     } else {
       const i = estado.produtos.findIndex((x) => x.id === produto.id);
+      const anterior = i >= 0 ? estado.produtos[i] : null;
       if (i >= 0) estado.produtos[i] = produto; else estado.produtos.push(produto);
-      gravarLocal(); avisar();
+      gravarLocal();
+      if (gravarLocal.cheio) {
+        // não coube: desfaz para a loja não mostrar algo que não foi salvo
+        if (anterior) estado.produtos[i] = anterior; else estado.produtos.pop();
+        throw new Error("Sem espaço no navegador para essa foto. Use uma foto menor ou ligue o servidor.");
+      }
+      avisar();
     }
     return produto;
   }
@@ -272,10 +357,29 @@ const Dados = (() => {
     }
   }
 
+  // Soma ou tira unidades. Devolve quanto mudou de fato (o estoque nunca fica negativo).
   async function ajustarEstoque(id, delta) {
-    const p = estado.produtos.find((x) => x.id === id);
-    if (!p) return;
-    return salvarProduto({ ...p, estoque: Math.max(0, (Number(p.estoque) || 0) + delta) });
+    let p = estado.produtos.find((x) => x.id === id);
+    if (estado.modo === "nuvem" && produtosNaNuvem) {
+      try { const snap = await db.doc("produtos/" + id).get(); if (snap.exists) p = { ...snap.data(), id }; } catch {}
+    }
+    if (!p) return 0;
+    const antes = Math.max(0, Number(p.estoque) || 0);
+    const depois = Math.max(0, antes + delta);
+    await salvarProduto({ ...p, estoque: depois });
+    return depois - antes;
+  }
+
+  // Versão mais recente de um pedido (antes de confirmar, cancelar ou devolver ao estoque)
+  async function lerPedido(dono, codigo) {
+    if (estado.modo === "nuvem") {
+      try {
+        if (Supa.ativo()) { const s = await db.doc("pedidos/" + codigo).get(); return s.exists ? limparPedido({ ...s.data(), codigo }) : null; }
+        const s = await db.doc("reservas/" + dono).get();
+        return limparLista(s.exists ? s.data().lista : [], limparPedido, dono).find((p) => p.codigo === codigo) || null;
+      } catch { return null; }
+    }
+    return estado.pedidos.find((p) => p.codigo === codigo) || null;
   }
 
   async function salvarCategorias(lista) {
@@ -284,14 +388,29 @@ const Dados = (() => {
   }
 
   async function salvarConfig(parcial) {
-    const config = { ...estado.config, ...parcial };
     if (estado.modo === "nuvem") {
-      const { nome, moeda, idioma, ...resto } = config;
-      await db.doc("loja/config").set(resto);
-    } else { estado.config = config; gravarLocal(); avisar(); }
+      // relê a configuração do servidor e muda só o que veio (duas gravações seguidas não se desfazem)
+      let atual = {};
+      try { const s = await db.doc("loja/config").get(); atual = s.exists ? s.data() : {}; } catch {}
+      const { nome, moeda, idioma, pinPainel, ...resto } = { ...padrao().config, ...atual, ...parcial };
+      await db.doc("loja/config").set(resto); // a senha de teste (pinPainel) nunca vai para o banco público
+      estado.config = { ...estado.config, ...resto };
+      avisar();
+    } else { estado.config = { ...estado.config, ...parcial }; gravarLocal(); avisar(); }
   }
 
   async function criarPedido(pedido) {
+    if (Supa.ativo() && estado.modo === "nuvem") {
+      // No servidor: o navegador manda só as escolhas; preços, frete, desconto e código saem de lá
+      const r = await Supa.funcao("pedido", {
+        tipo: pedido.tipo, receber: pedido.receber, pagamento: pedido.pagamento,
+        itens: pedido.itens.map((i) => ({ id: i.id, qtd: i.qtd })), cliente: pedido.cliente, cupom: pedido.cupom?.codigo || null,
+      });
+      const novo = limparPedido(r.pedido);
+      estado.meusPedidos = [...estado.meusPedidos.filter((p) => p.codigo !== novo.codigo), novo];
+      avisar();
+      return novo;
+    }
     const novo = { ...pedido, codigo: codigoPedido(), criadoEm: Date.now(), status: "aguardando", pago: false, historico: [{ em: Date.now(), status: "aguardando" }] };
     if (estado.modo === "nuvem") {
       if (!estado.uid) throw new Error("sem-identidade");
@@ -305,6 +424,31 @@ const Dados = (() => {
   }
 
   async function atualizarPedido(dono, codigo, mudancas) {
+    if (Supa.ativo() && estado.modo === "nuvem") {
+      // Só o dono da loja altera pedidos (as regras do banco barram o resto). Lê a versão atual antes,
+      // para não desfazer o que o servidor (pagamento) ou outro aparelho acabou de gravar.
+      const ref = db.doc("pedidos/" + codigo);
+      const snap = await ref.get();
+      if (!snap.exists) throw new Error("Pedido não encontrado");
+      const atual = snap.data();
+      const novo = { ...atual, ...mudancas };
+      if (mudancas.status && mudancas.status !== atual.status) novo.historico = [...(atual.historico || []), { em: Date.now(), status: mudancas.status }];
+      await ref.set(novo);
+      return;
+    }
+    if (estado.modo === "nuvem") {
+      // Banco do esboço: relê a lista do cliente antes de mudar só este pedido, para não apagar pedidos novos
+      const ref = db.doc("reservas/" + dono);
+      const snap = await ref.get();
+      const lista = (snap.exists ? snap.data().lista || [] : []).map((p) => {
+        if (p.codigo !== codigo) return p;
+        const at = { ...p, ...mudancas };
+        if (mudancas.status && mudancas.status !== p.status) at.historico = [...(p.historico || []), { em: Date.now(), status: mudancas.status }];
+        return at;
+      });
+      await ref.set({ lista });
+      return;
+    }
     const fonte = estado.modo === "nuvem"
       ? (dono === estado.uid && !estado.admin ? estado.meusPedidos : estado.pedidos.filter((p) => p.dono === dono))
       : estado.pedidos;
@@ -322,6 +466,20 @@ const Dados = (() => {
       estado.pedidos = lista;
       gravarLocal(); avisar();
     }
+  }
+
+  // Cliente cancela a própria reserva: no servidor, pela função cancelar_pedido (valor calculado lá)
+  async function cancelarMeuPedido(p) {
+    if (Supa.ativo() && estado.modo === "nuvem") {
+      const r = await Supa.rpc("cancelar_pedido", { p_codigo: p.codigo });
+      estado.meusPedidos = estado.meusPedidos.map((x) => (x.codigo === p.codigo ? { ...x, status: "cancelado", reembolso: r.reembolso, canceladoEm: Date.now(), canceladoPor: "cliente" } : x));
+      avisar();
+      return r.reembolso;
+    }
+    if (!["aguardando", "confirmado"].includes(p.status) || p.tipo === "compra" || ["enviado", "pronto"].includes(p.etapa)) throw new Error("não pode");
+    const valor = reembolso(p).valor;
+    await atualizarPedido(p.dono, p.codigo, { status: "cancelado", canceladoEm: Date.now(), canceladoPor: "cliente", reembolso: valor });
+    return valor;
   }
 
   /* ---------- contas: entrar e cadastrar ---------- */
@@ -392,15 +550,7 @@ const Dados = (() => {
     const s = lerSessao();
     if (!sessaoValida(s)) { if (s) apagarSessao(); return; }
     aplicarSessao(s);
-    if (s.tipo !== "servidor" || Date.now() < s.expira - 60000) return;
-    try {
-      const { ok, dados } = await supabase("token?grant_type=refresh_token", { refresh_token: s.renovar });
-      if (!ok) throw new Error();
-      gravarSessao(sessaoSupabase(dados), s.lembrar);
-    } catch {
-      apagarSessao();
-      aplicarSessao(null);
-    }
+    // a sessão do servidor é renovada por tokenDaVez() na primeira leitura (uma renovação só por vez)
   }
 
   function bloqueio() {
@@ -711,6 +861,7 @@ const Dados = (() => {
   }
   function registrarVisitaLocal() {
     visitasLocais();
+    if (estado.admin || location.hash === "#painel") return; // visitas do dono não entram na conta
     const d = hoje();
     const v = estado.visitas[d] || { pessoas: 0, vistas: 0 };
     let jaContou = false;
@@ -758,6 +909,6 @@ const Dados = (() => {
     ouvir(fn) { ouvintes.add(fn); fn(estado); return () => ouvintes.delete(fn); },
     reembolso,
     salvarProduto, apagarProduto, ajustarEstoque, salvarCategorias, salvarConfig,
-    criarPedido, atualizarPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, registrarCarrinho, concluirCarrinho, pedirAviso, marcarAvisados, buscarPedido, novoId,
+    criarPedido, atualizarPedido, cancelarMeuPedido, lerPedido, entrar, cadastrar, sair, recuperarSenha, listarClientes, registrarCarrinho, concluirCarrinho, pedirAviso, marcarAvisados, buscarPedido, novoId,
   };
 })();

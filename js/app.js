@@ -47,6 +47,8 @@
   const desconto = (p) => (p.precoAntigo > p.preco ? Math.round((1 - p.preco / p.precoAntigo) * 100) : 0);
   const estoque = (p) => Math.max(0, Number(p?.estoque) || 0);
   const img = (p) => (p.imagem ? `<img src="${escapar(p.imagem)}" alt="${escapar(p.nome)}" loading="lazy">` : `<svg class="sem-foto"><use href="#i-${iconeCat(p.categoria)}"/></svg>`);
+  // Só deixa sair para https:// ou e-mail (um link "javascript:" no painel nunca roda)
+  const linkSeguro = (url) => (/^(https?:\/\/|mailto:)/i.test(String(url || "").trim()) ? String(url).trim() : "");
   const linkWhats = (texto) => `https://wa.me/${digitos(S.config.whatsapp)}${texto ? "?text=" + encodeURIComponent(texto) : ""}`;
 
   /* ---------- textos editáveis ---------- */
@@ -70,16 +72,16 @@
     $("#banner-texto").textContent = c.bannerTexto || "";
     $("#banner-botao").textContent = c.bannerBotao || "Ver ofertas";
     $("#link-whats").href = linkWhats();
-    $("#link-avaliar").href = c.instagram || "#";
+    $("#link-avaliar").href = linkSeguro(c.instagram) || "#";
     const redes = [
       [c.instagram, "Instagram"], [c.tiktok, "TikTok"], [c.facebook, "Facebook"],
       [c.email ? `mailto:${c.email}` : "", c.email], [c.linkExtra, c.linkExtraNome || "Mais links"],
-    ].filter(([url]) => url);
+    ].map(([url, nome]) => [linkSeguro(url), nome]).filter(([url]) => url);
     $("#rodape-redes").innerHTML = redes.map(([url, nome]) => `<li><a href="${escapar(url)}" ${url.startsWith("mailto:") ? "" : 'target="_blank" rel="noopener"'}>${escapar(nome)}</a></li>`).join("");
     $("#cta-final-img").src = c.bannerImagem || "img/produtos/banner-tmz.svg";
     const cupomInsta = c.cupomInsta && Cupons.achar(c.cupomInsta);
     const caixaInsta = $("#insta-cupom");
-    caixaInsta.hidden = !(cupomInsta?.ativo && !(cupomInsta.validade && new Date().toLocaleDateString("sv-SE") > cupomInsta.validade));
+    caixaInsta.hidden = !(cupomInsta?.ativo && !(cupomInsta.validade && Cupons.hoje() > cupomInsta.validade));
     if (!caixaInsta.hidden) {
       caixaInsta.querySelector("code").textContent = cupomInsta.codigo;
       caixaInsta.querySelector("small").textContent = `${Cupons.descrever(cupomInsta)}${Number(cupomInsta.minimo) > 0 ? ` acima de ${moeda(cupomInsta.minimo)}` : ""}`;
@@ -418,6 +420,7 @@
   function irParaCompra(id, modo) {
     const p = porId(id);
     if (!p) return;
+    if (!estado.carrinho[p.id] && estoque(p) <= 0) { toast("Produto esgotado"); return; }
     if (!estado.carrinho[p.id]) adicionar(p.id, true);
     estado.modo = modo;
     modalProduto.close();
@@ -487,13 +490,16 @@
   /* ---------- CEP e frete ---------- */
   function lerCep() { try { return sessionStorage.getItem("tmz-cep") || ""; } catch { return ""; } }
   const textoPrazo = (dias) => (dias ? `chega em até ${dias} ${dias === 1 ? "dia útil" : "dias úteis"}` : "");
+  let ultimoCep = "";
   async function usarCep(cep) {
     const d = digitos(cep);
     if (d.length !== 8) return null;
+    ultimoCep = d;
     try { sessionStorage.setItem("tmz-cep", d); } catch {}
     const destino = await Frete.buscarCep(d);
-    if (digitos(cep) !== d) return destino;
+    if (ultimoCep !== d) return destino; // o cliente já digitou outro CEP: esta resposta chegou atrasada
     estado.destino = destino;
+    if (form.cep && digitos(form.cep.value) !== d) form.cep.value = d.replace(/(\d{5})(\d{3})/, "$1-$2");
     renderCarrinho();
     if (telaAtual === "compra" && $("#compra-ok").hidden) renderCompra();
     return destino;
@@ -539,6 +545,7 @@
     if (campoCep && !campoCep.value && estado.destino) campoCep.value = estado.destino.cep.replace(/(\d{5})(\d{3})/, "$1-$2");
     $("#total").textContent = moeda(t.total);
     const limite = Number(S.config.freteGratisAcima) || 0;
+    $("#frete-barra").hidden = !(limite > 0);
     const falta = centavos(limite - t.subtotal);
     $("#frete-msg").innerHTML = falta > 0 ? `Faltam <strong>${moeda(falta)}</strong> para o frete grátis` : "Você ganhou <strong>frete grátis</strong> para entrega";
     $("#frete-progresso").style.width = `${limite ? Math.min(100, (t.subtotal / limite) * 100) : 100}%`;
@@ -574,7 +581,7 @@
     return [
       { id: "compra", nome: "Compra completa", resumo: "Pague o valor total agora", detalhe: "Entrega em casa ou retirada na loja" },
       { id: "reserva30", nome: `Reserva ${c.reservaPercentual}%`, resumo: `Pague ${c.reservaPercentual}% agora`, detalhe: "Retire na loja e pague o resto lá" },
-      { id: "reserva50", nome: `Reserva ${moeda(c.reservaFixa)}`, resumo: `Pague ${moeda(c.reservaFixa)} agora`, detalhe: "Pague o restante depois", oculto: total <= c.reservaFixa },
+      { id: "reserva50", nome: `Reserva ${moeda(c.reservaFixa)}`, resumo: `Pague ${moeda(c.reservaFixa)} agora`, detalhe: "Pague o restante depois", oculto: total <= Number(c.reservaFixa) },
     ].filter((m) => !m.oculto);
   }
 
@@ -610,7 +617,7 @@
       });
     }
     if (!form.cep.value && estado.destino && !estado.destino.invalido) form.cep.value = estado.destino.cep.replace(/(\d{5})(\d{3})/, "$1-$2");
-    if (!modosDisponiveis(t.total).some((m) => m.id === estado.modo)) estado.modo = "compra";
+    if (!modosDisponiveis(comCupom(t).total).some((m) => m.id === estado.modo)) estado.modo = "compra";
     renderCompra();
   }
 
@@ -619,7 +626,9 @@
     const c = S.config;
     const reserva = estado.modo !== "compra";
     $("#compra-titulo").textContent = reserva ? "Reservar suas peças" : "Finalizar compra";
-    $("#modos").innerHTML = modosDisponiveis(totais().total).map((m) => {
+    const totalComCupom = comCupom(totais(form.receber.value)).total;
+    if (!modosDisponiveis(totalComCupom).some((m) => m.id === estado.modo)) estado.modo = "compra";
+    $("#modos").innerHTML = modosDisponiveis(totalComCupom).map((m) => {
       const ativo = m.id === estado.modo;
       const agora = m.id === "compra" ? calcular().total : m.id === "reserva30" ? centavos(comCupom(totais("retirada")).total * c.reservaPercentual / 100) : Number(c.reservaFixa);
       return `
@@ -767,6 +776,7 @@
     if (digitos(form.telefone.value).length < 10) return erro("Confira o número de WhatsApp, com DDD.", form.telefone);
     if (calc.receber === "entrega") {
       if (digitos(form.cep.value).length !== 8) return erro("Confira o CEP: são 8 números.", form.cep);
+      if (estado.destino?.cep !== digitos(form.cep.value)) { usarCep(form.cep.value); return erro("Calculando o frete para este CEP. Confira o valor e confirme de novo.", form.cep); }
       if (estado.destino?.invalido) return erro("Não encontramos esse CEP. Confira os números.", form.cep);
       if (calc.freteFalta) return erro("Espere o frete ser calculado pelo CEP.", form.cep);
       if (form.endereco.value.trim().length < 8) return erro("Escreva o endereço completo para a entrega.", form.endereco);
@@ -782,6 +792,7 @@
     const calc = calcular();
     if (!validar(calc)) return;
     const botao = $("#confirmar-compra");
+    let falha = "";
     botao.disabled = true;
     botao.textContent = "Registrando…";
     try {
@@ -808,12 +819,13 @@
       renderCarrinho();
       mostrarConcluido(pedido);
     } catch (err) {
-      erro(err?.message === "sem-identidade"
+      falha = err?.message === "sem-identidade"
         ? "Não conseguimos registrar por aqui. Envie seu pedido pelo WhatsApp que a gente reserva para você."
-        : "Não deu para registrar agora. Tente de novo em instantes.");
+        : err?.message && !/^(Erro \d+|Failed to fetch|NetworkError)/i.test(err.message) ? err.message : "Não deu para registrar agora. Tente de novo em instantes.";
     } finally {
       botao.disabled = false;
-      renderCompra();
+      if ($("#compra-ok").hidden) renderCompra();
+      if (falha) erro(falha); // depois de redesenhar, para a mensagem não sumir
     }
   });
 
@@ -906,7 +918,7 @@
       <p class="pix-status" id="pix-status"><span class="pix-status__ponto"></span>Aguardando o pagamento. Esta tela atualiza sozinha.</p>`;
     clearInterval(vigiaPagamento);
     const conferir = async () => {
-      if (!$("#pix-status")) { clearInterval(vigiaPagamento); return; }
+      if (!$("#pix-status") || $("#tela-compra").hidden) { clearInterval(vigiaPagamento); return; }
       try {
         const r = await Supa.rpc("status_pagamento", { codigo: p.codigo });
         if (r?.status === "approved") {
@@ -960,7 +972,7 @@
       const reserva = p.tipo !== "compra";
       const r = Dados.reembolso(p, agora);
       const encerrado = ["cancelado", "estornado"].includes(p.status);
-      const podeCancelar = reserva && ["aguardando", "confirmado"].includes(p.status);
+      const podeCancelar = reserva && ["aguardando", "confirmado"].includes(p.status) && !["enviado", "pronto"].includes(p.etapa);
       const restanteMin = Math.max(0, Math.ceil((r.limite - agora) / 60000));
       return `
         <article class="pedido${encerrado ? " pedido--encerrado" : ""}">
@@ -970,11 +982,11 @@
               <span class="pedido__data">${dataHora(p.criadoEm)}</span>
             </div>
             <span class="etiqueta">${escapar(nomeTipo(p))}</span>
-            <span class="status status--${p.status}">${NOMES_STATUS[p.status] || p.status}</span>
+            <span class="status status--${escapar(p.status)}">${escapar(NOMES_STATUS[p.status] || p.status)}</span>
           </header>
           ${Rastreio.linha(p, { compacta: true })}
           <a class="pedido__acompanhar" href="?pedido=${encodeURIComponent(p.codigo)}#acompanhar"><svg><use href="#i-truck"/></svg>Acompanhar entrega e detalhes</a>
-          <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${i.qtd}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
+          <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${Number(i.qtd) || 0}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
           <dl class="pedido__valores">
             <div><dt>Total</dt><dd>${moeda(p.total)}</dd></div>
             ${reserva ? `<div><dt>Sinal</dt><dd>${moeda(p.sinal)}${p.pago ? " · pago" : ""}</dd></div><div><dt>Restante</dt><dd>${moeda(p.restante)}</dd></div>` : ""}
@@ -1021,7 +1033,7 @@
         </header>
         ${Rastreio.linha(p)}
         <div class="acompanhar__resumo">
-          <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${i.qtd}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
+          <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${Number(i.qtd) || 0}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
           <dl class="pedido__valores">
             <div><dt>Total</dt><dd>${moeda(p.total)}</dd></div>
             <div><dt>${entrega ? "Entrega" : "Retirada"}</dt><dd>${entrega ? (p.prazoEntrega ? `até ${p.prazoEntrega} dias úteis` : "pelo CEP") : escapar(S.config.endereco || "na loja")}</dd></div>
@@ -1038,7 +1050,7 @@
     const f = e.target;
     const erroEl = $("#erro-acompanhar");
     const codigo = f.codigo.value.trim().toUpperCase();
-    if (!/^TMZ-[A-Z0-9]{5}$/.test(codigo)) { erroEl.textContent = "O código tem este formato: TMZ-AB12C. Ele está na mensagem do pedido."; erroEl.hidden = false; return f.codigo.focus(); }
+    if (!/^TMZ-[A-Z0-9]{5,10}$/.test(codigo)) { erroEl.textContent = "O código tem este formato: TMZ-AB12C. Ele está na mensagem do pedido."; erroEl.hidden = false; return f.codigo.focus(); }
     f.codigo.value = codigo;
     const botao = f.querySelector("button");
     botao.disabled = true;
@@ -1070,12 +1082,11 @@
     if (ok) {
       const p = S.meusPedidos.find((x) => x.codigo === ok.dataset.cancelarOk);
       if (!p) return;
-      const r = Dados.reembolso(p);
       ok.disabled = true;
       try {
-        await Dados.atualizarPedido(p.dono, p.codigo, { status: "cancelado", canceladoEm: Date.now(), canceladoPor: "cliente", reembolso: r.valor });
-        toast(r.valor ? `Reserva cancelada. Devolução de ${moeda(r.valor)} em andamento.` : "Reserva cancelada.");
-      } catch { toast("Não deu para cancelar agora. Tente de novo."); }
+        const valor = await Dados.cancelarMeuPedido(p);
+        toast(valor ? `Reserva cancelada. Devolução de ${moeda(valor)} em andamento.` : "Reserva cancelada.");
+      } catch (err) { toast(/loja/.test(err?.message || "") ? err.message : "Não deu para cancelar agora. Fale com a loja pelo WhatsApp."); }
       cancelando = null;
       renderReservas();
     }
@@ -1258,7 +1269,7 @@
     renderDestaques();
     renderProdutoDestaque();
     // tira do carrinho o que sumiu do catálogo
-    Object.keys(estado.carrinho).forEach((id) => { if (!porId(id)) delete estado.carrinho[id]; });
+    if (S.produtosProntos) Object.keys(estado.carrinho).forEach((id) => { if (!porId(id)) delete estado.carrinho[id]; });
     renderCarrinho();
     if (telaAtual === "compra" && $("#compra-ok").hidden) renderCompra();
     if (telaAtual === "reservas") renderReservas();
@@ -1294,5 +1305,5 @@
   else setTimeout(rota);
 
   // utilidades para o painel
-  window.TMZ = { combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, imagemCat, categoria, nomeTipo, NOMES_STATUS, duracao, centavos, digitos, linkWhats };
+  window.TMZ = { linkSeguro, combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, imagemCat, categoria, nomeTipo, NOMES_STATUS, duracao, centavos, digitos, linkWhats };
 })();

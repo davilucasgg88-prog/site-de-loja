@@ -1,6 +1,13 @@
-# O Mercado Pago chama o webhook sem login: a função confere o pagamento direto na API dele.
+# O Mercado Pago chama o webhook sem login: a função confere a assinatura (x-signature) e o
+# pagamento direto na API dele.
 [functions.mercadopago-webhook]
 verify_jwt = false
 
 [functions.pagamento]
+verify_jwt = true
+
+[functions.pedido]
+verify_jwt = true
+
+[functions.migrar]
 verify_jwt = true

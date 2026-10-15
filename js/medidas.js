@@ -159,6 +159,8 @@
   }
 
   /* ---------- tela completa ---------- */
+  // guarda o que o cliente digitou na calculadora, para não sumir quando a tela é redesenhada
+  const rascunhoMedida = () => { const c = $("#calc-medida"); return c ? c.value : ""; };
   function renderTela() {
     const alvo = $("#medidas-conteudo");
     if (!alvo) return;
@@ -184,7 +186,7 @@
             <p>${escapar(t.corpo.dica)}</p>
             <div class="calc__linha">
               <label class="campo"><span>Seu ${escapar(t.corpo.nome.toLowerCase())} (cm)</span>
-                <input id="calc-medida" type="number" inputmode="decimal" step="0.1" min="1" required placeholder="Ex.: ${num(t.tamanhos.M.corpo[0] + 2)}" value="${resultado ? resultado.valor : ""}">
+                <input id="calc-medida" type="number" inputmode="decimal" step="0.1" min="1" required placeholder="Ex.: ${num(t.tamanhos.M.corpo[0] + 2)}" value="${resultado ? resultado.valor : escapar(rascunhoMedida())}">
               </label>
               <button class="btn">Calcular</button>
             </div>

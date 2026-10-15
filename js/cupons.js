@@ -6,7 +6,8 @@ const Cupons = (() => {
   const S = Dados.estado;
   const centavos = (n) => Math.round(n * 100) / 100;
   const real = (n) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const hoje = () => new Date().toLocaleDateString("sv-SE");
+  // data de hoje no horário de Brasília (igual ao servidor), em qualquer fuso do aparelho
+  const hoje = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
   const limpar = (codigo) => String(codigo || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
 
   const lista = () => (Array.isArray(S.config.cupons) ? S.config.cupons : []);
@@ -75,5 +76,5 @@ const Cupons = (() => {
     return `${prefixo}${c}`;
   }
 
-  return { lista, achar, avaliar, descrever, regras, numeros, pedidosCom, gerarCodigo, limpar };
+  return { hoje, lista, achar, avaliar, descrever, regras, numeros, pedidosCom, gerarCodigo, limpar };
 })();

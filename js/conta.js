@@ -1,6 +1,6 @@
 // Tela de entrar / cadastrar (#entrar). A mesma tela aparece no painel quando o dono ainda não entrou.
 const Conta = (() => {
-  const { escapar, toast, linkWhats } = window.TMZ;
+  const { escapar, toast, linkWhats, linkSeguro } = window.TMZ;
   const S = Dados.estado;
   const $ = (sel, raiz = document) => raiz.querySelector(sel);
   const ligados = new WeakSet();
@@ -9,9 +9,9 @@ const Conta = (() => {
   function redes() {
     const c = S.config;
     return [
-      [c.instagram, "Instagram", "i-instagram"],
-      [c.tiktok, "TikTok", "i-tiktok"],
-      [c.facebook, "Facebook", "i-facebook"],
+      [linkSeguro(c.instagram), "Instagram", "i-instagram"],
+      [linkSeguro(c.tiktok), "TikTok", "i-tiktok"],
+      [linkSeguro(c.facebook), "Facebook", "i-facebook"],
       [c.whatsapp && linkWhats(), "WhatsApp", "i-whatsapp"],
       [c.email && "mailto:" + c.email, "E-mail", "i-email"],
     ].filter(([url]) => url);

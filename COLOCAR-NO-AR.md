@@ -22,7 +22,9 @@ contas, copiar e colar.
 3. Em **Authentication → Sign In / Providers**:
    - deixe **Email** ligado;
    - ligue **Allow anonymous sign-ins** (cada visitante ganha uma sessão anônima para o carrinho e os pedidos);
-   - se quiser que o cliente confirme o e-mail antes de entrar, deixe **Confirm email** ligado.
+   - deixe **Confirm email** ligado (o painel só abre para o dono com e-mail confirmado).
+   Em **Authentication → Policies / Passwords**: senha mínima de **10 caracteres** e
+   **Leaked password protection** ligado. Em **Authentication → Rate Limits**, mantenha os limites padrão.
 4. Em **Authentication → Users → Add user → Create new user**, crie o usuário do dono
    com o mesmo e-mail do passo 2 e uma senha forte. Marque **Auto Confirm User**.
 5. Em **Authentication → URL Configuration**, coloque o endereço do site em **Site URL**
@@ -46,7 +48,12 @@ contas, copiar e colar.
    grava no servidor o catálogo, as categorias e as configurações. A partir daí, tudo o que você
    muda no painel aparece para todos os clientes.
 
-> **Segurança:** as regras do `schema.sql` ficam no servidor. Mesmo que alguém mexa no código do
+> **Segurança:** com o servidor ligado, **os pedidos são criados pela função `pedido`**: o navegador
+> manda só as escolhas do cliente, e preço, frete, cupom (inclusive limite de usos e 1 por cliente),
+> sinal e código do pedido são calculados no servidor. O cliente pode ver os próprios pedidos, mas
+> não alterar; cancelar reserva passa pela função `cancelar_pedido`, e o pagamento aprovado é
+> confirmado pela função `confirmar_pagamento`, que baixa o estoque uma vez só.
+> As regras do `schema.sql` ficam no servidor. Mesmo que alguém mexa no código do
 > site, o banco só deixa o dono alterar produtos, preços e configurações e ver os pedidos de todos.
 > Cada cliente só lê e grava os próprios pedidos, carrinhos e conta.
 
@@ -65,11 +72,17 @@ contas, copiar e colar.
    supabase login
    supabase link --project-ref abcd1234          # o código do seu projeto, aparece na URL
    supabase secrets set MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxxxxx
+   supabase functions deploy pedido
+   supabase functions deploy migrar
    supabase functions deploy pagamento
    supabase functions deploy mercadopago-webhook --no-verify-jwt
    ```
 
-5. No site, abra **Painel → Configurações → Pagamento online** e ligue
+5. No Mercado Pago, em **Suas integrações → Webhooks**, cadastre a URL
+   `https://abcd1234.supabase.co/functions/v1/mercadopago-webhook` (evento **Pagamentos**), copie a
+   **assinatura secreta** e rode `supabase secrets set MERCADOPAGO_WEBHOOK_SECRET=...`. Com ela, o
+   servidor recusa avisos falsos.
+6. No site, abra **Painel → Configurações → Pagamento online** e ligue
    **Cobrar o Pix pelo Mercado Pago**.
 
 Como funciona: ao finalizar, o cliente vê o QR Code e o "Pix copia e cola". O servidor recalcula o
@@ -130,3 +143,18 @@ Outras opções que funcionam igual: Netlify ou Vercel (arraste a pasta ou ligue
 - [ ] Fazer o [roteiro de testes](ROTEIRO-DE-TESTES.md) com 3 a 5 pessoas.
 
 O **Resumo** do painel mostra esta lista com o que já está pronto e o que falta.
+
+---
+
+## Segurança: o que já está feito e o que depende de você
+
+Já no código: pedidos e pagamentos gravados só pelo servidor; regras de acesso no banco (cada
+cliente só lê o que é seu); dono só com e-mail confirmado; webhook com assinatura conferida e
+consulta direta ao Mercado Pago; política de segurança da página (CSP) que bloqueia scripts de
+fora; tudo o que vem do cliente é limpo antes de aparecer no painel; exportação CSV sem fórmulas;
+links só https; senhas nunca no código; códigos de pedido aleatórios de 8 caracteres.
+
+Depende de você (passos acima): Confirm email e senha forte no Supabase, segredo do webhook,
+**autenticação em dois fatores (MFA)** na conta do Supabase, do Mercado Pago e do GitHub, e um
+domínio com HTTPS. Se usar um domínio próprio do Supabase, inclua-o em `connect-src` na CSP do
+`index.html`.
