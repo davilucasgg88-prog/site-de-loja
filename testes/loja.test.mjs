@@ -564,6 +564,41 @@ teste("loja OFF: pedidos chegam, mas só são aprovados quando voltar para ON", 
   await fechar(p);
 });
 
+teste("pedido tem número crescente, data e hora e os dados de contato do cliente", async () => {
+  const p = await abrir();
+  const comprar = async (nome, tel, email) => {
+    await ir(p, "");
+    await adicionar(p, 1);
+    await ir(p, "compra");
+    await p.fill("#c-nome", nome);
+    await p.fill("#c-telefone", tel);
+    await p.fill("#c-email", email);
+    await p.check('#form-compra input[name=receber][value=retirada]', { force: true });
+    await p.click("#confirmar-compra");
+    await p.waitForTimeout(400);
+    return texto(p, "#compra-ok");
+  };
+  const t1 = await comprar("Primeiro Cliente", "11911112222", "um@teste.com");
+  const t2 = await comprar("Segundo Cliente", "21933334444", "dois@teste.com");
+  confere(t1.includes("nº 1") && t2.includes("nº 2"), "números não foram 1 e 2: " + t1.slice(0, 80) + " / " + t2.slice(0, 80));
+  confere(/\d{2}\/\d{2}\/\d{4} às \d{2}:\d{2}/.test(t2), "tela do pedido sem data e hora completas");
+  await entrarComoDono(p);
+  await ir(p, "painel");
+  await p.click('[data-aba="pedidos"]');
+  await p.click('[data-ped-vista="lista"]');
+  await p.click('[data-filtro-pedido="todos"]');
+  const cartao = await texto(p, '.pedido[data-codigo]:has-text("Segundo Cliente")');
+  confere(cartao.includes("Nº 2") && /às \d{2}:\d{2}/.test(cartao), "painel sem número ou hora: " + cartao.slice(0, 120));
+  confere(cartao.includes("(21) 93333-4444") || cartao.includes("21933334444"), "painel sem o WhatsApp do cliente");
+  confere(cartao.includes("dois@teste.com"), "painel sem o e-mail do cliente");
+  const zap = await p.getAttribute('.pedido[data-codigo]:has-text("Segundo Cliente") .contato-cliente a[href^="https://wa.me/"]', "href");
+  confere(zap.startsWith("https://wa.me/5521933334444"), "botão de WhatsApp errado: " + zap);
+  confere(await p.isVisible('.pedido[data-codigo]:has-text("Segundo Cliente") a[href^="tel:"]'), "sem botão de ligar");
+  await p.click('[data-aba="historico"]');
+  confere((await texto(p, ".tabela-historico")).includes("Data e hora"), "histórico sem data e hora");
+  await fechar(p);
+});
+
 teste("páginas de privacidade, trocas e termos", async () => {
   const p = await abrir({ hash: "trocas" });
   confere((await texto(p, "#doc-conteudo")).includes("7 dias"), "trocas sem o prazo de arrependimento");
@@ -612,7 +647,7 @@ teste("servidor: Pix online, aprovação automática e baixa no estoque", async 
   }, codigo);
   confere(fraude === 403, "cliente conseguiu alterar o próprio pedido: " + fraude);
   const pedidoServidor = (await (await fetch(`http://localhost:${PORTA_SUPA}/teste/docs`)).json())["pedidos/" + codigo];
-  confere(pedidoServidor.total === 114.8 && pedidoServidor.dono, "pedido gravado pelo servidor com valor errado");
+  confere(pedidoServidor.total === 114.8 && pedidoServidor.dono && pedidoServidor.numero === 1, "pedido gravado pelo servidor com valor ou número errado");
   await fetch(`http://localhost:${PORTA_SUPA}/teste/aprovar?codigo=${codigo}`);
   await cli.waitForTimeout(5800);
   confere((await texto(cli, "#compra-ok h1")) === "Pagamento aprovado!", "cliente não viu a aprovação");

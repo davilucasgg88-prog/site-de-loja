@@ -12,6 +12,7 @@ const ADMIN = "admin@tmzstore.com.br";
 const usuarios = new Map(); // email -> {id, senha}
 const tokens = new Map();   // token -> {id, email, anonimo}
 const docs = new Map();     // "colecao/id" -> {dados, atualizado}
+let ultimoNumero = 0;       // sequência pedido_numero
 const agoraIso = () => new Date().toISOString() + Math.random();
 const sessao = (u) => { const t = crypto.randomUUID(); tokens.set(t, u); return { access_token: t, refresh_token: "r" + t, expires_in: 3600, user: { id: u.id, email: u.email || "", is_anonymous: !!u.anonimo } }; };
 const PROPRIAS = ["carrinhos", "visitas", "contas", "avisos"];
@@ -149,7 +150,7 @@ const servidor = http.createServer(async (req, res) => {
       const codigo = "TMZ-" + crypto.randomBytes(8).toString("hex").toUpperCase().replace(/[^A-Z2-9]/g, "X").slice(0, 8);
       const tipo = corpo.tipo, receber = tipo === "reserva30" ? "retirada" : corpo.receber;
       const pedido = {
-        codigo, dono: quem.id, tipo, receber, pagamento: corpo.pagamento || "Pix", cliente: corpo.cliente,
+        numero: ++ultimoNumero, codigo, dono: quem.id, tipo, receber, pagamento: corpo.pagamento || "Pix", cliente: corpo.cliente,
         itens: c.itens.map(({ categoria, ...i }) => i), subtotal: c.subtotal, frete: c.frete, total: c.total, sinal: c.cobrar, cobrar: c.cobrar,
         restante: centavos(c.total - c.cobrar), prazoEntrega: receber === "entrega" ? c.prazo : null,
         cupom: c.cupom ? { codigo: c.cupom.codigo, desconto: c.desconto, freteGratis: c.cupom.tipo === "frete", freteEconomizado: centavos(c.freteSemCupom - c.frete) } : null,

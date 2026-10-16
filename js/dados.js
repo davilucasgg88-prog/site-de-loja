@@ -74,6 +74,7 @@ const Dados = (() => {
       cupom: p.cupom && typeof p.cupom === "object" ? { codigo: txt(p.cupom.codigo, 30), desconto: numero(p.cupom.desconto), freteGratis: p.cupom.freteGratis === true, freteEconomizado: numero(p.cupom.freteEconomizado) } : null,
       rastreio: p.rastreio && typeof p.rastreio === "object" ? { transportadora: txt(p.rastreio.transportadora, 20), codigo: txt(p.rastreio.codigo, 40) } : undefined,
       regra: p.regra && typeof p.regra === "object" ? { janelaMin: numero(p.regra.janelaMin), percDepois: numero(p.regra.percDepois) } : undefined,
+      numero: Number.isInteger(Number(p.numero)) && Number(p.numero) > 0 ? Number(p.numero) : undefined,
       aprovadoEm: quando(p.aprovadoEm), prazoEnvio: quando(p.prazoEnvio), prazoEnvioDias: p.prazoEnvioDias == null ? undefined : numero(p.prazoEnvioDias),
       criadoEm: numero(p.criadoEm), confirmadoEm: quando(p.confirmadoEm), separandoEm: quando(p.separandoEm), enviadoEm: quando(p.enviadoEm),
       prontoEm: quando(p.prontoEm), concluidoEm: quando(p.concluidoEm), canceladoEm: quando(p.canceladoEm), estornadoEm: quando(p.estornadoEm),
@@ -412,7 +413,10 @@ const Dados = (() => {
       avisar();
       return novo;
     }
-    const novo = { ...pedido, codigo: codigoPedido(), criadoEm: Date.now(), status: "aguardando", pago: false, historico: [{ em: Date.now(), status: "aguardando" }] };
+    // número crescente (1, 2, 3…): no modo local, o maior já usado + 1. No servidor sai de uma
+    // sequência do banco; no esboço do Claude, o painel numera pela ordem de chegada.
+    const numero = estado.modo === "local" ? estado.pedidos.reduce((m, p) => Math.max(m, Number(p.numero) || 0), 0) + 1 : undefined;
+    const novo = { ...pedido, numero, codigo: codigoPedido(), criadoEm: Date.now(), status: "aguardando", pago: false, historico: [{ em: Date.now(), status: "aguardando" }] };
     if (estado.modo === "nuvem") {
       if (!estado.uid) throw new Error("sem-identidade");
       const lista = estado.meusPedidos.map(({ dono, ...p }) => p);

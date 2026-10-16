@@ -48,8 +48,10 @@ Deno.serve(async (req) => {
     }
 
     const agora = Date.now();
+    const { data: numero, error: erroNumero } = await db.rpc("proximo_numero_pedido");
+    if (erroNumero) throw erroNumero;
     const pedido = {
-      codigo: novoCodigo(), dono: quem.id, tipo, receber, pagamento, cliente,
+      numero: Number(numero), codigo: novoCodigo(), dono: quem.id, tipo, receber, pagamento, cliente,
       itens: conta.itens.map(({ id, nome, preco, qtd }) => ({ id, nome, preco, qtd })),
       subtotal: conta.subtotal, frete: conta.frete, total: conta.total,
       sinal: conta.cobrar, cobrar: conta.cobrar, restante: Math.round((conta.total - conta.cobrar) * 100) / 100,

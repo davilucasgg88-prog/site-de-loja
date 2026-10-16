@@ -35,6 +35,12 @@ Sem servidor, o limite total de usos é conferido com os pedidos que o navegador
 cidade, e o frete e o prazo saem pela distância da loja (mesma cidade, mesmo estado, mesma região ou
 resto do Brasil). Tabela, cidade da loja e frete grátis em Painel → Configurações (`js/frete.js`).
 
+**Número, data e contato de cada pedido:** todo pedido ganha um número crescente (nº 1, 2, 3…, sem
+repetir; no servidor sai de uma sequência do banco) além do código, e mostra data e hora completas
+para o cliente e no painel. No painel, cada pedido tem o bloco "Cliente" com nome, WhatsApp, e-mail e
+endereço, e botões WhatsApp, Ligar, E-mail e Copiar dados. Pedido novo chegando com o painel aberto
+mostra um aviso, e o título da aba avisa quando ele está em segundo plano.
+
 **Aprovação de pedidos e loja ON/OFF:** todo pedido novo chega como "Aguardando aprovação". No painel
 o dono aprova e define o prazo de envio (dias úteis); o cliente vê "Aprovado pela loja · envio até
 dd/mm", e pedidos fora do prazo aparecem como "Atrasado". A chave **Loja ON/OFF** no topo do menu do

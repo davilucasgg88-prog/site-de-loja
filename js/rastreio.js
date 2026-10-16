@@ -108,6 +108,7 @@ const Rastreio = (() => {
     const nome = (p.cliente?.nome || "").split(" ")[0];
     const oi = `Oi${nome ? ", " + nome : ""}!`;
     const link = `\n\nAcompanhe aqui: ${linkAcompanhar(p.codigo)}`;
+    p = { ...p, codigo: p.numero ? `nº ${p.numero} (${p.codigo})` : p.codigo }; // mensagens citam o número e o código
     const atual = etapas(p).find((x) => x.proxima)?.id;
     if (aprovado(p) && !p.etapa && p.status !== "retirado" && p.prazoEnvio && (p.pago || atual === "pago")) {
       return `${oi} Seu pedido ${p.codigo} foi aprovado! ${p.receber === "entrega" ? "Enviamos" : "Fica pronto para retirar"} até ${dataCurta(p.prazoEnvio)}.${p.pago ? "" : " Assim que o pagamento cair, começamos a separar."}${link}`;

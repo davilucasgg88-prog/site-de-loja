@@ -2,7 +2,7 @@
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const S = Dados.estado;
-  const { combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, categoria, nomeTipo, NOMES_STATUS, centavos, digitos } = window.TMZ;
+  const { dataHoraCompleta, combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, categoria, nomeTipo, NOMES_STATUS, centavos, digitos } = window.TMZ;
   const raiz = $("#painel");
 
   const ui = { periodo: 30, histPeriodo: 30, histStatus: "todos", histBusca: "", soOfertas: false, aba: "resumo", filtro: "aguardando", busca: "", catFiltro: "", editando: null, cancelando: null, excluindo: null, aberto: false,
@@ -35,6 +35,45 @@
     return dataHora(ms);
   };
   const pendentesEstorno = () => S.pedidos.filter((p) => p.status === "cancelado" && p.reembolso > 0);
+
+  /* ---------- número do pedido e contato do cliente ---------- */
+  // Número crescente (1, 2, 3…). Pedidos sem número (esboço do Claude ou antigos) são numerados
+  // pela ordem de chegada.
+  function numeroDe(p) {
+    if (p.numero) return p.numero;
+    const ordem = [...S.pedidos].sort((a, b) => a.criadoEm - b.criadoEm || String(a.codigo).localeCompare(b.codigo));
+    const maior = S.pedidos.reduce((m, x) => Math.max(m, Number(x.numero) || 0), 0);
+    const semNumero = ordem.filter((x) => !x.numero);
+    return maior + semNumero.findIndex((x) => x.codigo === p.codigo) + 1;
+  }
+  const zapLink = (tel, texto = "") => {
+    const d = digitos(tel);
+    return d.length >= 10 ? `https://wa.me/${d.length <= 11 ? "55" : ""}${d}${texto ? `?text=${encodeURIComponent(texto)}` : ""}` : "";
+  };
+  function contatoCliente(p) {
+    const c = p.cliente || {};
+    const zap = zapLink(c.telefone, `Oi, ${(c.nome || "").split(" ")[0]}! Aqui é da ${S.config.nome}, sobre o pedido nº ${numeroDe(p)} (${p.codigo}).`);
+    const tel = digitos(c.telefone);
+    const texto = [`Pedido nº ${numeroDe(p)} (${p.codigo})`, `Data: ${dataHoraCompleta(p.criadoEm)}`, `Cliente: ${c.nome || ""}`, `WhatsApp: ${c.telefone || ""}`,
+      c.email ? `E-mail: ${c.email}` : "", p.receber === "entrega" ? `Entrega: ${c.endereco || ""} · CEP ${c.cep || ""}` : "Retirada na loja",
+      `Itens: ${p.itens.map((i) => `${i.qtd}x ${i.nome}`).join(", ")}`, `Total: ${moeda(p.total)}`].filter(Boolean).join("\n");
+    return `
+      <div class="contato-cliente">
+        <p class="rotulo-mini">Cliente</p>
+        <dl>
+          <div><dt>Nome</dt><dd>${escapar(c.nome || "—")}</dd></div>
+          <div><dt>WhatsApp</dt><dd>${escapar(c.telefone || "—")}</dd></div>
+          ${c.email ? `<div><dt>E-mail</dt><dd>${escapar(c.email)}</dd></div>` : ""}
+          <div><dt>${p.receber === "entrega" ? "Entrega" : "Recebe"}</dt><dd>${p.receber === "entrega" ? `${escapar(c.endereco || "—")}${c.cep ? ` · CEP ${escapar(c.cep)}` : ""}` : "Retirada na loja"}</dd></div>
+        </dl>
+        <div class="contato-cliente__botoes">
+          ${zap ? `<a class="btn btn--pequeno" href="${escapar(zap)}" target="_blank" rel="noopener"><svg><use href="#i-whatsapp"/></svg>WhatsApp</a>` : ""}
+          ${tel.length >= 10 ? `<a class="btn btn--contorno btn--pequeno" href="tel:+${tel.length <= 11 ? "55" : ""}${tel}">Ligar</a>` : ""}
+          ${c.email ? `<a class="btn btn--contorno btn--pequeno" href="mailto:${escapar(c.email)}?subject=${encodeURIComponent(`Pedido nº ${numeroDe(p)} · ${S.config.nome}`)}">E-mail</a>` : ""}
+          <button type="button" class="link-simples" data-copiar-pedido="${escapar(texto)}">Copiar dados</button>
+        </div>
+      </div>`;
+  }
 
   /* ---------- aprovação e loja ON/OFF ---------- */
   const lojaOn = () => S.config.lojaAberta !== false;
@@ -138,7 +177,7 @@
         <section class="bloco">
           <header class="bloco__topo"><h2>Últimos pedidos</h2><button type="button" class="link-simples" data-ir="pedidos" data-filtro="todos">Ver todos</button></header>
           ${recentes.length ? `<ul class="lista-curta">${recentes.map((p) => `
-            <li><span class="lista-curta__cod">${escapar(p.codigo)}</span><span>${escapar(p.cliente?.nome || "")}</span>
+            <li><span class="lista-curta__cod">Nº ${numeroDe(p)}</span><span>${escapar(p.cliente?.nome || "")}</span>
             <span class="status status--${escapar(p.status)}">${NOMES_STATUS[p.status]}</span><b>${moeda(p.total)}</b></li>`).join("")}</ul>`
             : `<p class="vazio-curto">Nenhum pedido ainda. Eles aparecem aqui assim que alguém comprar ou reservar.</p>`}
         </section>
@@ -211,7 +250,7 @@
             ${itens.map((p) => `
               <article class="quadro__cartao">
                 <button type="button" class="quadro__abrir" data-ped-detalhe="${escapar(p.codigo)}">
-                  <span class="quadro__codigo">${escapar(p.codigo)}</span>
+                  <span class="quadro__codigo">Nº ${numeroDe(p)} · ${escapar(p.codigo)}</span>
                   <strong>${escapar((p.cliente?.nome || "Cliente").split(" ").slice(0, 2).join(" "))}</strong>
                   <small>${p.itens.reduce((s, i) => s + i.qtd, 0)} ${p.itens.reduce((s, i) => s + i.qtd, 0) === 1 ? "peça" : "peças"} · ${moeda(p.total)}</small>
                   ${p.prazoEnvio && ativo(p) ? `<small class="${atrasado(p) ? "quadro__atrasado" : ""}">${atrasado(p) ? "Atrasado · " : ""}${p.receber === "entrega" ? "enviar" : "pronto"} até ${Rastreio.dataCurta(p.prazoEnvio)}</small>` : ""}
@@ -293,9 +332,9 @@
       acoes = `<button type="button" class="link-simples" data-acao="repor" data-chave="${escapar(chave)}">Voltar peças ao estoque</button>`;
     }
     return `
-      <article class="pedido">
+      <article class="pedido" data-codigo="${escapar(p.codigo)}">
         <header class="pedido__topo">
-          <div><span class="pedido__codigo">${escapar(p.codigo)}</span><span class="pedido__data">${tempo(p.criadoEm)}</span></div>
+          <div><span class="pedido__codigo">Nº ${numeroDe(p)} <small>${escapar(p.codigo)}</small></span><span class="pedido__data">${dataHoraCompleta(p.criadoEm)} · ${tempo(p.criadoEm)}</span></div>
           <span class="etiqueta">${escapar(nomeTipo(p))}</span>
           ${S.pagamentos?.[p.codigo]?.status === "approved" && S.pagamentos[p.codigo].verificado
             ? `<span class="etiqueta etiqueta--ok" title="Pagamento de ${moeda(S.pagamentos[p.codigo].valorPago)} conferido direto no Mercado Pago">Pix verificado</span>`
@@ -304,11 +343,7 @@
           ${atrasado(p) ? `<span class="etiqueta etiqueta--alerta">Atrasado · era até ${Rastreio.dataCurta(p.prazoEnvio)}</span>` : ""}
           <span class="status status--${escapar(p.status)}">${NOMES_STATUS[p.status]}</span>
         </header>
-        <div class="pedido__cliente">
-          <strong>${escapar(p.cliente?.nome)}</strong>
-          ${zap ? `<a href="https://wa.me/55${zap.replace(/^55/, "")}?text=${encodeURIComponent(`Oi, ${p.cliente.nome.split(" ")[0]}! Sobre o pedido ${p.codigo} na ${S.config.nome}:`)}" target="_blank" rel="noopener">${escapar(p.cliente.telefone)}</a>` : ""}
-          <span>${p.receber === "entrega" ? `Entrega · ${escapar(p.cliente?.endereco)} · CEP ${escapar(p.cliente?.cep)}` : "Retirada na loja"}</span>
-        </div>
+        ${contatoCliente(p)}
         <ul class="pedido__itens">${p.itens.map((i) => `<li><span>${Number(i.qtd) || 0}×</span>${escapar(i.nome)}<b>${moeda(i.preco * i.qtd)}</b></li>`).join("")}</ul>
         <dl class="pedido__valores">
           <div><dt>Total</dt><dd>${moeda(p.total)}</dd></div>
@@ -995,7 +1030,7 @@
     return S.pedidos
       .filter((p) => p.criadoEm >= desde)
       .filter((p) => ui.histStatus === "todos" || p.status === ui.histStatus)
-      .filter((p) => !termo || `${p.codigo} ${p.cliente?.nome} ${p.cliente?.telefone} ${p.itens.map((i) => i.nome).join(" ")}`.toLowerCase().includes(termo))
+      .filter((p) => !termo || `${numeroDe(p)} nº${numeroDe(p)} ${p.codigo} ${p.cliente?.nome} ${p.cliente?.telefone} ${p.itens.map((i) => i.nome).join(" ")}`.toLowerCase().includes(termo))
       .sort((a, b) => b.criadoEm - a.criadoEm);
   }
   /* ---------- lista de espera (avise-me quando chegar) ---------- */
@@ -1316,10 +1351,11 @@
       ${lista.length ? `
       <div class="tabela-medidas__rolagem">
         <table class="tabela-historico">
-          <thead><tr><th>Data</th><th>ID do pedido</th><th>Cliente</th><th>Itens</th><th>Forma</th><th>Total</th><th>Pago</th><th>Situação</th></tr></thead>
+          <thead><tr><th>Nº</th><th>Data e hora</th><th>ID do pedido</th><th>Cliente</th><th>Itens</th><th>Forma</th><th>Total</th><th>Pago</th><th>Situação</th></tr></thead>
           <tbody>${lista.map((p) => `
             <tr>
-              <td>${dataHora(p.criadoEm)}</td>
+              <td class="num"><strong>${numeroDe(p)}</strong></td>
+              <td>${dataHoraCompleta(p.criadoEm)}</td>
               <td class="tabela-historico__cod">${escapar(p.codigo)}</td>
               <td><strong>${escapar(p.cliente?.nome)}</strong><small>${escapar(p.cliente?.telefone || "")}</small></td>
               <td>${p.itens.map((i) => `${Number(i.qtd) || 0}× ${escapar(i.nome)}`).join("<br>")}</td>
@@ -1340,8 +1376,8 @@
       if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t;
       return `"${t.replace(/"/g, '""')}"`;
     };
-    const linhas = [["Data", "Código", "Cliente", "Telefone", "E-mail", "Itens", "Forma", "Receber", "Endereço", "Total", "Sinal", "Restante", "Pago", "Situação", "Devolução"]]
-      .concat(lista.map((p) => [dataHora(p.criadoEm), p.codigo, p.cliente?.nome, p.cliente?.telefone, p.cliente?.email, p.itens.map((i) => `${i.qtd}x ${i.nome}`).join("; "), nomeTipo(p), p.receber, `${p.cliente?.endereco || ""} ${p.cliente?.cep || ""}`.trim(), p.total, p.sinal, p.restante, p.pago ? "sim" : "não", NOMES_STATUS[p.status], p.reembolso ?? ""]));
+    const linhas = [["Nº", "Data e hora", "Código", "Cliente", "Telefone", "E-mail", "Itens", "Forma", "Receber", "Endereço", "Total", "Sinal", "Restante", "Pago", "Situação", "Devolução"]]
+      .concat(lista.map((p) => [numeroDe(p), dataHoraCompleta(p.criadoEm), p.codigo, p.cliente?.nome, p.cliente?.telefone, p.cliente?.email, p.itens.map((i) => `${i.qtd}x ${i.nome}`).join("; "), nomeTipo(p), p.receber, `${p.cliente?.endereco || ""} ${p.cliente?.cep || ""}`.trim(), p.total, p.sinal, p.restante, p.pago ? "sim" : "não", NOMES_STATUS[p.status], p.reembolso ?? ""]));
     const texto = "\ufeff" + linhas.map((l) => l.map(campo).join(";")).join("\r\n");
     const nome = `tmz-historico-${chaveDia(Date.now())}.csv`;
     const downloads = await window.claude?.use?.("downloads").catch(() => null);
@@ -1427,6 +1463,12 @@
     // pedidos: quadro e lista
     const vista = t.closest("[data-ped-vista]");
     if (vista) { ui.pedVista = vista.dataset.pedVista; return renderAba(); }
+    const copiarPedido = t.closest("[data-copiar-pedido]");
+    if (copiarPedido) {
+      try { await navigator.clipboard.writeText(copiarPedido.dataset.copiarPedido); toast("Dados do pedido copiados"); }
+      catch { prompt("Copie os dados:", copiarPedido.dataset.copiarPedido); }
+      return;
+    }
     if (t.closest("[data-loja-status]")) {
       const ligar = !lojaOn();
       await Dados.salvarConfig({ lojaAberta: ligar });
@@ -1441,7 +1483,7 @@
       if (detalhe.dataset.enviarChave) ui.enviando = detalhe.dataset.enviarChave;
       if (detalhe.dataset.aprovarChave) ui.aprovando = detalhe.dataset.aprovarChave;
       renderAba();
-      const alvo = [...raiz.querySelectorAll(".pedido__codigo")].find((el) => el.textContent === detalhe.dataset.pedDetalhe)?.closest(".pedido");
+      const alvo = [...raiz.querySelectorAll(".pedido[data-codigo]")].find((el) => el.dataset.codigo === detalhe.dataset.pedDetalhe);
       alvo?.scrollIntoView({ block: "center" });
       alvo?.classList.add("pedido--destaque");
       return;
@@ -1791,6 +1833,27 @@
   });
   // abriu o site direto em #painel
   if (location.hash === "#painel") { ui.aberto = true; render(); }
+  // Pedido novo chegando com o painel aberto: aviso na tela e no título da aba
+  let conhecidos = null;
+  let novosSemVer = 0;
+  const tituloOriginal = document.title;
+  function avisarPedidosNovos() {
+    if (!S.admin) return;
+    const codigos = new Set(S.pedidos.map((p) => p.codigo));
+    if (conhecidos) {
+      const novos = S.pedidos.filter((p) => !conhecidos.has(p.codigo)).sort((a, b) => a.criadoEm - b.criadoEm);
+      if (novos.length) {
+        const ult = novos[novos.length - 1];
+        toast(novos.length === 1 ? `Pedido novo nº ${numeroDe(ult)} · ${(ult.cliente?.nome || "Cliente").split(" ")[0]} · ${moeda(ult.total)}` : `${novos.length} pedidos novos`);
+        if (document.hidden || !ui.aberto) { novosSemVer += novos.length; document.title = `(${novosSemVer}) Pedido novo · ${tituloOriginal}`; }
+      }
+    }
+    conhecidos = codigos;
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && ui.aberto) { novosSemVer = 0; document.title = tituloOriginal; } });
+  window.addEventListener("tmz:rota", (e) => { if (e.detail === "painel") { novosSemVer = 0; document.title = tituloOriginal; } });
+  Dados.ouvir(avisarPedidosNovos);
+
   let eraAdmin = S.admin;
   let contaAntes = JSON.stringify(S.conta);
   Dados.ouvir(() => {

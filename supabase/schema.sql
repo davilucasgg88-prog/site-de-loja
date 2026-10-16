@@ -104,6 +104,13 @@ language sql stable security definer set search_path = public as $$
 $$;
 grant execute on function public.rastrear_pedido(text, text) to anon, authenticated;
 
+-- Número do pedido: 1, 2, 3… sem repetir, mesmo com vários pedidos ao mesmo tempo.
+-- Só o servidor (função pedido) pega o próximo número.
+create sequence if not exists public.pedido_numero start 1;
+create or replace function public.proximo_numero_pedido() returns bigint
+language sql security definer set search_path = public as $$ select nextval('public.pedido_numero'); $$;
+revoke execute on function public.proximo_numero_pedido() from public, anon, authenticated;
+
 -- Pagamento aprovado: trava o pedido, confere o valor, baixa o estoque e confirma, tudo de uma vez.
 -- Chamado só pela função mercadopago-webhook (service role). Repetir o aviso não baixa o estoque de novo.
 create or replace function public.confirmar_pagamento(p_codigo text, p_mp_id text, p_valor numeric) returns text

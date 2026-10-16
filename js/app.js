@@ -7,6 +7,11 @@
   const centavos = (v) => Math.round((Number(v) || 0) * 100) / 100;
   const escapar = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const hora = (ms) => new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  // "16/10/2026 às 14:32"
+  const dataHoraCompleta = (ms) => {
+    const d = new Date(ms);
+    return `${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  };
   const dataHora = (ms) => new Date(ms).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const digitos = (t) => String(t || "").replace(/\D/g, "");
   const CHAVE_CARRINHO = "carrinho-loja";
@@ -839,7 +844,8 @@
   function mensagemPedido(p) {
     const tipo = { compra: "Pedido", reserva30: "Reserva", reserva50: "Reserva" }[p.tipo];
     return [
-      `*${tipo} ${p.codigo} — ${S.config.nome}*`,
+      `*${tipo}${p.numero ? ` nº ${p.numero}` : ""} (${p.codigo}) — ${S.config.nome}*`,
+      `Feito em ${dataHoraCompleta(p.criadoEm)}`,
       "",
       ...p.itens.map((i) => `• ${i.qtd}x ${i.nome} — ${moeda(i.preco * i.qtd)}`),
       "",
@@ -862,7 +868,8 @@
       <div class="concluido__selo"><svg><use href="#i-check"/></svg></div>
       <p class="rotulo">${reserva ? "Reserva registrada" : "Pedido registrado"}</p>
       <h1 class="tela__titulo">${reserva ? "Falta só o Pix do sinal" : "Agora é só enviar no WhatsApp"}</h1>
-      <p class="concluido__codigo">Código <strong>${escapar(p.codigo)}</strong></p>
+      <p class="concluido__codigo">${p.numero ? `Pedido <strong>nº ${p.numero}</strong> · ` : ""}Código <strong>${escapar(p.codigo)}</strong></p>
+      <p class="concluido__data">${dataHoraCompleta(p.criadoEm)}</p>
       <p class="concluido__aprovacao"><svg><use href="#i-relogio"/></svg>${S.config.lojaAberta === false
         ? "A loja está fora agora. Seu pedido entra na fila e é aprovado assim que voltarmos, com o prazo de envio."
         : "Agora a loja confere e aprova seu pedido, com o prazo de envio. Você acompanha tudo pelo link do pedido."}</p>
@@ -988,8 +995,8 @@
         <article class="pedido${encerrado ? " pedido--encerrado" : ""}">
           <header class="pedido__topo">
             <div>
-              <span class="pedido__codigo">${escapar(p.codigo)}</span>
-              <span class="pedido__data">${dataHora(p.criadoEm)}</span>
+              <span class="pedido__codigo">${p.numero ? `Nº ${p.numero} <small>${escapar(p.codigo)}</small>` : escapar(p.codigo)}</span>
+              <span class="pedido__data">${dataHoraCompleta(p.criadoEm)}</span>
             </div>
             <span class="etiqueta">${escapar(nomeTipo(p))}</span>
             <span class="status status--${escapar(p.status)}">${escapar(NOMES_STATUS[p.status] || p.status)}</span>
@@ -1036,8 +1043,8 @@
       <article class="acompanhar__cartao">
         <header class="acompanhar__topo">
           <div>
-            <span class="pedido__codigo">${escapar(p.codigo)}</span>
-            <span class="pedido__data">${escapar(nomeTipo(p))} · ${dataHora(p.criadoEm)}${p.cliente?.nome ? ` · ${escapar(p.cliente.nome.split(" ")[0])}` : ""}</span>
+            <span class="pedido__codigo">${p.numero ? `Nº ${p.numero} <small>${escapar(p.codigo)}</small>` : escapar(p.codigo)}</span>
+            <span class="pedido__data">${escapar(nomeTipo(p))} · ${dataHoraCompleta(p.criadoEm)}${p.cliente?.nome ? ` · ${escapar(p.cliente.nome.split(" ")[0])}` : ""}</span>
           </div>
           <span class="status status--${["cancelado", "estornado"].includes(p.status) ? "cancelado" : p.status}">${escapar(Rastreio.situacao(p))}</span>
         </header>
@@ -1315,5 +1322,5 @@
   else setTimeout(rota);
 
   // utilidades para o painel
-  window.TMZ = { linkSeguro, combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, imagemCat, categoria, nomeTipo, NOMES_STATUS, duracao, centavos, digitos, linkWhats };
+  window.TMZ = { dataHoraCompleta, linkSeguro, combinaDe, moeda, escapar, dataHora, hora, toast, iconeCat, imagemCat, categoria, nomeTipo, NOMES_STATUS, duracao, centavos, digitos, linkWhats };
 })();
