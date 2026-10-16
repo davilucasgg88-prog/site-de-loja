@@ -954,3 +954,29 @@ body.com-aviso .aviso-cookies, body.com-tela .aviso-cookies { display: none; }
 .edicao-item--rascunho { border-style: dashed; }
 .edicao-item__rascunho { position: absolute; top: -10px; left: 16px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; background: var(--atencao); color: #fff; }
 .tag-rascunho { font-style: normal; font-size: 11px; font-weight: 600; color: var(--atencao); margin-left: 4px; }
+
+/* aprovação de pedidos e loja ON/OFF */
+.loja-status { display: flex; align-items: center; gap: 12px; width: 100%; margin: -8px 0 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--linha); background: var(--superficie); color: var(--texto); font: inherit; text-align: left; cursor: pointer; }
+.loja-status span:last-child { display: grid; gap: 1px; }
+.loja-status strong { font-size: 14px; letter-spacing: .04em; }
+.loja-status small { font-size: 12px; color: var(--texto-suave); }
+.loja-status__chave { position: relative; width: 40px; height: 22px; border-radius: 999px; background: rgb(var(--c) / 0.15); flex-shrink: 0; transition: background .2s; }
+.loja-status__chave i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .3); transition: transform .2s; }
+.loja-status--on .loja-status__chave { background: var(--ok); }
+.loja-status--on .loja-status__chave i { transform: translateX(18px); }
+.loja-status--off { border-color: var(--erro); }
+.loja-status--off strong { color: var(--erro); }
+.faixa-off, .faixa-aprovar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 14px 16px; border-radius: 12px; font-size: 14px; }
+.faixa-off { background: rgb(220 38 38 / .08); border: 1px solid rgb(220 38 38 / .35); }
+.faixa-off svg { width: 20px; height: 20px; color: var(--erro); flex-shrink: 0; }
+.faixa-aprovar { background: rgb(var(--c) / 0.04); border: 1px solid var(--borda-forte); }
+.faixa-off span, .faixa-aprovar span { flex: 1; }
+.aprovar-pedido { display: grid; gap: 10px; width: 100%; }
+.aprovar-pedido .campo { max-width: 280px; }
+.quadro__coluna--aprovar header b { color: var(--atencao); }
+.quadro__atrasado { color: var(--erro) !important; font-weight: 600; }
+.aviso-off { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; background: #b91c1c; color: #fff; font-size: 13.5px; font-weight: 500; text-align: center; }
+.aviso-off svg { width: 18px; height: 18px; flex-shrink: 0; }
+.nota-off { margin-bottom: 12px; padding: 12px 14px; border-radius: 10px; background: rgb(220 38 38 / .08); border: 1px solid rgb(220 38 38 / .3); font-size: 13.5px; }
+.concluido__aprovacao { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -4px 0 18px; font-size: 14px; color: var(--texto-suave); text-align: center; }
+.concluido__aprovacao svg { width: 18px; height: 18px; flex-shrink: 0; }

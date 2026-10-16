@@ -86,6 +86,13 @@
       caixaInsta.querySelector("code").textContent = cupomInsta.codigo;
       caixaInsta.querySelector("small").textContent = `${Cupons.descrever(cupomInsta)}${Number(cupomInsta.minimo) > 0 ? ` acima de ${moeda(cupomInsta.minimo)}` : ""}`;
     }
+    // Loja OFF: aviso no topo e na finalização (os pedidos continuam chegando e ficam na fila)
+    const off = c.lojaAberta === false;
+    const textoOff = c.mensagemOff || "Estamos fora agora. Você pode comprar normalmente: seu pedido será aprovado assim que voltarmos.";
+    $("#aviso-off").hidden = !off;
+    $("#aviso-off-texto").textContent = textoOff;
+    $("#nota-off").hidden = !off;
+    $("#nota-off").textContent = textoOff;
     $("#selo-troca").textContent = `Troca em até ${Number(c.prazoTroca) || 30} dias`;
     $("#rodape-cnpj").textContent = c.cnpj ? ` ${c.razaoSocial || c.nome} · ${c.cnpj.replace(/\D/g, "").length > 11 ? "CNPJ" : "CPF"} ${c.cnpj}` : "";
     $("#rodape-endereco").hidden = !c.endereco;
@@ -856,6 +863,9 @@
       <p class="rotulo">${reserva ? "Reserva registrada" : "Pedido registrado"}</p>
       <h1 class="tela__titulo">${reserva ? "Falta só o Pix do sinal" : "Agora é só enviar no WhatsApp"}</h1>
       <p class="concluido__codigo">Código <strong>${escapar(p.codigo)}</strong></p>
+      <p class="concluido__aprovacao"><svg><use href="#i-relogio"/></svg>${S.config.lojaAberta === false
+        ? "A loja está fora agora. Seu pedido entra na fila e é aprovado assim que voltarmos, com o prazo de envio."
+        : "Agora a loja confere e aprova seu pedido, com o prazo de envio. Você acompanha tudo pelo link do pedido."}</p>
       <div class="concluido__grade">
         <div class="cartao-pix">
           ${reserva ? `

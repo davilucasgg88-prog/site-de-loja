@@ -36,14 +36,26 @@
   };
   const pendentesEstorno = () => S.pedidos.filter((p) => p.status === "cancelado" && p.reembolso > 0);
 
+  /* ---------- aprovação e loja ON/OFF ---------- */
+  const lojaOn = () => S.config.lojaAberta !== false;
+  const ativo = (p) => ["aguardando", "confirmado"].includes(p.status);
+  const paraAprovar = () => S.pedidos.filter((p) => ativo(p) && !Rastreio.aprovado(p));
+  const atrasado = (p) => ativo(p) && Rastreio.aprovado(p) && p.prazoEnvio && Date.now() > p.prazoEnvio && !["enviado", "pronto"].includes(p.etapa);
+  const prazoPadrao = () => Math.max(1, Number(S.config.prazoEnvioPadrao) || 2);
+
   /* ---------- casca ---------- */
   function render() {
     if (!S.admin) return renderEntrada();
-    const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length;
+    const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length + paraAprovar().filter((p) => p.status !== "aguardando").length;
     raiz.innerHTML = `
       <div class="painel">
         <aside class="painel__lado">
           <a href="#" class="painel__marca"><img src="img/logo-tmz.png" alt="TMZ" width="84" height="24"><span>Painel</span></a>
+          <button type="button" class="loja-status ${lojaOn() ? "loja-status--on" : "loja-status--off"}" data-loja-status aria-pressed="${lojaOn()}"
+            title="${lojaOn() ? "Clique para pausar: os pedidos continuam chegando, mas só são aprovados quando voltar para ON" : "Clique para voltar a aprovar pedidos"}">
+            <span class="loja-status__chave"><i></i></span>
+            <span><strong>Loja ${lojaOn() ? "ON" : "OFF"}</strong><small>${lojaOn() ? "Aprovando pedidos" : "Pedidos ficam na fila"}</small></span>
+          </button>
           <nav class="painel__nav">
             ${ABAS.map(([id, nome, icone]) => `
               <button type="button" class="${ui.aba === id ? "ativo" : ""}" data-aba="${id}">
@@ -93,6 +105,8 @@
       <header class="painel__cabeca">
         <div><p class="rotulo">Hoje</p><h1>Resumo da loja</h1></div>
       </header>
+      ${!lojaOn() ? `<div class="faixa-off"><svg><use href="#i-relogio"/></svg><span><strong>Loja OFF.</strong> Os clientes veem o aviso e os pedidos ficam na fila até você voltar para ON.</span><button type="button" class="btn btn--pequeno" data-loja-status>Ficar ON</button></div>` : ""}
+      ${lojaOn() && paraAprovar().length ? `<div class="faixa-aprovar"><span><strong>${paraAprovar().length} ${paraAprovar().length === 1 ? "pedido esperando" : "pedidos esperando"} sua aprovação.</strong> Aprove e defina o prazo de envio.</span><button type="button" class="btn btn--pequeno" data-ir="pedidos">Aprovar agora</button></div>` : ""}
       ${checklist()}
       <div class="kpis kpis--3">
         <button type="button" class="kpi" data-ir="pedidos" data-filtro="aguardando">
@@ -165,8 +179,9 @@
   function quadroPedidos() {
     const semana = Date.now() - 7 * 864e5;
     const colunas = [
-      ["pagar", "A pagar", (p) => p.status === "aguardando"],
-      ["separar", "Separar", (p) => p.status === "confirmado" && !p.etapa],
+      ["aprovar", lojaOn() ? "Aprovar" : "Aprovar · loja OFF", (p) => ativo(p) && !Rastreio.aprovado(p)],
+      ["pagar", "A pagar", (p) => p.status === "aguardando" && Rastreio.aprovado(p)],
+      ["separar", "Separar", (p) => p.status === "confirmado" && !p.etapa && Rastreio.aprovado(p)],
       ["separando", "Em separação", (p) => p.status === "confirmado" && p.etapa === "separando"],
       ["saiu", "Enviados e prontos", (p) => p.status === "confirmado" && ["enviado", "pronto"].includes(p.etapa)],
       ["fim", "Concluídos · 7 dias", (p) => p.status === "retirado" && (p.concluidoEm || p.criadoEm) >= semana],
@@ -175,6 +190,9 @@
     const acao = (p) => {
       const chave = escapar(`${p.dono}|${p.codigo}`);
       const entrega = p.receber === "entrega";
+      if (ativo(p) && !Rastreio.aprovado(p)) return lojaOn()
+        ? `<button type="button" class="btn btn--pequeno" data-ped-detalhe="${escapar(p.codigo)}" data-aprovar-chave="${chave}">Aprovar…</button>`
+        : `<button type="button" class="btn btn--pequeno" disabled title="Fique ON para aprovar">Loja OFF</button>`;
       if (p.status === "aguardando") return `<button type="button" class="btn btn--pequeno" data-acao="confirmar" data-chave="${chave}">Pagamento recebido</button>`;
       if (p.status !== "confirmado") return "";
       if (!p.etapa) return `<button type="button" class="btn btn--pequeno" data-acao="separar" data-chave="${chave}">Separar</button>`;
@@ -196,6 +214,7 @@
                   <span class="quadro__codigo">${escapar(p.codigo)}</span>
                   <strong>${escapar((p.cliente?.nome || "Cliente").split(" ").slice(0, 2).join(" "))}</strong>
                   <small>${p.itens.reduce((s, i) => s + i.qtd, 0)} ${p.itens.reduce((s, i) => s + i.qtd, 0) === 1 ? "peça" : "peças"} · ${moeda(p.total)}</small>
+                  ${p.prazoEnvio && ativo(p) ? `<small class="${atrasado(p) ? "quadro__atrasado" : ""}">${atrasado(p) ? "Atrasado · " : ""}${p.receber === "entrega" ? "enviar" : "pronto"} até ${Rastreio.dataCurta(p.prazoEnvio)}</small>` : ""}
                   <small>${p.receber === "entrega" ? "Entrega" : "Retirada"} · ${tempo(p.etapa === "enviado" ? p.enviadoEm : p.etapa === "pronto" ? p.prontoEm : p.etapa === "separando" ? p.separandoEm : p.status === "confirmado" ? p.confirmadoEm || p.criadoEm : p.criadoEm)}</small>
                 </button>
                 ${acao(p)}
@@ -222,6 +241,25 @@
             <button type="button" class="link-simples" data-acao="cancelar-nao">Voltar</button>
           </div>
         </div>`;
+    } else if (ui.aprovando === chave) {
+      const dias = prazoPadrao();
+      acoes = `
+        <div class="aprovar-pedido">
+          <label class="campo"><span>${p.receber === "entrega" ? "Envio em até (dias úteis)" : "Pronto para retirar em até (dias úteis)"}</span>
+            <input type="number" id="aprovar-dias" min="0" max="60" step="1" value="${dias}" data-aprovar-dias>
+          </label>
+          <p class="nota" id="aprovar-data">O cliente vê: ${p.receber === "entrega" ? "envio" : "pronto"} até <strong>${Rastreio.dataCurta(Rastreio.diasUteis(Date.now(), dias))}</strong></p>
+          <div class="linha-botoes">
+            <button type="button" class="btn btn--pequeno" data-acao="aprovar-ok" data-chave="${escapar(chave)}"><svg><use href="#i-check"/></svg>Aprovar pedido</button>
+            <button type="button" class="link-simples" data-acao="aprovar-nao">Voltar</button>
+          </div>
+        </div>`;
+    } else if (ativo(p) && !Rastreio.aprovado(p)) {
+      acoes = `${lojaOn()
+          ? `<button type="button" class="btn btn--pequeno" data-acao="aprovar" data-chave="${escapar(chave)}"><svg><use href="#i-check"/></svg>Aprovar e definir prazo</button>`
+          : `<button type="button" class="btn btn--pequeno" disabled title="Fique ON para aprovar">Loja OFF: aprove quando voltar</button>`}
+               ${p.status === "aguardando" ? `<button type="button" class="link-simples" data-acao="confirmar" data-chave="${escapar(chave)}">${reserva ? "Sinal recebido" : "Pagamento recebido"}</button>` : ""}
+               <button type="button" class="link-simples" data-acao="cancelar" data-chave="${escapar(chave)}">Recusar / cancelar</button>`;
     } else if (p.status === "aguardando") {
       acoes = `<button type="button" class="btn btn--pequeno" data-acao="confirmar" data-chave="${escapar(chave)}"><svg><use href="#i-check"/></svg>${reserva ? `Sinal de ${moeda(p.sinal)} recebido` : "Pagamento recebido"}</button>
                <button type="button" class="link-simples" data-acao="cancelar" data-chave="${escapar(chave)}">Cancelar</button>`;
@@ -262,6 +300,8 @@
           ${S.pagamentos?.[p.codigo]?.status === "approved" && S.pagamentos[p.codigo].verificado
             ? `<span class="etiqueta etiqueta--ok" title="Pagamento de ${moeda(S.pagamentos[p.codigo].valorPago)} conferido direto no Mercado Pago">Pix verificado</span>`
             : p.pago && p.pagamentoVerificado ? `<span class="etiqueta etiqueta--alerta" title="O pedido diz que foi pago online, mas o servidor não tem esse pagamento">Pagamento não encontrado</span>` : ""}
+          ${ativo(p) && !Rastreio.aprovado(p) ? `<span class="etiqueta etiqueta--alerta">Aguardando aprovação</span>` : ""}
+          ${atrasado(p) ? `<span class="etiqueta etiqueta--alerta">Atrasado · era até ${Rastreio.dataCurta(p.prazoEnvio)}</span>` : ""}
           <span class="status status--${escapar(p.status)}">${NOMES_STATUS[p.status]}</span>
         </header>
         <div class="pedido__cliente">
@@ -299,6 +339,8 @@
     if (acao === "cancelar-nao") { ui.cancelando = null; return renderAba(); }
     if (acao === "cancelar") { ui.cancelando = chave; return renderAba(); }
     if (acao === "enviar") { ui.enviando = chave; return renderAba(); }
+    if (acao === "aprovar") { if (!lojaOn()) return toast("A loja está OFF. Fique ON para aprovar."); ui.aprovando = chave; return renderAba(); }
+    if (acao === "aprovar-nao") { ui.aprovando = null; return renderAba(); }
     if (acao === "enviar-nao") { ui.enviando = null; return renderAba(); }
     const [dono, codigo] = chave.split("|");
     botao && (botao.disabled = true);
@@ -306,13 +348,17 @@
     const p = await Dados.lerPedido(dono, codigo) || S.pedidos.find((x) => x.dono === dono && x.codigo === codigo);
     if (!p) { toast("Pedido não encontrado"); return renderAba(); }
     const pode = {
-      confirmar: p.status === "aguardando", separar: p.status === "confirmado" && !p.etapa,
+      confirmar: p.status === "aguardando", separar: p.status === "confirmado" && !p.etapa && Rastreio.aprovado(p),
+      "aprovar-ok": ativo(p) && !Rastreio.aprovado(p) && lojaOn(),
       pronto: p.status === "confirmado" && p.etapa === "separando" && p.receber === "retirada",
       "enviar-ok": p.status === "confirmado" && p.etapa === "separando" && p.receber === "entrega",
       concluir: p.status === "confirmado", "cancelar-ok": ["aguardando", "confirmado"].includes(p.status),
       estornar: p.status === "cancelado", repor: p.estoqueBaixado && ["cancelado", "estornado"].includes(p.status),
     };
-    if (acao in pode && !pode[acao]) { toast("Este pedido já mudou. A tela foi atualizada."); ui.cancelando = null; ui.enviando = null; return renderAba(); }
+    if (acao in pode && !pode[acao]) {
+      toast(acao === "aprovar-ok" && !lojaOn() ? "A loja está OFF. Fique ON para aprovar." : "Este pedido já mudou. A tela foi atualizada.");
+      ui.cancelando = null; ui.enviando = null; ui.aprovando = null; return renderAba();
+    }
     try {
       if (acao === "confirmar") {
         // guarda quanto saiu de cada produto, para devolver exatamente isso se cancelar
@@ -321,6 +367,13 @@
         await Dados.atualizarPedido(dono, codigo, { status: "confirmado", pago: true, estoqueBaixado: true, baixas, confirmadoEm: Date.now() });
         const faltou = p.itens.some((i) => (baixas[i.id] || 0) < i.qtd);
         toast(faltou ? "Confirmado, mas faltou estoque de alguma peça. Confira." : "Pagamento confirmado e estoque atualizado");
+      }
+      if (acao === "aprovar-ok") {
+        const dias = Math.min(60, Math.max(0, parseInt($("#aprovar-dias", raiz)?.value, 10) || 0));
+        const agora = Date.now();
+        await Dados.atualizarPedido(dono, codigo, { aprovadoEm: agora, prazoEnvioDias: dias, prazoEnvio: Rastreio.diasUteis(agora, dias) });
+        ui.aprovando = null;
+        toast("Pedido aprovado. Use Avisar cliente para mandar o prazo no WhatsApp.");
       }
       if (acao === "separar") {
         await Dados.atualizarPedido(dono, codigo, { etapa: "separando", separandoEm: Date.now() });
@@ -793,6 +846,11 @@
             </table>
             <p class="nota">O cliente digita o CEP no carrinho ou na compra, o endereço se preenche sozinho (ViaCEP) e o frete sai por esta tabela. "Mesma região" segue as regiões do IBGE (Sudeste, Sul…).</p>
           </div>
+        </section>
+        <section class="bloco">
+          <h2>Aprovação de pedidos</h2>
+          <div class="campos-2">${campo("prazoEnvioPadrao", "Prazo de envio sugerido (dias úteis)", "number", 'min="0" max="60" step="1" placeholder="2"')}${campo("mensagemOff", "Aviso para o cliente quando a loja estiver OFF", "text", 'maxlength="160" placeholder="Estamos fora agora. Seu pedido será aprovado assim que voltarmos."')}</div>
+          <p class="nota">Todo pedido novo espera você aprovar e definir o prazo. Com a loja em OFF (chave no topo do menu), os pedidos continuam chegando, mas ficam na fila até você voltar para ON.</p>
         </section>
         <section class="bloco">
           <h2>Pagamento online (Mercado Pago)</h2>
@@ -1369,10 +1427,19 @@
     // pedidos: quadro e lista
     const vista = t.closest("[data-ped-vista]");
     if (vista) { ui.pedVista = vista.dataset.pedVista; return renderAba(); }
+    if (t.closest("[data-loja-status]")) {
+      const ligar = !lojaOn();
+      await Dados.salvarConfig({ lojaAberta: ligar });
+      const n = paraAprovar().length;
+      toast(ligar ? (n ? `Loja ON. ${n} ${n === 1 ? "pedido esperando" : "pedidos esperando"} aprovação.` : "Loja ON. Aprovando pedidos.") : "Loja OFF. Os pedidos ficam na fila até você voltar.");
+      if (ligar && n) { ui.aba = "pedidos"; ui.pedVista = "quadro"; }
+      return render();
+    }
     const detalhe = t.closest("[data-ped-detalhe]");
     if (detalhe) {
       ui.pedVista = "lista"; ui.filtro = "todos";
       if (detalhe.dataset.enviarChave) ui.enviando = detalhe.dataset.enviarChave;
+      if (detalhe.dataset.aprovarChave) ui.aprovando = detalhe.dataset.aprovarChave;
       renderAba();
       const alvo = [...raiz.querySelectorAll(".pedido__codigo")].find((el) => el.textContent === detalhe.dataset.pedDetalhe)?.closest(".pedido");
       alvo?.scrollIntoView({ block: "center" });
@@ -1565,6 +1632,12 @@
   });
 
   raiz.addEventListener("input", (e) => {
+    if (e.target.matches("[data-aprovar-dias]")) {
+      const dias = Math.min(60, Math.max(0, parseInt(e.target.value, 10) || 0));
+      const nota = $("#aprovar-data", raiz);
+      if (nota) nota.querySelector("strong").textContent = Rastreio.dataCurta(Rastreio.diasUteis(Date.now(), dias));
+      return;
+    }
     const campo = e.target.closest("[data-campo]");
     const item = campo?.closest("[data-edicao]");
     if (item) {
@@ -1670,6 +1743,8 @@
       if (f.id === "form-config") {
         const d = Object.fromEntries(new FormData(f));
         d.pagamentoOnline = !!d.pagamentoOnline;
+        d.prazoEnvioPadrao = Math.min(60, Math.max(0, parseInt(d.prazoEnvioPadrao, 10) || 2));
+        d.mensagemOff = String(d.mensagemOff || "").trim().slice(0, 160);
         d.freteTabela = {};
         Object.keys(Frete.NOMES_FAIXA).forEach((k) => {
           d.freteTabela[k] = { valor: Math.max(0, Number(d[`ft_${k}_valor`]) || 0), prazo: Math.max(1, parseInt(d[`ft_${k}_prazo`], 10) || 1) };
@@ -1706,7 +1781,7 @@
   /* ---------- quando abrir e quando os dados mudarem ---------- */
   // trocar de aba ou sair do painel fecha o que estava aberto (formulário de envio, cancelamento, editor)
   function limparEdicoes() {
-    ui.cancelando = null; ui.excluindo = null; ui.enviando = null; ui.excluindoCupom = null;
+    ui.cancelando = null; ui.excluindo = null; ui.enviando = null; ui.aprovando = null; ui.excluindoCupom = null;
     if (ui.editando) fecharEditor();
   }
   window.addEventListener("tmz:rota", (e) => {
@@ -1727,7 +1802,7 @@
       contaAntes = JSON.stringify(S.conta);
       return render();
     }
-    if (ui.editando || ui.enviando || ui.cancelando || abasDeFormulario.includes(ui.aba) || ui.aba === "produtos" && ui.prodModo === "tudo" || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
+    if (ui.editando || ui.enviando || ui.cancelando || ui.aprovando || abasDeFormulario.includes(ui.aba) || ui.aba === "produtos" && ui.prodModo === "tudo" || raiz.contains(document.activeElement) && document.activeElement.matches("input[type=number], #busca-produto, #busca-historico")) {
       // só atualiza o contador do menu
       const aguardando = S.pedidos.filter((p) => p.status === "aguardando").length;
       const b = raiz.querySelector('[data-aba="pedidos"]');

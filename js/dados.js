@@ -74,6 +74,7 @@ const Dados = (() => {
       cupom: p.cupom && typeof p.cupom === "object" ? { codigo: txt(p.cupom.codigo, 30), desconto: numero(p.cupom.desconto), freteGratis: p.cupom.freteGratis === true, freteEconomizado: numero(p.cupom.freteEconomizado) } : null,
       rastreio: p.rastreio && typeof p.rastreio === "object" ? { transportadora: txt(p.rastreio.transportadora, 20), codigo: txt(p.rastreio.codigo, 40) } : undefined,
       regra: p.regra && typeof p.regra === "object" ? { janelaMin: numero(p.regra.janelaMin), percDepois: numero(p.regra.percDepois) } : undefined,
+      aprovadoEm: quando(p.aprovadoEm), prazoEnvio: quando(p.prazoEnvio), prazoEnvioDias: p.prazoEnvioDias == null ? undefined : numero(p.prazoEnvioDias),
       criadoEm: numero(p.criadoEm), confirmadoEm: quando(p.confirmadoEm), separandoEm: quando(p.separandoEm), enviadoEm: quando(p.enviadoEm),
       prontoEm: quando(p.prontoEm), concluidoEm: quando(p.concluidoEm), canceladoEm: quando(p.canceladoEm), estornadoEm: quando(p.estornadoEm),
       canceladoPor: ["cliente", "loja"].includes(p.canceladoPor) ? p.canceladoPor : undefined,

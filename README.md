@@ -35,6 +35,12 @@ Sem servidor, o limite total de usos é conferido com os pedidos que o navegador
 cidade, e o frete e o prazo saem pela distância da loja (mesma cidade, mesmo estado, mesma região ou
 resto do Brasil). Tabela, cidade da loja e frete grátis em Painel → Configurações (`js/frete.js`).
 
+**Aprovação de pedidos e loja ON/OFF:** todo pedido novo chega como "Aguardando aprovação". No painel
+o dono aprova e define o prazo de envio (dias úteis); o cliente vê "Aprovado pela loja · envio até
+dd/mm", e pedidos fora do prazo aparecem como "Atrasado". A chave **Loja ON/OFF** no topo do menu do
+painel pausa as aprovações: com a loja OFF, o cliente vê um aviso (texto editável em Configurações),
+os pedidos continuam chegando e ficam na fila, e só podem ser aprovados quando voltar para ON.
+
 **Acompanhar pedido** (`#acompanhar`, `js/rastreio.js`): linha do tempo do pedido (feito → pago → em
 separação → enviado com código de rastreio e previsão → entregue; ou pronto para retirar → retirado).
 O cliente abre pelo link `?pedido=TMZ-AB12C#acompanhar` ou digita o código e os 4 últimos números do

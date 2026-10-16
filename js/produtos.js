@@ -19,6 +19,11 @@ const LOJA = {
     cidade: { valor: 12, prazo: 2 }, estado: { valor: 19.9, prazo: 4 },
     regiao: { valor: 24.9, prazo: 6 }, brasil: { valor: 34.9, prazo: 9 },
   },
+  // Aprovação de pedidos: todo pedido espera o dono aprovar e definir o prazo de envio.
+  // lojaAberta false = loja OFF: os pedidos chegam, mas só são aprovados quando voltar para ON.
+  lojaAberta: true,
+  prazoEnvioPadrao: 2,  // dias úteis sugeridos ao aprovar
+  mensagemOff: "",      // aviso para o cliente com a loja OFF (vazio = texto padrão)
   // Pagamento do sinal das reservas
   pixChave: "",            // ex.: CNPJ, e-mail, telefone ou chave aleatória
   pixNome: "TMZ STORE",

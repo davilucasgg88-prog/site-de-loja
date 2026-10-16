@@ -24,6 +24,10 @@ const Rastreio = (() => {
     return d.getTime();
   }
 
+  // Aprovado pelo dono? (pedidos antigos, já em andamento, contam como aprovados)
+  const aprovado = (p) => !!p.aprovadoEm || !!p.etapa || p.status === "retirado";
+  const dataCurta = (ms) => new Date(ms).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+
   function etapas(p) {
     const entrega = p.receber === "entrega";
     const reserva = p.tipo !== "compra";
@@ -31,6 +35,13 @@ const Rastreio = (() => {
     const e = p.etapa;
     const lista = [
       { id: "feito", nome: reserva ? "Reserva feita" : "Pedido feito", desc: `Código ${p.codigo}`, em: p.criadoEm },
+      {
+        id: "aprovado", nome: "Aprovado pela loja",
+        desc: aprovado(p)
+          ? p.prazoEnvio ? `${entrega ? "Envio" : "Pronto para retirar"} até ${dataCurta(p.prazoEnvio)}` : "Pedido aceito pela loja"
+          : S.config.lojaAberta === false ? "A loja está fora do ar agora: aprovamos assim que voltar" : "Esperando a loja confirmar o pedido e o prazo",
+        em: aprovado(p) ? p.aprovadoEm || p.confirmadoEm || p.criadoEm : null,
+      },
       { id: "pago", nome: reserva ? "Sinal confirmado" : "Pagamento confirmado", desc: pago ? (reserva ? `${moeda(p.sinal)} recebidos` : "Pagamento recebido") : "Aguardando o pagamento", em: pago ? p.confirmadoEm || null : null },
       { id: "separando", nome: "Em separação", desc: "Conferindo e embalando suas peças", em: p.separandoEm || (["enviado", "pronto"].includes(e) || p.status === "retirado" ? p.confirmadoEm : null) },
     ];
@@ -57,8 +68,9 @@ const Rastreio = (() => {
   function situacao(p) {
     if (p.status === "cancelado") return "Cancelado";
     if (p.status === "estornado") return "Cancelado e devolvido";
+    if (!aprovado(p)) return "Aguardando aprovação";
     const atual = etapas(p).find((x) => x.atual);
-    return { feito: "Aguardando pagamento", pago: "Pago · a separar", separando: "Em separação", enviado: "A caminho", pronto: "Pronto para retirar", fim: p.receber === "entrega" ? "Entregue" : "Retirado" }[atual?.id] || "";
+    return { feito: "Aguardando pagamento", aprovado: p.pago ? "Pago · a separar" : "Aprovado · aguardando pagamento", pago: "Pago · a separar", separando: "Em separação", enviado: "A caminho", pronto: "Pronto para retirar", fim: p.receber === "entrega" ? "Entregue" : "Retirado" }[atual?.id] || "";
   }
 
   function linha(p, { compacta = false } = {}) {
@@ -97,6 +109,9 @@ const Rastreio = (() => {
     const oi = `Oi${nome ? ", " + nome : ""}!`;
     const link = `\n\nAcompanhe aqui: ${linkAcompanhar(p.codigo)}`;
     const atual = etapas(p).find((x) => x.proxima)?.id;
+    if (aprovado(p) && !p.etapa && p.status !== "retirado" && p.prazoEnvio && (p.pago || atual === "pago")) {
+      return `${oi} Seu pedido ${p.codigo} foi aprovado! ${p.receber === "entrega" ? "Enviamos" : "Fica pronto para retirar"} até ${dataCurta(p.prazoEnvio)}.${p.pago ? "" : " Assim que o pagamento cair, começamos a separar."}${link}`;
+    }
     if (p.status === "retirado") return `${oi} Seu pedido ${p.codigo} foi ${p.receber === "entrega" ? "entregue" : "retirado"}. Obrigado por comprar na ${S.config.nome}! 🖤`;
     if (atual === "pago") return `${oi} Recebemos o seu pedido ${p.codigo}. Assim que o pagamento cair, a gente separa as peças.${link}`;
     if (atual === "separando") return `${oi} Pagamento do pedido ${p.codigo} confirmado! Já estamos separando suas peças.${link}`;
@@ -109,5 +124,5 @@ const Rastreio = (() => {
     return `${oi} Novidades do seu pedido ${p.codigo}.${link}`;
   }
 
-  return { etapas, linha, situacao, mensagem, linkAcompanhar, TRANSPORTADORAS, diasUteis };
+  return { aprovado, dataCurta, etapas, linha, situacao, mensagem, linkAcompanhar, TRANSPORTADORAS, diasUteis };
 })();

@@ -291,7 +291,15 @@ teste("acompanhar pedido: dono avança as etapas e o cliente vê pelo código", 
   await ir(p, "painel");
   await p.click('[data-aba="pedidos"]');
   const coluna = async (id) => texto(p, `.quadro__coluna--${id}`);
-  confere((await coluna("pagar")).includes(codigo), "pedido não está em A pagar");
+  // primeiro o dono aprova e define o prazo de envio
+  confere((await coluna("aprovar")).includes(codigo), "pedido novo não está em Aprovar");
+  await p.click(".quadro__coluna--aprovar [data-aprovar-chave]");
+  await p.waitForTimeout(300);
+  await p.fill("#aprovar-dias", "3");
+  await p.click('[data-acao="aprovar-ok"]');
+  await p.waitForTimeout(300);
+  await p.click('[data-ped-vista="quadro"]');
+  confere((await coluna("pagar")).includes(codigo), "pedido aprovado não está em A pagar");
   await p.click(`.quadro__coluna--pagar [data-acao="confirmar"]`);
   await p.waitForTimeout(300);
   await p.click(`.quadro__coluna--separar [data-acao="separar"]`);
@@ -510,6 +518,49 @@ teste("correções da revisão: CEP, erros visíveis, frete grátis, medidas e e
   await p.waitForTimeout(300);
   const est = await p.evaluate(() => Dados.estado.produtos.find((x) => x.id === "6").estoque);
   confere(est === 1, "estoque deveria voltar a 1, ficou " + est);
+  await fechar(p);
+});
+
+teste("loja OFF: pedidos chegam, mas só são aprovados quando voltar para ON", async () => {
+  const p = await abrir();
+  await entrarComoDono(p);
+  await ir(p, "painel");
+  await p.click("[data-loja-status]");
+  await p.waitForTimeout(300);
+  confere((await texto(p, ".loja-status")).includes("OFF"), "chave não ficou OFF");
+  // cliente vê o aviso e ainda consegue comprar
+  await ir(p, "");
+  confere(await p.isVisible("#aviso-off"), "cliente não viu o aviso de loja OFF");
+  await adicionar(p, 1);
+  await ir(p, "compra");
+  confere(await p.isVisible("#nota-off"), "finalização sem o aviso de OFF");
+  await p.fill("#c-nome", "Cliente Fila");
+  await p.fill("#c-telefone", "11988880000");
+  await p.check('#form-compra input[name=receber][value=retirada]', { force: true });
+  await p.click("#confirmar-compra");
+  await p.waitForTimeout(400);
+  confere((await texto(p, ".concluido__aprovacao")).includes("fila"), "pedido concluído sem avisar da fila");
+  // dono não consegue aprovar com a loja OFF
+  await ir(p, "painel");
+  await p.click('[data-aba="pedidos"]');
+  await p.click('[data-ped-vista="quadro"]');
+  confere(await p.isDisabled(".quadro__coluna--aprovar .btn"), "deu para aprovar com a loja OFF");
+  // volta para ON e aprova
+  await p.click("[data-loja-status]");
+  await p.waitForTimeout(300);
+  await ir(p, "");
+  confere(!(await p.isVisible("#aviso-off")), "aviso de OFF continuou com a loja ON");
+  await ir(p, "painel");
+  await p.click('[data-aba="pedidos"]');
+  await p.click('[data-ped-vista="quadro"]');
+  await p.click(".quadro__coluna--aprovar [data-aprovar-chave]");
+  await p.waitForTimeout(300);
+  await p.click('[data-acao="aprovar-ok"]');
+  await p.waitForTimeout(300);
+  const aprovado = await p.evaluate(() => Dados.estado.pedidos.find((x) => x.cliente.nome === "Cliente Fila"));
+  confere(aprovado.aprovadoEm && aprovado.prazoEnvio > Date.now(), "pedido não foi aprovado com prazo");
+  await ir(p, "reservas");
+  confere((await texto(p, "#lista-reservas")).includes("Aprovado pela loja"), "cliente não vê a aprovação");
   await fechar(p);
 });
 
